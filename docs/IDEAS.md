@@ -38,6 +38,16 @@ Format: `- [ ] idea — why it matters (who raised it, date)`
 - [ ] Rep assignment + "my appointments today" view.
 - [ ] Export CSV / "Open Sheet" button.
 
+## Platform vision (nk, 2026-11-06) — see docs/PLATFORM_PLAN.md
+
+- [ ] Job pipeline board + activity timeline (CRM spine)
+- [ ] On-site roofing report with photos → PDF, shareable to customer
+- [ ] Customer portal: login, status, appointments, report, documents
+- [ ] Claims management: carrier/adjuster/claim #, steps, checklist, deadlines
+- [ ] Communication hub: templates, email/SMS from the file, all logged
+- [ ] Invoicing & payments (Stripe), warranty & closeout, prospecting tools
+- [ ] AI assists: parse adjuster letters, draft messages, tag damage photos
+
 ## Someday / maybe
 
 - [ ] Sync to **Google Contacts** (People API) so numbers show on the phone with
@@ -72,6 +82,12 @@ Format: `- [ ] idea — why it matters (who raised it, date)`
 - (none yet)
 
 ## Open questions
+
+- **Platform**: Firebase (recommended in PLATFORM_PLAN.md) vs stay on Apps
+  Script. Decide before phase 1 code.
+- Existing tools to integrate/replace: QuickBooks? AccuLynx/JobNimbus?
+  CompanyCam? EagleView/Hover? DocuSign?
+- Payments processor and SMS provider.
 
 - What does "Contract" mean in the blurb: contract *status* (none / pending /
   signed) or a contract *type*? The mockup assumes status.

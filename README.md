@@ -17,6 +17,7 @@ environment, then we build the code behind it.
 
 ## Start here
 
+- **Platform plan (vision, modules, data model, build order):** [`docs/PLATFORM_PLAN.md`](docs/PLATFORM_PLAN.md)
 - **Build & deploy:** [`docs/BUILD_AND_DEPLOY.md`](docs/BUILD_AND_DEPLOY.md)
 - **Ideas notebook:** [`docs/IDEAS.md`](docs/IDEAS.md)
 - **Mockups:** [`mockups/`](mockups/) (open the HTML file in a browser)
