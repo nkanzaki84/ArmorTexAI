@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// ArmorTex platform — Cloud Storage rules (phase 0): staff only.
+// Phase 3 adds per-job photo paths; phase 4 adds customer read of visible files.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isStaff() {
+      return request.auth != null && request.auth.token.email_verified == true
+          && firestore.exists(/databases/(default)/documents/staff/$(request.auth.token.email));
+    }
+    match /{allPaths=**} {
+      allow read, write: if isStaff();
+    }
+  }
+}

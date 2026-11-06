@@ -1,7 +1,11 @@
-# clasp (local-only: points at YOUR Apps Script project)
-.clasp.json
-.clasprc.json
-.deployment-id
+# firebase local state
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+*-debug.log
+.runtimeconfig.json
+serviceAccountKey*.json
 
 # node
 node_modules/

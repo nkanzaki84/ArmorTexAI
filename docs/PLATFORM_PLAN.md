@@ -93,7 +93,10 @@ Core fields, first pass (everything from the blurb is here):
 Every record carries `customerVisible: true/false`. The portal only ever
 queries visible records. Internal notes default to hidden.
 
-## 4. Platform decision (the one thing to decide before code)
+## 4. Platform decision — DECIDED 2026-11-06: Firebase
+
+Chosen by nk. Phase 0 is built on it. The comparison below is kept for the
+record.
 
 Apps Script + Google Sheets is what we started on because it matches your
 clasp workflow. It is great for the *internal* half. It is the wrong
@@ -166,15 +169,30 @@ In order: job pipeline board · full customer file page · roofing report (phone
 · customer portal home · claim tracker (staff + customer views) · message
 thread · invoice + pay screen. One screen per sitting, same mockup file.
 
-## 7. Questions that shape the build
+## 7. Answers so far (2026-11-06)
 
-1. **Platform**: Firebase (recommended) or stay on Apps Script?
-2. How many staff users, and roles? (owner / office / PM)
-3. What do you use today that this replaces or must talk to? (QuickBooks,
-   AccuLynx/JobNimbus, CompanyCam, EagleView/Hover measurements, DocuSign)
-4. Payments: Stripe OK? Card + ACH? Or mostly checks you just record?
-5. SMS: Twilio, or Google Voice, or none at first?
-6. Domain name for the app (e.g. app.armortex.com)?
-7. Do your customers mostly have Gmail accounts, or should login be SMS code?
-8. Roof report: what does your current report look like? (A sample PDF would
-   let me mock the exact thing.)
+| Question | Answer |
+|---|---|
+| Platform | **Firebase** |
+| Team | 3 people: nk (owner; developer + accountant), one admin, one PM. Roles: `owner`, `admin`, `pm`. |
+| Payments | **Stripe** |
+| Existing tools | **QuickBooks Online** (keep; sync invoices/payments in phase 7) |
+| Wanted integrations | **Nearmap** (aerial imagery / measurements on the property), **Roofr** (roof reports / measurements) |
+
+Integration notes:
+
+- **QuickBooks Online**: OAuth app via Intuit developer portal; push customers
+  and invoices, pull payment status. Lives in Cloud Functions (phase 7).
+- **Nearmap**: API key, tile/imagery endpoints, and (on higher tiers) AI roof
+  measurements. First use: show the aerial of the property on the customer
+  file and in the report (phase 3). Check plan/pricing before building.
+- **Roofr**: measurement reports and proposals. Confirm whether their API is
+  open to us; otherwise attach the Roofr PDF to the job as a document (phase 3)
+  and link out.
+
+Still open:
+
+1. SMS provider: Twilio, Google Voice, or none at first?
+2. Domain name for the app (e.g. app.armortex.com)?
+3. Customer login: email link, or SMS code? (Most homeowners: SMS is easiest.)
+4. A sample of the current roof report, to mock the on-site report screen.

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArmorTex</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23f28c28'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%2314213d'%3E%E2%9B%A8%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<!-- ================= AUTH GATE ================= -->
+<div class="gate" id="gate">
+  <div class="card">
+    <div class="bd">
+      <div class="logo">⛨</div>
+      <h1>ArmorTex</h1>
+      <p id="gateMsg">Loading…</p>
+      <button class="btn google hidden" id="signIn">
+        <img alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z'/%3E%3Cpath fill='%23FBBC05' d='M10.5 28.6A14.5 14.5 0 0 1 9.7 24c0-1.6.3-3.2.8-4.6l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.9-6.1z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.3 0-11.6-4.1-13.5-9.9l-7.9 6.1C6.5 42.6 14.6 48 24 48z'/%3E%3C/svg%3E">
+        Sign in with Google
+      </button>
+      <button class="btn hidden" id="gateSignOut" style="margin-top:10px">Sign out</button>
+      <div class="err hidden" id="gateErr"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP (shown once signed in as staff) ================= -->
+<div id="app" class="hidden">
+<header class="top">
+  <div class="in">
+    <div class="brand"><span class="logo">⛨</span> ArmorTex <span class="sub-brand" style="font-weight:400;opacity:.8">Platform</span></div>
+    <nav class="tabs">
+      <button class="tab active" data-screen="intake">New Contact <span class="mock small">mock</span></button>
+      <button class="tab" data-screen="contacts">Contacts <span class="mock small">mock</span></button>
+      <button class="tab" data-screen="calendar">Calendar <span class="mock small">mock</span></button>
+      <button class="tab" data-screen="team">Team</button>
+    </nav>
+    <div class="spacer"></div>
+    <div class="user">
+      <div class="who"><b id="userName"></b><span id="userRole"></span></div>
+      <div class="avatar" id="userAvatar"></div>
+      <button class="btn ghost light sm" id="signOut">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ================= INTAKE ================= -->
+  <section id="intake" class="screen active">
+    <div class="steps">
+      <span><b>1</b> Paste</span> <span>›</span>
+      <span class="off"><b>2</b> Review</span> <span>›</span>
+      <span class="off"><b>3</b> Save</span>
+    </div>
+
+    <div class="grid">
+      <!-- paste -->
+      <div class="card">
+        <div class="hd">
+          <h2>Paste the lead blurb</h2>
+          <span class="sub">straight from the email</span>
+          <div class="spacer"></div>
+          <div class="seg" title="How to parse">
+            <button class="on">⚡ Fast</button>
+            <button>✨ AI</button>
+          </div>
+        </div>
+        <div class="bd">
+          <textarea id="blurb">11/02/2026 1:00 PM Loretta Nelson 7195982885 214 Bayhills Dr Hideaway TX 75771 Homeowner Yes 4 Years Old SFH Insured No Contract</textarea>
+          <div class="hint">One lead per paste. <b>Fast</b> uses rules for the standard email format (free, instant). <b>AI</b> sends the text to Gemini for messy or unusual blurbs.</div>
+        </div>
+        <div class="ft">
+          <button class="btn primary" id="parse">Parse blurb →</button>
+          <button class="btn ghost">Clear</button>
+          <div class="spacer"></div>
+          <span class="sub">⌘⏎ to parse</span>
+        </div>
+      </div>
+
+      <!-- review -->
+      <div class="card">
+        <div class="hd">
+          <h2>Review before saving</h2>
+          <div class="spacer"></div>
+          <div class="legend">
+            <span><i class="dot"></i> confident</span>
+            <span><i class="dot warn"></i> check</span>
+            <span><i class="dot bad"></i> missing</span>
+          </div>
+        </div>
+        <div class="bd">
+          <div class="fields">
+            <div class="sect">Appointment</div>
+            <div class="f c2"><label><i class="dot"></i> Date</label><input value="11/02/2026"></div>
+            <div class="f c2"><label><i class="dot"></i> Time</label><input value="1:00 PM"></div>
+            <div class="f c2"><label><i class="dot warn"></i> Rep</label><select><option>— unassigned —</option><option>Nate</option><option>Team A</option></select></div>
+
+            <div class="sect">Customer</div>
+            <div class="f c3"><label><i class="dot"></i> First name</label><input value="Loretta"></div>
+            <div class="f c3"><label><i class="dot"></i> Last name</label><input value="Nelson"></div>
+            <div class="f c3"><label><i class="dot"></i> Phone</label><input value="(719) 598-2885"></div>
+            <div class="f c3"><label><i class="dot bad"></i> Email</label><input placeholder="not in blurb"></div>
+
+            <div class="sect">Property</div>
+            <div class="f c6"><label><i class="dot"></i> Street</label><input value="214 Bayhills Dr"></div>
+            <div class="f c3"><label><i class="dot"></i> City</label><input value="Hideaway"></div>
+            <div class="f c1"><label><i class="dot"></i> State</label><input value="TX"></div>
+            <div class="f c2"><label><i class="dot"></i> ZIP</label><input value="75771"></div>
+            <div class="f c2"><label><i class="dot"></i> Homeowner</label>
+              <div class="toggle"><button class="on">Yes</button><button>No</button></div></div>
+            <div class="f c2"><label><i class="dot"></i> Home age</label><input value="4 years"></div>
+            <div class="f c2"><label><i class="dot"></i> Type</label><select><option>SFH — single family</option><option>Townhome</option><option>Condo</option><option>Multi-family</option><option>Mobile</option></select></div>
+
+            <div class="sect">Status</div>
+            <div class="f c2"><label><i class="dot"></i> Insured</label>
+              <div class="toggle"><button>Yes</button><button class="on no">No</button></div></div>
+            <div class="f c2"><label><i class="dot"></i> Contract</label><select><option>No contract</option><option>Pending</option><option>Signed</option></select></div>
+            <div class="f c2"><label><i class="dot"></i> Source</label><select><option>Email — appointment setter</option><option>Door knock</option><option>Referral</option><option>Web</option></select></div>
+            <div class="f c6"><label>Notes</label><input placeholder="anything else worth remembering"></div>
+          </div>
+        </div>
+        <div class="ft">
+          <button class="btn primary" id="save">💾 Save to Contact Book</button>
+          <button class="btn">📅 Save + add to Calendar</button>
+          <div class="spacer"></div>
+          <button class="btn ghost">Discard</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Design notes for review (not part of the app)</h3>
+      <ol>
+        <li><b>Paste → Parse → Review → Save.</b> Nothing is written until you press Save, so a bad parse never pollutes the book.</li>
+        <li><b>Fast vs AI.</b> The standard email format is parsed by rules (free, instant). AI (Gemini) is the fallback for odd blurbs, and later could run automatically when rules aren't confident.</li>
+        <li><b>Confidence dots</b> on each field tell you where to look. Red = the blurb didn't contain it.</li>
+        <li><b>Duplicate check</b> on Save by phone number: if the number exists, offer "Update existing" instead of a second row.</li>
+        <li>Fields are a first guess from the sample blurb. Tell me what to add, drop, or rename (e.g. Rep, Lead source, Roof type, Storm date).</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ================= CONTACTS ================= -->
+  <section id="contacts" class="screen">
+    <div class="toolbar">
+      <div class="search">🔍 <input placeholder="Search name, phone, street, city…"></div>
+      <div class="chips">
+        <button class="chip on">All</button>
+        <button class="chip">Upcoming appts</button>
+        <button class="chip">No contract</button>
+        <button class="chip">Uninsured</button>
+        <button class="chip">Signed</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn sm">⬇ Export CSV</button>
+      <button class="btn sm">📗 Open Sheet</button>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>Customer</th><th>Property</th><th>Appointment</th><th>Status</th><th>Added</th>
+        </tr></thead>
+        <tbody>
+          <tr class="row sel" data-open>
+            <td><div class="name">Loretta Nelson</div><div class="sub">(719) 598-2885</div></td>
+            <td><div>214 Bayhills Dr</div><div class="sub">Hideaway, TX 75771 · SFH · 4 yrs</div></td>
+            <td><div>Mon Nov 2</div><div class="sub">1:00 PM</div></td>
+            <td><div class="badges"><span class="pill ok">Homeowner</span><span class="pill bad">Uninsured</span><span class="pill warn">No contract</span></div></td>
+            <td class="sub">today</td>
+          </tr>
+          <tr class="row">
+            <td><div class="name">Marcus Reed</div><div class="sub">(903) 555-0142</div></td>
+            <td><div>18 Pine Ridge Ct</div><div class="sub">Lindale, TX 75771 · SFH · 12 yrs</div></td>
+            <td><div>Tue Nov 3</div><div class="sub">10:30 AM</div></td>
+            <td><div class="badges"><span class="pill ok">Homeowner</span><span class="pill ok">Insured</span><span class="pill warn">Pending</span></div></td>
+            <td class="sub">yesterday</td>
+          </tr>
+          <tr class="row">
+            <td><div class="name">Dana Whitfield</div><div class="sub">(214) 555-0199</div></td>
+            <td><div>902 Cedar Lake Rd</div><div class="sub">Tyler, TX 75703 · SFH · 22 yrs</div></td>
+            <td><div>Wed Nov 4</div><div class="sub">3:00 PM</div></td>
+            <td><div class="badges"><span class="pill ok">Homeowner</span><span class="pill ok">Insured</span><span class="pill ok">Signed</span></div></td>
+            <td class="sub">Oct 30</td>
+          </tr>
+          <tr class="row">
+            <td><div class="name">Gerald &amp; Pam Ortiz</div><div class="sub">(430) 555-0117</div></td>
+            <td><div>4410 FM 849</div><div class="sub">Lindale, TX 75771 · SFH · 8 yrs</div></td>
+            <td><div class="sub">—</div></td>
+            <td><div class="badges"><span class="pill">Renter?</span><span class="pill ok">Insured</span><span class="pill warn">No contract</span></div></td>
+            <td class="sub">Oct 28</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="ft"><span class="count">Showing 4 of 42 · sorted by appointment</span><div class="spacer"></div><button class="btn sm ghost">Load more</button></div>
+    </div>
+  </section>
+
+  <!-- ================= CALENDAR ================= -->
+  <section id="calendar" class="screen">
+    <div class="cal-tb">
+      <button class="btn sm">Today</button>
+      <button class="btn sm">‹</button><button class="btn sm">›</button>
+      <h2>Nov 2 – 8, 2026</h2>
+      <div class="seg view"><button class="on">Week</button><button>Month</button><button>Agenda</button></div>
+      <div class="spacer"></div>
+      <div class="sync">📗 Push to <select><option>ArmorTex Appointments</option><option>nkanzaki84@gmail.com</option><option>Create new calendar…</option></select></div>
+      <button class="btn sm primary">↑ Push 2 unsynced</button>
+    </div>
+
+    <div class="card">
+      <div class="week" id="week"></div>
+      <div class="agenda" id="agenda"></div>
+      <div class="ft">
+        <div class="cal-legend">
+          <span><i style="background:#e4e9f6;border-left:3px solid var(--navy)"></i> In Google Calendar</span>
+          <span><i style="background:#fff2e5;border-left:3px solid var(--accent)"></i> Not pushed yet</span>
+          <span><i style="background:repeating-linear-gradient(135deg,#eceef3,#eceef3 3px,#f6f7fa 3px,#f6f7fa 6px)"></i> Busy (from your Google Calendar)</span>
+        </div>
+        <div class="spacer"></div>
+        <span class="count">Last sync 8:12 AM</span>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Design notes for review (not part of the app)</h3>
+      <ol>
+        <li><b>The app is the source of truth</b>, Google Calendar is the mirror. Appointments come from the contact book (date + time + address); the calendar screen just draws them.</li>
+        <li><b>Push</b> creates a Google Calendar event (title "Appt · Loretta Nelson · Hideaway", location = address, description = phone + blurb). The event id is stored on the contact, so editing the appointment later <i>updates</i> the same event instead of making a duplicate.</li>
+        <li><b>Unsynced vs synced</b>: orange = not in Google Calendar yet. Push one from its drawer, or everything at once with "Push N unsynced". Option later: push automatically on save.</li>
+        <li><b>Busy blocks</b> are read-only events pulled from your Google Calendar so you can see conflicts before booking. Could be dropped if noisy.</li>
+        <li>Which calendar to push to is a setting (top right). A dedicated "ArmorTex Appointments" calendar keeps work separate and can be shared with reps.</li>
+        <li>Phones get an <b>agenda list</b> instead of the week grid. Month view is on the list but not mocked yet.</li>
+      </ol>
+    </div>
+  </section>
+  <!-- ================= TEAM (live) ================= -->
+  <section id="team" class="screen">
+    <div class="team-grid">
+      <div class="card">
+        <div class="hd"><h2>Team</h2><span class="sub">who can sign in, and what they can do</span></div>
+        <table>
+          <thead><tr><th>Person</th><th>Role</th><th></th></tr></thead>
+          <tbody id="teamRows"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="card" id="teamAddCard">
+        <div class="hd"><h2>Add a team member</h2></div>
+        <form class="bd form" id="teamForm">
+          <div class="f"><label>Google email</label><input name="email" type="email" required placeholder="name@gmail.com"></div>
+          <div class="f"><label>Name</label><input name="name" required placeholder="First Last"></div>
+          <div class="f"><label>Role</label>
+            <select name="role">
+              <option value="pm">PM — jobs, reports, calendar</option>
+              <option value="admin">Admin — everything except billing settings</option>
+              <option value="owner">Owner — everything</option>
+            </select></div>
+          <div><button class="btn primary" type="submit">Add</button></div>
+          <div class="hint">They sign in with that Google account at this same address. Nothing is emailed; just tell them the link.</div>
+          <div class="err hidden" id="teamErr"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- detail drawer -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="dh">
+    <div>
+      <h3>Loretta Nelson</h3>
+      <div class="badges"><span class="pill ok">Homeowner</span><span class="pill bad">Uninsured</span><span class="pill warn">No contract</span></div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost" id="closeDrawer">✕</button>
+  </div>
+  <div class="db">
+    <div class="acts">
+      <a class="btn" href="tel:7195982885">📞 Call</a>
+      <a class="btn" href="sms:7195982885">💬 Text</a>
+      <a class="btn" href="https://maps.google.com/?q=214+Bayhills+Dr+Hideaway+TX+75771" target="_blank">🗺 Map</a>
+    </div>
+    <div class="kv">
+      <div>Appointment</div><div><b>Mon Nov 2, 2026 · 1:00 PM</b></div>
+      <div>Phone</div><div>(719) 598-2885</div>
+      <div>Address</div><div>214 Bayhills Dr<br>Hideaway, TX 75771</div>
+      <div>Property</div><div>Single family · 4 years old</div>
+      <div>Insured</div><div>No</div>
+      <div>Contract</div><div>No contract</div>
+      <div>Google Cal</div><div><span class="pill ok">✓ Synced</span> <a href="#" class="sub" onclick="return false">Open event ↗</a></div>
+      <div>Source</div><div>Email — appointment setter</div>
+      <div>Added</div><div>Nov 6, 2026 by NK</div>
+      <div>Notes</div><div class="sub">—</div>
+    </div>
+    <h4 style="margin:18px 0 6px;font-size:13px;color:var(--muted)">ORIGINAL BLURB</h4>
+    <div class="raw">11/02/2026 1:00 PM Loretta Nelson 7195982885 214 Bayhills Dr Hideaway TX 75771 Homeowner Yes 4 Years Old SFH Insured No Contract</div>
+  </div>
+  <div class="df">
+    <button class="btn navy">✎ Edit</button>
+    <button class="btn">📅 Re-push to Google</button>
+    <div class="spacer"></div>
+    <button class="btn ghost danger">Delete</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast">✅ Saved <b>Loretta Nelson</b> to the Contact Book. <a href="#" data-screen="contacts">View</a></div>
+
+</div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

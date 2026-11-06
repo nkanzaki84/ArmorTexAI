@@ -1,0 +1,15 @@
+{
+  "name": "armortex-platform",
+  "private": true,
+  "description": "ArmorTex company hub: CRM, roofing reports, claims, customer portal.",
+  "scripts": {
+    "dev": "firebase emulators:start",
+    "test:rules": "firebase emulators:exec --only firestore \"node --test tests/*.test.mjs\"",
+    "deploy": "firebase deploy"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.2.0",
+    "firebase-tools": "^15.35.0"
+  }
+}

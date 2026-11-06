@@ -1,183 +1,164 @@
-# Build & Deploy — ArmorTex Contact Book
+# Build & Deploy — ArmorTex Platform (Firebase)
 
-The app is a **Google Apps Script web app** pushed from this repo with **clasp**.
-Nothing is compiled: `src/` is pushed as-is to your Apps Script project, and a
-*deployment* turns a pushed version into a stable URL.
+The app runs on **Firebase** (Google Cloud): Hosting serves `public/`,
+Authentication handles sign-in, Firestore is the database, Cloud Storage holds
+photos and PDFs. Nothing is compiled; `firebase deploy` uploads what's in the
+repo.
 
 ```
-GitHub (this repo)  --git pull-->  your laptop  --clasp push-->  Apps Script project  --clasp deploy-->  web app URL
+GitHub (this repo) --git pull--> your laptop --firebase deploy--> https://<project>.web.app
 ```
 
-Stack (planned, see `docs/IDEAS.md` for alternatives):
-
-| Layer | Choice | Why |
-|---|---|---|
-| UI | HtmlService single page (`src/Index.html`) | One file, works on phone + desktop |
-| Server | Apps Script V8 (`src/*.js`) | Free, no servers, runs as you |
-| Storage | Google Sheet ("Contact Book") | Visible, filterable, exportable, zero setup |
-| Parsing | Rules first, Gemini (Google AI / Vertex) for odd blurbs | Free + instant for the normal format |
+> Moving from Apps Script? The old `src/` + clasp setup is gone as of phase 0.
+> `clasp` is no longer used.
 
 ---
 
-## 1. One-time setup on your laptop
+## 1. One-time: your laptop
 
-1. **Node 20 or newer** (clasp 3 requires it). Check with `node -v`.
-2. **Install clasp** (3.x):
-
-   ```bash
-   npm install -g @google/clasp
-   ```
-
-3. **Turn on the Apps Script API** for your Google account (clasp can't push
-   without it): <https://script.google.com/home/usersettings> → *Google Apps
-   Script API* → **On**.
-4. **Log in** (opens a browser):
+1. **Node 20 or newer** (`node -v`).
+2. **Firebase CLI**:
 
    ```bash
-   clasp login
+   npm install -g firebase-tools
    ```
 
-5. **Clone the repo and check out the working branch**:
+3. **Log in** (opens a browser):
+
+   ```bash
+   firebase login
+   ```
+
+4. **Clone and check out the branch**:
 
    ```bash
    git clone https://github.com/nkanzaki84/ArmorTexAI.git
-   cd ArmorTexAI
-   git checkout claude/brave-ride-ut2ts5
    ```
 
-## 2. Create the Apps Script project (once)
+   ```bash
+   cd ArmorTexAI && git checkout claude/brave-ride-ut2ts5 && npm install
+   ```
 
-`.clasp.json` is git-ignored because it points at *your* script. Pick one:
+## 2. One-time: create the Firebase project (in the browser, ~10 minutes)
 
-**Option A — let clasp create it** (from the repo root):
+1. Go to <https://console.firebase.google.com> → **Create a project** → name it
+   `ArmorTex` (Firebase will suggest an id like `armortex-app` or
+   `armortex-xxxxx`; note the id). Google Analytics: off is fine.
+2. **Upgrade to the Blaze plan** (⚙ → *Usage and billing* → *Modify plan*).
+   Pay-as-you-go with the same free tier; needed for Cloud Storage and, later,
+   Cloud Functions. At our size this stays at $0–10/month. Set a budget alert
+   ($25) while you're there.
+3. **Authentication** → *Get started* → *Sign-in method* → **Google** → Enable
+   → pick a support email → Save.
+4. **Firestore Database** → *Create database* → location **`us-south1`
+   (Dallas)** → *Start in production mode* (our rules file takes over on first
+   deploy).
+5. **Storage** → *Get started* → same location → production mode.
+6. Point the repo at the project:
 
-```bash
-clasp create-script --type webapp --title "ArmorTex Contact Book" --rootDir src
-```
+   ```bash
+   firebase use --add
+   ```
 
-```bash
-git checkout -- src/appsscript.json
-```
+   Pick the project, alias `default`. (This rewrites `.firebaserc`; commit it.)
 
-The second command matters: `create-script` pulls the brand-new project's empty
-manifest into `src/`, overwriting ours. The checkout restores the real one
-(time zone, V8 runtime, web app settings).
-
-**Option B — create it in the browser**: go to <https://script.new>, name it,
-open *Project Settings* → copy the **Script ID**, then:
-
-```bash
-cp .clasp.json.example .clasp.json
-```
-
-and paste the ID into `.clasp.json`.
-
-Either way you should now have `.clasp.json` in the repo root with
-`"rootDir": "src"`.
-
-## 3. First push and first deployment
+## 3. First deploy
 
 ```bash
-clasp push -f
+firebase deploy
 ```
 
-```bash
-clasp create-deployment -d "v0 mockup"
-```
+Deploys hosting, Firestore rules + indexes, and Storage rules. The output ends
+with `Hosting URL: https://<project-id>.web.app`.
 
-The output ends with a line like `- AKfycb...XYZ @1`. That `AKfycb…` string is
-your **Deployment ID**. Save it once so later deploys reuse the same URL:
+**Bootstrap yourself as owner** (one time, the rules won't let anyone in until
+a `staff` doc exists):
 
-```bash
-echo "AKfycb...XYZ" > .deployment-id
-```
+1. Firebase console → *Firestore Database* → **Start collection**.
+2. Collection ID: `staff`
+3. Document ID: `nkanzaki84@gmail.com` (your Google sign-in email, lowercase)
+4. Fields: `name` (string) = your name, `role` (string) = `owner` → Save.
 
-Open the app:
+Open the Hosting URL, **Sign in with Google**, go to **Team**, add the PM and
+the admin. They sign in at the same URL.
 
-```bash
-clasp open-web-app "$(cat .deployment-id)"
-```
-
-(or `https://script.google.com/macros/s/<DEPLOYMENT_ID>/exec`). The first visit
-shows Google's authorization screen; it's your own unverified script, so click
-*Advanced* → *Go to ArmorTex Contact Book*.
-
-## 4. Every update after that — the copy-paste loop
-
-This is the block you'll get at the end of every change:
+## 4. Every update — the copy-paste loop
 
 ```bash
 git pull
 ```
 
 ```bash
-clasp push -f
+firebase deploy
 ```
 
-```bash
-clasp create-deployment -i "$(cat .deployment-id)" -d "what changed"
-```
-
-Or all three in one go:
+Or both in one:
 
 ```bash
 ./deploy.sh "what changed"
 ```
 
-**Why `-i`?** `clasp create-deployment` *without* `-i` creates a brand-new
-deployment with a brand-new URL every time. Passing the saved ID updates the
-deployment you already bookmarked.
+Deploy only part of it when you know what changed:
 
-**Why `-f`?** It lets clasp overwrite the remote `appsscript.json` manifest, so
-changes to time zone, scopes, or web app access actually land.
+```bash
+firebase deploy --only hosting
+```
 
-Tip while developing: `clasp push --watch` pushes on every file save. Visit the
-`/dev` URL (`clasp open-script` → *Deploy* → *Test deployments*) to see the HEAD
-code without redeploying.
+```bash
+firebase deploy --only firestore:rules
+```
 
-## 5. Settings the app will need (when the real code lands)
+## 5. Run it locally (optional, no cloud touched)
 
-These are **Script Properties** (Apps Script editor → ⚙ *Project Settings* →
-*Script Properties*). They stay out of git.
+```bash
+npm run dev
+```
 
-| Property | Used for | Where to get it |
-|---|---|---|
-| `SHEET_ID` | The "Contact Book" spreadsheet | Optional. If missing the app creates a sheet on first run and stores the ID here itself. |
-| `GEMINI_API_KEY` | AI parsing fallback | <https://aistudio.google.com/apikey> (free tier is plenty for this volume) |
+Starts the emulators: app at <http://127.0.0.1:5000>, emulator UI at
+<http://127.0.0.1:4000>. The Auth emulator lets you invent any sign-in. Add a
+`staff` doc in the emulator UI (Firestore tab) to get past the gate. Nothing
+persists between runs unless you export.
 
-If you'd rather use **Vertex AI** through a Google Cloud project instead of an
-AI Studio key: link the script to your GCP project (*Project Settings* → *Google
-Cloud Platform project*), enable the Vertex AI API, and the script calls Vertex
-with its own OAuth token. No key to manage. That's a later swap; AI Studio is
-the quickest path to a working v1.
+Rules tests (emulator starts and stops itself):
 
-## 6. Troubleshooting
+```bash
+npm run test:rules
+```
+
+## 6. Custom domain (when you want app.armortex.com)
+
+Firebase console → *Hosting* → *Add custom domain* → follow the DNS steps.
+Then Authentication → *Settings* → *Authorized domains* → add it. Sign-in
+keeps working on the `.web.app` URL too.
+
+## 7. Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| `User has not enabled the Apps Script API` | Step 1.3, then wait a minute and retry. |
-| `Project file already exists` on create | You already have `.clasp.json`. Delete it or skip to step 3. |
-| Push says files would be overwritten / manifest error | Run `clasp push -f`. |
-| New URL every deploy | You forgot `-i "$(cat .deployment-id)"`. List deployments with `clasp list-deployments`. |
-| Web app shows old code | You pushed but didn't deploy (step 4, third command). |
-| `Script function not found: doGet` | `src/Code.js` didn't push. `clasp show-file-status` lists what will be pushed. |
-| "This app isn't verified" | Expected for a personal script. *Advanced* → *Go to…* |
-| Wrong times on appointments | Time zone is set in `src/appsscript.json` (`America/Chicago`). |
+| `Could not load Firebase config` on the page | Page wasn't served by Hosting (opened the file directly?). Use the Hosting URL or `npm run dev`. |
+| Sign-in popup closes, then "is not on the team yet" | Expected until your `staff/<email>` doc exists (section 3). Email must match exactly, lowercase. |
+| `Missing or insufficient permissions` | Rules deployed? `firebase deploy --only firestore:rules`. Signed in with the right Google account? |
+| `HTTP Error: 403 … billing` on deploy | Blaze plan not enabled (section 2.2). |
+| `No project active` | `firebase use --add`. |
+| Popup blocked on sign-in | Allow popups for the site, or try again (second click usually works). |
+| Changes don't show after deploy | Hard refresh (Ctrl/Cmd+Shift+R); JS/CSS cache is 5 minutes. |
 
-## 7. Repo layout
+## 8. Repo layout
 
 ```
 ArmorTexAI/
-├── src/                     # everything here is pushed to Apps Script
-│   ├── appsscript.json      # manifest: time zone, runtime, web app access
-│   ├── Code.js              # server entry (doGet) — becomes Code.gs remotely
-│   └── Index.html           # the single-page UI (currently the v0 mockup)
-├── mockups/                 # frozen UI mockups, one file per revision
-│   └── v0-contact-book.html
-├── docs/
-│   ├── BUILD_AND_DEPLOY.md  # this file
-│   └── IDEAS.md             # the ideas notebook
-├── deploy.sh                # git pull + clasp push + clasp deploy
-├── .clasp.json.example      # copy to .clasp.json and fill in your Script ID
-└── .gitignore               # keeps .clasp.json / .deployment-id local
+├── public/                  # the web app (Hosting)
+│   ├── index.html           # auth gate + app shell + screens
+│   ├── app.js               # Firebase init, sign-in, roles, Team screen, mock interactions
+│   └── styles.css
+├── firestore.rules          # who can read/write what
+├── firestore.indexes.json
+├── storage.rules
+├── firebase.json            # hosting/firestore/storage/emulator config
+├── .firebaserc              # which Firebase project (set by `firebase use --add`)
+├── tests/                   # rules tests (run in the emulator)
+├── mockups/                 # frozen UI mockups
+├── docs/                    # this file, PLATFORM_PLAN.md, DATA_MODEL.md, IDEAS.md
+├── deploy.sh                # git pull + firebase deploy
+└── package.json             # dev scripts: dev, test:rules, deploy
 ```

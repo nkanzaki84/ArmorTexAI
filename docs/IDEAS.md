@@ -10,8 +10,8 @@ Format: `- [ ] idea — why it matters (who raised it, date)`
 - [ ] Rules-based parser for the standard email blurb (date, time, name, phone,
       street, city, state, ZIP, homeowner, home age, type, insured, contract).
       Free and instant; covers 95 % of pastes. (claude, 2026-11-06)
-- [ ] Google Sheet as the contact book. Auto-create on first run, one row per
-      contact, keep the original blurb in a column for auditability.
+- [ ] Customers in Firestore (`customers` collection), original blurb kept on
+      the record for auditability. See docs/DATA_MODEL.md.
 - [ ] Duplicate detection by phone number on save, offer "update existing".
 - [ ] Phone formatting `(719) 598-2885` + tel:/sms: links.
 - [ ] Contacts screen: search, filter chips, detail drawer (as mocked).
@@ -47,6 +47,10 @@ Format: `- [ ] idea — why it matters (who raised it, date)`
 - [ ] Communication hub: templates, email/SMS from the file, all logged
 - [ ] Invoicing & payments (Stripe), warranty & closeout, prospecting tools
 - [ ] AI assists: parse adjuster letters, draft messages, tag damage photos
+- [ ] **QuickBooks Online** sync: customers + invoices out, payments in (nk)
+- [ ] **Nearmap**: aerial imagery on the customer file and in reports;
+      roof measurements if the plan allows (nk)
+- [ ] **Roofr**: measurement reports attached to the job; API if available (nk)
 
 ## Someday / maybe
 
@@ -59,23 +63,25 @@ Format: `- [ ] idea — why it matters (who raised it, date)`
 - [ ] SMS confirmations to the customer the morning of the appointment
       (Twilio or Google Voice).
 - [ ] Multi-user with per-rep login; audit log of who edited what.
-- [ ] Move storage from Sheets to Firestore if volume or concurrency grows.
 - [ ] Swap AI Studio key for **Vertex AI** via the linked GCP project (no API
       key to manage, enterprise billing).
 - [ ] Mobile home-screen install (PWA-ish manifest via HtmlService).
 
 ## Decided
 
-- 2026-11-06 — Apps Script + clasp, single-page HtmlService UI. Matches the
-  existing deploy workflow; no servers to run.
-- 2026-11-06 — Google Sheet as v1 storage. Visible and exportable; easy to
-  migrate later.
+- 2026-11-06 — **Firebase** (Hosting, Auth, Firestore, Storage; Functions when
+  needed). Replaces the Apps Script + Sheets + clasp plan, which could not
+  carry the customer portal. Deploy loop: `git pull` + `firebase deploy`.
+- 2026-11-06 — Staff access is an allowlist (`staff/{email}`) with roles
+  owner / admin / pm, enforced in Firestore rules. Stripe for payments.
+  QuickBooks Online stays as the books.
 - 2026-11-06 — Rules first, AI second. The email format is fixed enough that
   regex is cheaper and more predictable; AI handles the leftovers.
 - 2026-11-06 — The app is the source of truth for appointments; Google Calendar
   is a one-way mirror (app → Google). Avoids two-way sync headaches.
-- 2026-11-06 — Mockup lives in `src/Index.html` so it can be deployed and viewed
-  in the real environment; frozen copies go in `mockups/`.
+- 2026-11-06 — Mockup screens ship inside the real app (`public/index.html`,
+  badged "mock") so they can be reviewed at the real URL; frozen copies go in
+  `mockups/`.
 
 ## Rejected
 
@@ -83,11 +89,9 @@ Format: `- [ ] idea — why it matters (who raised it, date)`
 
 ## Open questions
 
-- **Platform**: Firebase (recommended in PLATFORM_PLAN.md) vs stay on Apps
-  Script. Decide before phase 1 code.
-- Existing tools to integrate/replace: QuickBooks? AccuLynx/JobNimbus?
-  CompanyCam? EagleView/Hover? DocuSign?
-- Payments processor and SMS provider.
+- SMS provider (Twilio / Google Voice / none at first).
+- Customer login method for the portal: email link or SMS code.
+- Domain name for the app.
 
 - What does "Contract" mean in the blurb: contract *status* (none / pending /
   signed) or a contract *type*? The mockup assumes status.
