@@ -11,7 +11,7 @@ Example input:
 
 ## Status
 
-**v0 — UI mockup.** `src/Index.html` is a clickable mockup with sample data;
+**v1 — UI mockup.** `src/Index.html` is a clickable mockup (intake, contacts, calendar) with sample data;
 there is no parsing or storage yet. Deploy it to review the design in the real
 environment, then we build the code behind it.
 
@@ -38,3 +38,5 @@ which is just `git pull`, `clasp push -f`, and
 3. **Review** the fields, with a confidence dot per field.
 4. **Save** to a Google Sheet (one row per contact, original blurb kept).
    Duplicate phone numbers are flagged before writing.
+5. **Calendar** screen shows appointments from the book; **Push** mirrors them
+   to a Google Calendar (event id stored per contact, so edits update in place).

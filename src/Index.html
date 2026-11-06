@@ -31,8 +31,8 @@
   .avatar{width:30px;height:30px;border-radius:50%;background:#3b4b78;display:grid;place-items:center;font-size:12px;font-weight:700}
   @media (max-width:600px){
     .top .in{padding:8px 10px;gap:8px}
-    .brand .sub-brand,.avatar{display:none}
-    .tabs{margin-left:0}.tab{padding:7px 9px;font-size:14px}
+    .brand .sub-brand,.avatar,.mock{display:none}
+    .tabs{margin-left:0}.tab{padding:7px 8px;font-size:13px;white-space:nowrap}
   }
 
   .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 80px}
@@ -134,6 +134,38 @@
   .scrim{position:fixed;inset:0;background:rgba(20,33,61,.25);opacity:0;pointer-events:none;transition:.25s;z-index:25}
   .scrim.show{opacity:1;pointer-events:auto}
 
+  /* ---------- calendar ---------- */
+  .cal-tb{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .cal-tb h2{margin:0 6px;font-size:17px}
+  .sync{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13px}
+  .sync select{border:0;background:transparent;font-weight:600}
+  .week{display:grid;grid-template-columns:56px repeat(7,1fr);overflow:hidden}
+  .week .dayhd{padding:10px 6px;text-align:center;border-bottom:1px solid var(--line);border-left:1px solid var(--line);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .week .dayhd b{display:block;font-size:18px;color:var(--ink);letter-spacing:0;text-transform:none}
+  .week .dayhd.today b{background:var(--accent);color:#1b1b1b;border-radius:999px;width:32px;height:32px;line-height:32px;margin:2px auto 0}
+  .week .gutter{font-size:11px;color:var(--muted);text-align:right;padding-right:6px;border-top:1px solid var(--line);height:56px;transform:translateY(-7px);border:0}
+  .week .col{position:relative;border-left:1px solid var(--line);background-image:linear-gradient(var(--line) 1px,transparent 1px);background-size:100% 56px;height:560px}
+  .week .col.today{background-color:#fffaf4}
+  .ev{position:absolute;left:3px;right:3px;border-radius:7px;padding:5px 7px;font-size:12px;line-height:1.25;overflow:hidden;border-left:3px solid var(--navy);background:#e4e9f6;color:var(--navy);cursor:pointer}
+  .ev b{display:block;font-size:12.5px}
+  .ev .st{position:absolute;right:6px;top:5px;font-size:11px}
+  .ev.unsynced{background:#fff2e5;border-left-color:var(--accent);color:#7a3d00}
+  .ev.busy{background:repeating-linear-gradient(135deg,#eceef3,#eceef3 6px,#f6f7fa 6px,#f6f7fa 12px);border-left-color:#aab1c3;color:var(--muted);cursor:default}
+  .ev:hover{filter:brightness(.97)}
+  .agenda{display:none}
+  .agenda .day{padding:10px 16px 4px;font-weight:700;font-size:13px;color:var(--navy);background:#fafbfd;border-bottom:1px solid var(--line);border-top:1px solid var(--line)}
+  .agenda .day.today{color:#9a4d00}
+  .agenda .item{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;align-items:flex-start}
+  .agenda .item:hover{background:#fbfbfd}
+  .agenda .time{width:70px;font-weight:700;flex:none}
+  .agenda .item.busy{color:var(--muted)}
+  .cal-legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+  .cal-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+  @media (max-width:760px){
+    .week{display:none}.agenda{display:block}
+    .seg.view{display:none}
+  }
+
   /* notes block under mockup (design notes for reviewer) */
   .notes{margin-top:26px;background:#fffaf3;border:1px solid #f6dcbd;border-radius:var(--radius);padding:16px 18px;font-size:14px}
   .notes h3{margin:0 0 8px;font-size:14px;color:#9a4d00}
@@ -149,9 +181,10 @@
     <nav class="tabs">
       <button class="tab active" data-screen="intake">New Contact</button>
       <button class="tab" data-screen="contacts">Contacts <span class="pill navy" style="margin-left:4px">42</span></button>
+      <button class="tab" data-screen="calendar">Calendar</button>
     </nav>
     <div class="spacer"></div>
-    <span class="mock">MOCKUP v0</span>
+    <span class="mock">MOCKUP v1</span>
     <div class="avatar" title="Signed in as nk">NK</div>
   </div>
 </header>
@@ -278,21 +311,21 @@
           <tr class="row sel" data-open>
             <td><div class="name">Loretta Nelson</div><div class="sub">(719) 598-2885</div></td>
             <td><div>214 Bayhills Dr</div><div class="sub">Hideaway, TX 75771 · SFH · 4 yrs</div></td>
-            <td><div>Sun Nov 2</div><div class="sub">1:00 PM</div></td>
+            <td><div>Mon Nov 2</div><div class="sub">1:00 PM</div></td>
             <td><div class="badges"><span class="pill ok">Homeowner</span><span class="pill bad">Uninsured</span><span class="pill warn">No contract</span></div></td>
             <td class="sub">today</td>
           </tr>
           <tr class="row">
             <td><div class="name">Marcus Reed</div><div class="sub">(903) 555-0142</div></td>
             <td><div>18 Pine Ridge Ct</div><div class="sub">Lindale, TX 75771 · SFH · 12 yrs</div></td>
-            <td><div>Mon Nov 3</div><div class="sub">10:30 AM</div></td>
+            <td><div>Tue Nov 3</div><div class="sub">10:30 AM</div></td>
             <td><div class="badges"><span class="pill ok">Homeowner</span><span class="pill ok">Insured</span><span class="pill warn">Pending</span></div></td>
             <td class="sub">yesterday</td>
           </tr>
           <tr class="row">
             <td><div class="name">Dana Whitfield</div><div class="sub">(214) 555-0199</div></td>
             <td><div>902 Cedar Lake Rd</div><div class="sub">Tyler, TX 75703 · SFH · 22 yrs</div></td>
-            <td><div>Tue Nov 4</div><div class="sub">3:00 PM</div></td>
+            <td><div>Wed Nov 4</div><div class="sub">3:00 PM</div></td>
             <td><div class="badges"><span class="pill ok">Homeowner</span><span class="pill ok">Insured</span><span class="pill ok">Signed</span></div></td>
             <td class="sub">Oct 30</td>
           </tr>
@@ -306,6 +339,45 @@
         </tbody>
       </table>
       <div class="ft"><span class="count">Showing 4 of 42 · sorted by appointment</span><div class="spacer"></div><button class="btn sm ghost">Load more</button></div>
+    </div>
+  </section>
+
+  <!-- ================= CALENDAR ================= -->
+  <section id="calendar" class="screen">
+    <div class="cal-tb">
+      <button class="btn sm">Today</button>
+      <button class="btn sm">‹</button><button class="btn sm">›</button>
+      <h2>Nov 2 – 8, 2026</h2>
+      <div class="seg view"><button class="on">Week</button><button>Month</button><button>Agenda</button></div>
+      <div class="spacer"></div>
+      <div class="sync">📗 Push to <select><option>ArmorTex Appointments</option><option>nkanzaki84@gmail.com</option><option>Create new calendar…</option></select></div>
+      <button class="btn sm primary">↑ Push 2 unsynced</button>
+    </div>
+
+    <div class="card">
+      <div class="week" id="week"></div>
+      <div class="agenda" id="agenda"></div>
+      <div class="ft">
+        <div class="cal-legend">
+          <span><i style="background:#e4e9f6;border-left:3px solid var(--navy)"></i> In Google Calendar</span>
+          <span><i style="background:#fff2e5;border-left:3px solid var(--accent)"></i> Not pushed yet</span>
+          <span><i style="background:repeating-linear-gradient(135deg,#eceef3,#eceef3 3px,#f6f7fa 3px,#f6f7fa 6px)"></i> Busy (from your Google Calendar)</span>
+        </div>
+        <div class="spacer"></div>
+        <span class="count">Last sync 8:12 AM</span>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Design notes for review (not part of the app)</h3>
+      <ol>
+        <li><b>The app is the source of truth</b>, Google Calendar is the mirror. Appointments come from the contact book (date + time + address); the calendar screen just draws them.</li>
+        <li><b>Push</b> creates a Google Calendar event (title "Appt · Loretta Nelson · Hideaway", location = address, description = phone + blurb). The event id is stored on the contact, so editing the appointment later <i>updates</i> the same event instead of making a duplicate.</li>
+        <li><b>Unsynced vs synced</b>: orange = not in Google Calendar yet. Push one from its drawer, or everything at once with "Push N unsynced". Option later: push automatically on save.</li>
+        <li><b>Busy blocks</b> are read-only events pulled from your Google Calendar so you can see conflicts before booking. Could be dropped if noisy.</li>
+        <li>Which calendar to push to is a setting (top right). A dedicated "ArmorTex Appointments" calendar keeps work separate and can be shared with reps.</li>
+        <li>Phones get an <b>agenda list</b> instead of the week grid. Month view is on the list but not mocked yet.</li>
+      </ol>
     </div>
   </section>
 </main>
@@ -328,12 +400,13 @@
       <a class="btn" href="https://maps.google.com/?q=214+Bayhills+Dr+Hideaway+TX+75771" target="_blank">🗺 Map</a>
     </div>
     <div class="kv">
-      <div>Appointment</div><div><b>Sun Nov 2, 2026 · 1:00 PM</b></div>
+      <div>Appointment</div><div><b>Mon Nov 2, 2026 · 1:00 PM</b></div>
       <div>Phone</div><div>(719) 598-2885</div>
       <div>Address</div><div>214 Bayhills Dr<br>Hideaway, TX 75771</div>
       <div>Property</div><div>Single family · 4 years old</div>
       <div>Insured</div><div>No</div>
       <div>Contract</div><div>No contract</div>
+      <div>Google Cal</div><div><span class="pill ok">✓ Synced</span> <a href="#" class="sub" onclick="return false">Open event ↗</a></div>
       <div>Source</div><div>Email — appointment setter</div>
       <div>Added</div><div>Nov 6, 2026 by NK</div>
       <div>Notes</div><div class="sub">—</div>
@@ -343,7 +416,7 @@
   </div>
   <div class="df">
     <button class="btn navy">✎ Edit</button>
-    <button class="btn">📅 Add to Calendar</button>
+    <button class="btn">📅 Re-push to Google</button>
     <div class="spacer"></div>
     <button class="btn ghost danger">Delete</button>
   </div>
@@ -382,12 +455,44 @@
     setTimeout(() => t.classList.remove('show'), 3500);
   });
 
+  // --- calendar sample data: week of Mon Nov 2 – Sun Nov 8, 2026 (today = Fri Nov 6) ---
+  const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], DATES = [2,3,4,5,6,7,8], TODAY = 4;
+  const EVENTS = [
+    {d:0, h:13, m:0,  len:90, name:'Loretta Nelson', where:'Hideaway', synced:true},
+    {d:1, h:10, m:30, len:90, name:'Marcus Reed',    where:'Lindale',  synced:false},
+    {d:2, h:15, m:0,  len:90, name:'Dana Whitfield', where:'Tyler',    synced:true},
+    {d:4, h:9,  m:0,  len:60, name:'Busy',           where:'Google Calendar', busy:true},
+    {d:4, h:14, m:0,  len:90, name:'Tom Baker',      where:'Mineola',  synced:false},
+    {d:5, h:11, m:0,  len:90, name:'Gerald & Pam Ortiz', where:'Lindale', synced:true},
+  ];
+  const fmt = (h,m) => `${((h+11)%12)+1}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`;
+  const START = 8, HOUR = 56;
+  const week = document.getElementById('week');
+  let html = '<div></div>' + DAYS.map((d,i)=>`<div class="dayhd ${i===TODAY?'today':''}">${d}<b>${DATES[i]}</b></div>`).join('');
+  html += '<div>' + Array.from({length:10},(_,i)=>`<div class="gutter">${fmt(START+i,0)}</div>`).join('') + '</div>';
+  for (let i=0;i<7;i++){
+    html += `<div class="col ${i===TODAY?'today':''}">` + EVENTS.filter(e=>e.d===i).map(e=>{
+      const top=(e.h-START+e.m/60)*HOUR, hgt=e.len/60*HOUR-3;
+      const cls = e.busy?'busy':(e.synced?'':'unsynced');
+      const st = e.busy?'':(e.synced?'✓':'↑');
+      return `<div class="ev ${cls}" style="top:${top}px;height:${hgt}px" ${e.busy?'':'data-open'}><span class="st">${st}</span><b>${e.name}</b>${fmt(e.h,e.m)} · ${e.where}</div>`;
+    }).join('') + '</div>';
+  }
+  week.innerHTML = html;
+  const agenda = document.getElementById('agenda');
+  agenda.innerHTML = DAYS.map((d,i)=>{
+    const evs = EVENTS.filter(e=>e.d===i); if(!evs.length) return '';
+    return `<div class="day ${i===TODAY?'today':''}">${d} Nov ${DATES[i]}${i===TODAY?' · Today':''}</div>` + evs.map(e=>
+      `<div class="item ${e.busy?'busy':''}" ${e.busy?'':'data-open'}><div class="time">${fmt(e.h,e.m)}</div><div><b>${e.name}</b><div class="sub">${e.where}</div></div><div class="spacer"></div>${e.busy?'':(e.synced?'<span class="pill ok">✓ Synced</span>':'<span class="pill warn">↑ Push</span>')}</div>`).join('');
+  }).join('');
+
   const drawer = document.getElementById('drawer'), scrim = document.getElementById('scrim');
   const openDrawer = () => { drawer.classList.add('open'); scrim.classList.add('show'); };
   const closeDrawer = () => { drawer.classList.remove('open'); scrim.classList.remove('show'); };
   document.querySelectorAll('tr.row').forEach(r => r.addEventListener('click', () => {
     document.querySelectorAll('tr.row').forEach(x => x.classList.remove('sel')); r.classList.add('sel'); openDrawer();
   }));
+  document.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', openDrawer));
   document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
   scrim.addEventListener('click', closeDrawer);
 </script>

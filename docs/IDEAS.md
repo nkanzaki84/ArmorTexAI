@@ -15,6 +15,12 @@ Format: `- [ ] idea — why it matters (who raised it, date)`
 - [ ] Duplicate detection by phone number on save, offer "update existing".
 - [ ] Phone formatting `(719) 598-2885` + tel:/sms: links.
 - [ ] Contacts screen: search, filter chips, detail drawer (as mocked).
+- [ ] **Calendar screen** (week grid on desktop, agenda list on phone) drawn
+      from the contact book's appointment date/time. (nk, 2026-11-06)
+- [ ] **Push to Google Calendar**: CalendarApp event per appointment, event id
+      stored on the contact row so edits update rather than duplicate. Push
+      one from the drawer or all unsynced at once. Target calendar is a
+      setting; default to a dedicated "ArmorTex Appointments" calendar.
 
 ## Next
 
@@ -24,8 +30,10 @@ Format: `- [ ] idea — why it matters (who raised it, date)`
 - [ ] **Gmail auto-ingest**: time-driven trigger scans a label (e.g.
       `Leads/New`), parses each blurb, writes rows, relabels to `Leads/Imported`.
       Removes the paste step entirely.
-- [ ] **Calendar**: "Save + add to Calendar" creates the appointment with the
-      address as location and the blurb in the description.
+- [ ] Auto-push to Google Calendar on save (setting, off by default).
+- [ ] Read-only "busy" overlay of existing Google Calendar events on the
+      calendar screen to spot conflicts before booking.
+- [ ] Month view on the calendar screen.
 - [ ] Map link / drive-time from the office.
 - [ ] Rep assignment + "my appointments today" view.
 - [ ] Export CSV / "Open Sheet" button.
@@ -54,6 +62,8 @@ Format: `- [ ] idea — why it matters (who raised it, date)`
   migrate later.
 - 2026-11-06 — Rules first, AI second. The email format is fixed enough that
   regex is cheaper and more predictable; AI handles the leftovers.
+- 2026-11-06 — The app is the source of truth for appointments; Google Calendar
+  is a one-way mirror (app → Google). Avoids two-way sync headaches.
 - 2026-11-06 — Mockup lives in `src/Index.html` so it can be deployed and viewed
   in the real environment; frozen copies go in `mockups/`.
 
