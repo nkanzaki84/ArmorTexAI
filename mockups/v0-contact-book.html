@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArmorTex Contact Book — Mockup v0</title>
+<style>
+  :root{
+    --navy:#14213d; --navy-2:#1f2f57; --ink:#1b2130; --muted:#6b7385; --line:#e3e6ee;
+    --bg:#f4f5f9; --card:#ffffff; --accent:#f28c28; --accent-2:#d8771a;
+    --ok:#1f9d55; --warn:#d9a300; --bad:#d64545; --chip:#eef1f7;
+    --radius:12px; --shadow:0 1px 2px rgba(20,33,61,.06),0 6px 20px rgba(20,33,61,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif}
+  a{color:inherit}
+  button{font:inherit;cursor:pointer}
+  input,select,textarea{font:inherit;color:inherit}
+
+  /* ---------- top bar ---------- */
+  .top{background:var(--navy);color:#fff;position:sticky;top:0;z-index:20}
+  .top .in{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
+  .brand .logo{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center;font-size:15px;color:#14213d}
+  .tabs{display:flex;gap:4px;margin-left:12px}
+  .tab{background:transparent;border:0;color:#c9d0e2;padding:8px 12px;border-radius:8px;font-weight:600}
+  .tab.active{background:var(--navy-2);color:#fff}
+  .tab:hover{color:#fff}
+  .spacer{flex:1}
+  .mock{font-size:11px;font-weight:700;letter-spacing:.6px;background:#fff2e5;color:#9a4d00;border:1px solid #f6c89a;padding:4px 8px;border-radius:999px}
+  .avatar{width:30px;height:30px;border-radius:50%;background:#3b4b78;display:grid;place-items:center;font-size:12px;font-weight:700}
+  @media (max-width:600px){
+    .top .in{padding:8px 10px;gap:8px}
+    .brand .sub-brand,.avatar{display:none}
+    .tabs{margin-left:0}.tab{padding:7px 9px;font-size:14px}
+  }
+
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 80px}
+  .screen{display:none}.screen.active{display:block}
+
+  /* ---------- cards / layout ---------- */
+  .grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:18px;align-items:start}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .card .hd{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .card .hd h2{margin:0;font-size:15px}
+  .card .hd .sub{color:var(--muted);font-size:13px}
+  .card .bd{padding:16px 18px}
+  .card .ft{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+  /* ---------- controls ---------- */
+  .btn{border:1px solid var(--line);background:#fff;padding:9px 14px;border-radius:9px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+  .btn:hover{background:#f7f8fb}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#1b1b1b}
+  .btn.primary:hover{background:var(--accent-2);border-color:var(--accent-2)}
+  .btn.navy{background:var(--navy);border-color:var(--navy);color:#fff}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+  .btn.danger{color:var(--bad)}
+  .btn.sm{padding:6px 10px;font-size:13px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:0;background:#fff;padding:7px 12px;font-weight:600;color:var(--muted)}
+  .seg button.on{background:var(--navy);color:#fff}
+  textarea{width:100%;min-height:150px;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:12px;background:#fbfbfd;line-height:1.5}
+  textarea:focus,input:focus,select:focus{outline:2px solid #ffd6ad;border-color:var(--accent)}
+  .hint{color:var(--muted);font-size:13px;margin-top:8px}
+
+  .fields{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+  .f{display:flex;flex-direction:column;gap:5px}
+  .f label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:6px}
+  .f input,.f select{border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:#fff;width:100%}
+  .c2{grid-column:span 2}.c3{grid-column:span 3}.c4{grid-column:span 4}.c6{grid-column:span 6}
+  @media (max-width:600px){.c2,.c3,.c4{grid-column:span 6}}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}
+  .dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+  .sect{grid-column:span 6;font-size:12px;font-weight:700;color:var(--navy);margin-top:6px;padding-top:10px;border-top:1px dashed var(--line);letter-spacing:.4px;text-transform:uppercase}
+  .toggle{display:inline-flex;gap:6px}
+  .toggle button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-weight:600;color:var(--muted)}
+  .toggle button.on{background:#e8f6ee;border-color:#bfe6cf;color:var(--ok)}
+  .toggle button.on.no{background:#fdecec;border-color:#f3b9b9;color:var(--bad)}
+
+  .legend{display:flex;gap:14px;color:var(--muted);font-size:12px;align-items:center}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--chip);color:#3a4257;white-space:nowrap}
+  .pill.ok{background:#e8f6ee;color:#17743d}
+  .pill.bad{background:#fdecec;color:#a52f2f}
+  .pill.warn{background:#fff6d6;color:#7a5b00}
+  .pill.navy{background:#e4e9f6;color:var(--navy)}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:#1b2130;color:#fff;padding:12px 16px;border-radius:10px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center;opacity:0;pointer-events:none;transition:.25s;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .toast a{color:#ffc78a;font-weight:600;text-decoration:none}
+
+  .steps{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px;margin-bottom:14px}
+  .steps b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:12px}
+  .steps .off b{background:#cfd5e4}
+
+  /* ---------- contacts ---------- */
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+  .search input{border:0;outline:0;flex:1;background:transparent}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 11px;font-size:13px;font-weight:600;color:var(--muted)}
+  .chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);background:#fafbfd}
+  td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr.row{cursor:pointer}
+  tr.row:hover td{background:#fbfbfd}
+  tr.row.sel td{background:#fff7ef}
+  .name{font-weight:700}
+  .sub{color:var(--muted);font-size:13px}
+  .badges{display:flex;gap:5px;flex-wrap:wrap}
+  .count{color:var(--muted);font-size:13px}
+  @media (max-width:760px){
+    table thead{display:none}
+    table,tbody,tr,td{display:block;width:100%}
+    tr.row{border-bottom:1px solid var(--line);padding:10px 4px}
+    td{border:0;padding:3px 10px}
+  }
+
+  /* drawer */
+  .drawer{position:fixed;top:0;right:0;height:100%;width:min(460px,100%);background:#fff;border-left:1px solid var(--line);box-shadow:-10px 0 30px rgba(20,33,61,.12);transform:translateX(100%);visibility:hidden;transition:.25s;z-index:30;display:flex;flex-direction:column}
+  .drawer.open{transform:none;visibility:visible}
+  .drawer .dh{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:10px}
+  .drawer .dh h3{margin:0 0 4px;font-size:18px}
+  .drawer .db{padding:16px 18px;overflow:auto;flex:1}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:8px 12px;font-size:14px}
+  .kv div:nth-child(odd){color:var(--muted)}
+  .acts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+  .acts .btn{justify-content:center}
+  .raw{background:#f7f8fb;border:1px dashed var(--line);border-radius:9px;padding:10px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#3a4257;white-space:pre-wrap;word-break:break-word}
+  .drawer .df{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px}
+  .scrim{position:fixed;inset:0;background:rgba(20,33,61,.25);opacity:0;pointer-events:none;transition:.25s;z-index:25}
+  .scrim.show{opacity:1;pointer-events:auto}
+
+  /* notes block under mockup (design notes for reviewer) */
+  .notes{margin-top:26px;background:#fffaf3;border:1px solid #f6dcbd;border-radius:var(--radius);padding:16px 18px;font-size:14px}
+  .notes h3{margin:0 0 8px;font-size:14px;color:#9a4d00}
+  .notes ol{margin:0;padding-left:20px}
+  .notes li{margin:4px 0}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="in">
+    <div class="brand"><span class="logo">⛨</span> ArmorTex <span class="sub-brand" style="font-weight:400;opacity:.8">Contact Book</span></div>
+    <nav class="tabs">
+      <button class="tab active" data-screen="intake">New Contact</button>
+      <button class="tab" data-screen="contacts">Contacts <span class="pill navy" style="margin-left:4px">42</span></button>
+    </nav>
+    <div class="spacer"></div>
+    <span class="mock">MOCKUP v0</span>
+    <div class="avatar" title="Signed in as nk">NK</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ================= INTAKE ================= -->
+  <section id="intake" class="screen active">
+    <div class="steps">
+      <span><b>1</b> Paste</span> <span>›</span>
+      <span class="off"><b>2</b> Review</span> <span>›</span>
+      <span class="off"><b>3</b> Save</span>
+    </div>
+
+    <div class="grid">
+      <!-- paste -->
+      <div class="card">
+        <div class="hd">
+          <h2>Paste the lead blurb</h2>
+          <span class="sub">straight from the email</span>
+          <div class="spacer"></div>
+          <div class="seg" title="How to parse">
+            <button class="on">⚡ Fast</button>
+            <button>✨ AI</button>
+          </div>
+        </div>
+        <div class="bd">
+          <textarea id="blurb">11/02/2026 1:00 PM Loretta Nelson 7195982885 214 Bayhills Dr Hideaway TX 75771 Homeowner Yes 4 Years Old SFH Insured No Contract</textarea>
+          <div class="hint">One lead per paste. <b>Fast</b> uses rules for the standard email format (free, instant). <b>AI</b> sends the text to Gemini for messy or unusual blurbs.</div>
+        </div>
+        <div class="ft">
+          <button class="btn primary" id="parse">Parse blurb →</button>
+          <button class="btn ghost">Clear</button>
+          <div class="spacer"></div>
+          <span class="sub">⌘⏎ to parse</span>
+        </div>
+      </div>
+
+      <!-- review -->
+      <div class="card">
+        <div class="hd">
+          <h2>Review before saving</h2>
+          <div class="spacer"></div>
+          <div class="legend">
+            <span><i class="dot"></i> confident</span>
+            <span><i class="dot warn"></i> check</span>
+            <span><i class="dot bad"></i> missing</span>
+          </div>
+        </div>
+        <div class="bd">
+          <div class="fields">
+            <div class="sect">Appointment</div>
+            <div class="f c2"><label><i class="dot"></i> Date</label><input value="11/02/2026"></div>
+            <div class="f c2"><label><i class="dot"></i> Time</label><input value="1:00 PM"></div>
+            <div class="f c2"><label><i class="dot warn"></i> Rep</label><select><option>— unassigned —</option><option>Nate</option><option>Team A</option></select></div>
+
+            <div class="sect">Customer</div>
+            <div class="f c3"><label><i class="dot"></i> First name</label><input value="Loretta"></div>
+            <div class="f c3"><label><i class="dot"></i> Last name</label><input value="Nelson"></div>
+            <div class="f c3"><label><i class="dot"></i> Phone</label><input value="(719) 598-2885"></div>
+            <div class="f c3"><label><i class="dot bad"></i> Email</label><input placeholder="not in blurb"></div>
+
+            <div class="sect">Property</div>
+            <div class="f c6"><label><i class="dot"></i> Street</label><input value="214 Bayhills Dr"></div>
+            <div class="f c3"><label><i class="dot"></i> City</label><input value="Hideaway"></div>
+            <div class="f c1"><label><i class="dot"></i> State</label><input value="TX"></div>
+            <div class="f c2"><label><i class="dot"></i> ZIP</label><input value="75771"></div>
+            <div class="f c2"><label><i class="dot"></i> Homeowner</label>
+              <div class="toggle"><button class="on">Yes</button><button>No</button></div></div>
+            <div class="f c2"><label><i class="dot"></i> Home age</label><input value="4 years"></div>
+            <div class="f c2"><label><i class="dot"></i> Type</label><select><option>SFH — single family</option><option>Townhome</option><option>Condo</option><option>Multi-family</option><option>Mobile</option></select></div>
+
+            <div class="sect">Status</div>
+            <div class="f c2"><label><i class="dot"></i> Insured</label>
+              <div class="toggle"><button>Yes</button><button class="on no">No</button></div></div>
+            <div class="f c2"><label><i class="dot"></i> Contract</label><select><option>No contract</option><option>Pending</option><option>Signed</option></select></div>
+            <div class="f c2"><label><i class="dot"></i> Source</label><select><option>Email — appointment setter</option><option>Door knock</option><option>Referral</option><option>Web</option></select></div>
+            <div class="f c6"><label>Notes</label><input placeholder="anything else worth remembering"></div>
+          </div>
+        </div>
+        <div class="ft">
+          <button class="btn primary" id="save">💾 Save to Contact Book</button>
+          <button class="btn">📅 Save + add to Calendar</button>
+          <div class="spacer"></div>
+          <button class="btn ghost">Discard</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>Design notes for review (not part of the app)</h3>
+      <ol>
+        <li><b>Paste → Parse → Review → Save.</b> Nothing is written until you press Save, so a bad parse never pollutes the book.</li>
+        <li><b>Fast vs AI.</b> The standard email format is parsed by rules (free, instant). AI (Gemini) is the fallback for odd blurbs, and later could run automatically when rules aren't confident.</li>
+        <li><b>Confidence dots</b> on each field tell you where to look. Red = the blurb didn't contain it.</li>
+        <li><b>Duplicate check</b> on Save by phone number: if the number exists, offer "Update existing" instead of a second row.</li>
+        <li>Fields are a first guess from the sample blurb. Tell me what to add, drop, or rename (e.g. Rep, Lead source, Roof type, Storm date).</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ================= CONTACTS ================= -->
+  <section id="contacts" class="screen">
+    <div class="toolbar">
+      <div class="search">🔍 <input placeholder="Search name, phone, street, city…"></div>
+      <div class="chips">
+        <button class="chip on">All</button>
+        <button class="chip">Upcoming appts</button>
+        <button class="chip">No contract</button>
+        <button class="chip">Uninsured</button>
+        <button class="chip">Signed</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn sm">⬇ Export CSV</button>
+      <button class="btn sm">📗 Open Sheet</button>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>Customer</th><th>Property</th><th>Appointment</th><th>Status</th><th>Added</th>
+        </tr></thead>
+        <tbody>
+          <tr class="row sel" data-open>
+            <td><div class="name">Loretta Nelson</div><div class="sub">(719) 598-2885</div></td>
+            <td><div>214 Bayhills Dr</div><div class="sub">Hideaway, TX 75771 · SFH · 4 yrs</div></td>
+            <td><div>Sun Nov 2</div><div class="sub">1:00 PM</div></td>
+            <td><div class="badges"><span class="pill ok">Homeowner</span><span class="pill bad">Uninsured</span><span class="pill warn">No contract</span></div></td>
+            <td class="sub">today</td>
+          </tr>
+          <tr class="row">
+            <td><div class="name">Marcus Reed</div><div class="sub">(903) 555-0142</div></td>
+            <td><div>18 Pine Ridge Ct</div><div class="sub">Lindale, TX 75771 · SFH · 12 yrs</div></td>
+            <td><div>Mon Nov 3</div><div class="sub">10:30 AM</div></td>
+            <td><div class="badges"><span class="pill ok">Homeowner</span><span class="pill ok">Insured</span><span class="pill warn">Pending</span></div></td>
+            <td class="sub">yesterday</td>
+          </tr>
+          <tr class="row">
+            <td><div class="name">Dana Whitfield</div><div class="sub">(214) 555-0199</div></td>
+            <td><div>902 Cedar Lake Rd</div><div class="sub">Tyler, TX 75703 · SFH · 22 yrs</div></td>
+            <td><div>Tue Nov 4</div><div class="sub">3:00 PM</div></td>
+            <td><div class="badges"><span class="pill ok">Homeowner</span><span class="pill ok">Insured</span><span class="pill ok">Signed</span></div></td>
+            <td class="sub">Oct 30</td>
+          </tr>
+          <tr class="row">
+            <td><div class="name">Gerald &amp; Pam Ortiz</div><div class="sub">(430) 555-0117</div></td>
+            <td><div>4410 FM 849</div><div class="sub">Lindale, TX 75771 · SFH · 8 yrs</div></td>
+            <td><div class="sub">—</div></td>
+            <td><div class="badges"><span class="pill">Renter?</span><span class="pill ok">Insured</span><span class="pill warn">No contract</span></div></td>
+            <td class="sub">Oct 28</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="ft"><span class="count">Showing 4 of 42 · sorted by appointment</span><div class="spacer"></div><button class="btn sm ghost">Load more</button></div>
+    </div>
+  </section>
+</main>
+
+<!-- detail drawer -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="dh">
+    <div>
+      <h3>Loretta Nelson</h3>
+      <div class="badges"><span class="pill ok">Homeowner</span><span class="pill bad">Uninsured</span><span class="pill warn">No contract</span></div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost" id="closeDrawer">✕</button>
+  </div>
+  <div class="db">
+    <div class="acts">
+      <a class="btn" href="tel:7195982885">📞 Call</a>
+      <a class="btn" href="sms:7195982885">💬 Text</a>
+      <a class="btn" href="https://maps.google.com/?q=214+Bayhills+Dr+Hideaway+TX+75771" target="_blank">🗺 Map</a>
+    </div>
+    <div class="kv">
+      <div>Appointment</div><div><b>Sun Nov 2, 2026 · 1:00 PM</b></div>
+      <div>Phone</div><div>(719) 598-2885</div>
+      <div>Address</div><div>214 Bayhills Dr<br>Hideaway, TX 75771</div>
+      <div>Property</div><div>Single family · 4 years old</div>
+      <div>Insured</div><div>No</div>
+      <div>Contract</div><div>No contract</div>
+      <div>Source</div><div>Email — appointment setter</div>
+      <div>Added</div><div>Nov 6, 2026 by NK</div>
+      <div>Notes</div><div class="sub">—</div>
+    </div>
+    <h4 style="margin:18px 0 6px;font-size:13px;color:var(--muted)">ORIGINAL BLURB</h4>
+    <div class="raw">11/02/2026 1:00 PM Loretta Nelson 7195982885 214 Bayhills Dr Hideaway TX 75771 Homeowner Yes 4 Years Old SFH Insured No Contract</div>
+  </div>
+  <div class="df">
+    <button class="btn navy">✎ Edit</button>
+    <button class="btn">📅 Add to Calendar</button>
+    <div class="spacer"></div>
+    <button class="btn ghost danger">Delete</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast">✅ Saved <b>Loretta Nelson</b> to the Contact Book. <a href="#" data-screen="contacts">View</a></div>
+
+<script>
+  // --- mockup-only interactions (no backend) ---
+  const show = (name) => {
+    document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === name));
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.screen === name));
+    window.scrollTo(0, 0);
+  };
+  document.querySelectorAll('[data-screen]').forEach(el =>
+    el.addEventListener('click', e => { e.preventDefault(); show(el.dataset.screen); }));
+
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+    b.parentElement.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+  }));
+  document.querySelectorAll('.toggle').forEach(t => t.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    t.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+  })));
+  document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(x => x.classList.remove('on')); c.classList.add('on');
+  }));
+
+  const steps = document.querySelectorAll('.steps > span:not(:empty)');
+  document.getElementById('parse').addEventListener('click', () => {
+    const b = document.getElementById('parse'); b.textContent = 'Parsing…'; b.disabled = true;
+    setTimeout(() => { b.textContent = 'Parsed ✓'; b.disabled = false; steps[1].classList.remove('off'); }, 500);
+  });
+  document.getElementById('save').addEventListener('click', () => {
+    steps[2].classList.remove('off');
+    const t = document.getElementById('toast'); t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  });
+
+  const drawer = document.getElementById('drawer'), scrim = document.getElementById('scrim');
+  const openDrawer = () => { drawer.classList.add('open'); scrim.classList.add('show'); };
+  const closeDrawer = () => { drawer.classList.remove('open'); scrim.classList.remove('show'); };
+  document.querySelectorAll('tr.row').forEach(r => r.addEventListener('click', () => {
+    document.querySelectorAll('tr.row').forEach(x => x.classList.remove('sel')); r.classList.add('sel'); openDrawer();
+  }));
+  document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
+  scrim.addEventListener('click', closeDrawer);
+</script>
+</body>
+</html>
