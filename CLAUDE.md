@@ -64,6 +64,10 @@ Read this first. It holds what the next session needs without re-asking.
 - Not ported: SFM's "View as" impersonation and the screenshot mark-up modal (listed in IDEAS).
 - Preview server serves both doors: `/exec` and `/dev`.
 
+## Parked: referral tracking by product (2026-11-19)
+
+Brian will want referrals tracked per product (roof report, repair, replacement, Texas Roof Club membership) from any source (partner, customer, member, neighborhood). Not in effect yet. Design sketch in `docs/IDEAS.md`; the only thing to respect now is that Referrals grows by **appending** `Product`, `Source Kind`, `Source ID` columns later, and that no partner ever gets a payment field.
+
 ## Hand-off to the job manager (keep in mind in every version)
 
 One function, one package, destination swappable (Zapier → Roofr now; ArmorTex Job Manager later). Every request gets its own Referrals row with our ID; the row keeps the job manager's ID and the four status updates (report sent + link, estimate started, signed/lost + amount, paid + amount). Package fields are listed in both briefs (CRM record ID, side, request type, requested/due, source, property split into parts, report recipient, owner contact and how obtained, notes/photos).

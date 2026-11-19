@@ -81,6 +81,22 @@ Options for "really" calling from the app, pick by which number should show:
 - [ ] Partner-referred address that matches a Home → link them so Tanner sees age + value
 - [ ] Cost per job per campaign (needs a place to enter postcard/print costs) vs the $1,600 appointment setter
 
+## Referral tracking by product (nk, 2026-11-19) — parked, not in effect yet
+
+ArmorTex will sell more than one thing (roof reports, repairs, replacements,
+the **Texas Roof Club** membership, maybe gutters later), and referrals should
+be tracked per product, from any source: a partner, an existing customer, a
+Roof Club member, a neighborhood.
+
+Sketch so nothing built now gets in the way:
+
+- A `PRODUCTS` catalog in Config (key, label, what a referral of it looks like, what counts as converted).
+- `Product` column on Referrals (append; blank = roof report today), plus `Source Kind` (partner · customer · member · neighborhood · web) and `Source ID`.
+- Per-product funnel on Campaign: referred → report/quote → signed → paid, split by source.
+- Roof Club specifics: membership start/renewal dates and the yearly inspection live in the **job manager** (Houses keep history); the CRM only tracks *who referred whom into the club* and the thank-you.
+- Hard rule stays: no fee, gift card or payment to a realtor for any product. Rewards to **homeowners** who refer neighbours are a separate question; confirm with the Texas attorney before launching any referral reward.
+- Build when: the Roof Club exists as a product, or the first non-partner referral shows up. Version 4 (referral network) is the earliest natural slot.
+
 ## Someday / maybe
 
 - [ ] Move to the Firebase project (commit `0a7865b`, tag `firebase-foundation`) if the list grows past a few thousand contacts; Gmail API instead of GmailApp
