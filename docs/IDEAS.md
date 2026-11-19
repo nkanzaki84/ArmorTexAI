@@ -73,7 +73,9 @@ Options for "really" calling from the app, pick by which number should show:
 ## Version 4 — Referral network + hand-off
 
 - [ ] Referrals log on partner and home records; counts in/out per partner
-- [ ] Email versions for inspectors, insurance agents, property managers
+- [x] Partner type tabs + per-type profiles, wins and metrics (`PARTNER_TYPE_PROFILES`) — fields are a first guess, nk to confirm
+- [ ] Email versions for inspectors, insurance agents, property managers (profiles already say which versions a type uses)
+- [ ] Campaign screen: a tab per partner type once more than realtors are being emailed
 - [ ] Hand-off: one function, one package → Zapier catch hook → Roofr. Store Roofr ID; four status updates typed in by hand until the Job Manager exists
 - [ ] Partner-referred address that matches a Home → link them so Tanner sees age + value
 - [ ] Cost per job per campaign (needs a place to enter postcard/print costs) vs the $1,600 appointment setter

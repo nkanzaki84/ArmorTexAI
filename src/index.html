@@ -19,6 +19,8 @@
     recordId: '<?= recordId ?>',
     version: 'v<?= appVersion ?> · <?= appBuildDate ?>',
     session: <?!= JSON.stringify(session || {}) ?>,
+    profiles: <?!= JSON.stringify(profiles || {}) ?>,
+    winResponses: <?!= JSON.stringify(winResponses || []) ?>,
     noAccess: <?!= JSON.stringify(noAccess || null) ?>
   };
 </script>

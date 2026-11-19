@@ -26,14 +26,17 @@ test('setup() is idempotent and only appends new headers', () => {
   app.setup();
   // simulate an older sheet missing the last Partners column
   const tab = app._getSpreadsheet_().getSheetByName('Partners');
+  const lastHeader = tab.rows[0][tab.rows[0].length - 1];
   tab.rows[0] = tab.rows[0].slice(0, -1);
-  tab.rows.push(['P-1', 'Ann', 'realtor', 'Co', '', 'ann@x.com', '', 'Prospect', '', '', '', '', '', '', 'list', '']);
+  const row = new Array(tab.rows[0].length).fill('');
+  row[0] = 'P-1'; row[1] = 'Ann'; row[2] = 'realtor'; row[5] = 'ann@x.com'; row[7] = 'Prospect';
+  tab.rows.push(row);
   const report = app.setup();
-  assert.ok(report.appended.some(s => s.startsWith('Partners: +Added By')));
+  assert.ok(report.appended.some(s => s === 'Partners: +' + lastHeader), JSON.stringify(report.appended));
   const rows = app.$rows('Partners');
   assert.equal(rows.length, 1);
   assert.equal(rows[0].Name, 'Ann');
-  assert.equal(rows[0]['Added By'], '');
+  assert.equal(rows[0][lastHeader], '');
   assert.equal(app.listVersions().length, 4, 'versions not duplicated');
 });
 

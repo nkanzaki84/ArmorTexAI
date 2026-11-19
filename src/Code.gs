@@ -44,6 +44,8 @@ function doGet(e) {
   tpl.appDevUrl = _appDevUrl_(tpl.appUrl);
   tpl.isDev = /\/dev(\?.*)?$/.test(String(tpl.appUrl || ''));   // the test bench wears amber so nobody mistakes it for Tanner's copy
   tpl.canComment = !session.denied && COMMENT_ROLES.indexOf(session.role) !== -1;
+  tpl.profiles = PARTNER_TYPE_PROFILES;
+  tpl.winResponses = WIN_RESPONSES;
   tpl.appVersion = APP_VERSION;
   tpl.appBuildDate = APP_BUILD_DATE;
   tpl.session = session;

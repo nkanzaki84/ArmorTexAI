@@ -46,6 +46,10 @@ Read this first. It holds what the next session needs without re-asking.
 - The homeowner list never leaves the app except as the printer's mailing file.
 - Open rates are not measured. Counts sit beside every rate; the Campaign table carries the "125 per version is too few" note.
 
+## Partner types (2026-11-19, Brian: "different metrics and profiles per type")
+
+`PARTNER_TYPE_PROFILES` in Config.gs is the one place a type is defined: label, company label, profile fields (sparse Partners columns), the **win** Response (`Sent an address` / `Referred a job` / `Sent a claim` / `Sent a property`), the pitch line, and which email versions it uses. The Partners page has a tab per type with counts and type-specific facts on each row; the record page shows a metrics strip and an editable profile card from the same config. Adding a type = a Config entry + its columns in `HEADERS.Partners` + `setup()`. `WIN_RESPONSES` drives Stage `Partner` and the funnel's step 4.
+
 ## Developer tools (ported from SFM, 2026-11-19; source zip from Brian)
 
 - **Pinned comments**: 🛠 owner tools → 💬 Comment arms the page, next click drops a pin (CSS path + quoted text + card heading) and opens a composer with teammate chips and a best-effort html2canvas screenshot filed to Drive (`ArmorTex Comment Screenshots/<year>`). Threads, replies, Resolve/Reopen; emails the addressee with a `#comment=C-12` deep link. Tab `Comments`, `comments_server.gs`, `comments.html`. Visible to `COMMENT_ROLES` (owner only for now; add `'sales'` to open it to Tanner). Settings → Developer lists every open thread.

@@ -202,7 +202,7 @@ function getCampaignStats() {
     if (ev['Kind'] === 'opt-out') row(v).optedOut++;
     if (ev['Kind'] === 'call' && String(ev['Outcome']).toLowerCase() === 'talked' && !talkedPartners[ev['Partner ID']]) { talkedPartners[ev['Partner ID']] = true; row(v).talked++; }
   });
-  partners.forEach(function (p) { if (p['Response'] === 'Sent an address' && versionOf[p['ID']]) row(versionOf[p['ID']]).addresses++; });
+  partners.forEach(function (p) { if (WIN_RESPONSES.indexOf(String(p['Response'])) !== -1 && versionOf[p['ID']]) row(versionOf[p['ID']]).addresses++; });
   referrals.forEach(function (r) {
     const v = versionOf[r['Partner ID']];
     if (!v || r['Direction'] !== 'in') return;
@@ -248,7 +248,7 @@ function recountPartnerStages() {
     let stage = 'Prospect';
     if (sent[id]) stage = 'Contacted';
     if (replied[id]) stage = 'Replied';
-    if (partnerOf[id]) stage = 'Partner';
+    if (partnerOf[id] || WIN_RESPONSES.indexOf(String(p['Response'])) !== -1) stage = 'Partner';
     let response = String(p['Response'] || '');
     if (optedOut[id] || _yes_(p['Do Not Contact'])) response = 'Opted out';
     else if (bounced[id]) response = 'Bounced';

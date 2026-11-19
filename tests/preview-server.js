@@ -43,6 +43,19 @@ function seed(app) {
     lines.push(`${n},${n.toLowerCase().replace(/[^a-z]+/g, '.').replace(/\.$/, '')}${i}@example.com,${cos[i % cos.length]},903555${String(1000 + i).slice(-4)},${cities[i % cities.length]}`);
   }
   app.importPartners(lines.join('\n'), { sourceList: 'realtors-gregg-nov-2026' });
+  // a few of the other partner types, with profiles filled in, so each tab has something to show
+  const others = [
+    ['inspector', 'Carl Dawson', 'East Texas Home Inspections', 'carl@ethi.example.com', '9035550201', 'Longview', { 'Inspections Per Month': 35, 'Refers Roofers': 'Sometimes', 'Areas Served': 'Longview, Kilgore' }],
+    ['inspector', 'Maria Vega', 'Pine Curtain Inspections', 'maria@pci.example.com', '9035550202', 'Gladewater', { 'Inspections Per Month': 18, 'Refers Roofers': 'No', 'Areas Served': 'Gladewater, White Oak' }],
+    ['insurance', 'Dale Pruitt', 'State Farm — Pruitt Agency', 'dale@sf.example.com', '9035550301', 'Longview', { 'Carriers': 'State Farm', 'Handles Claims': 'Yes', 'Areas Served': 'Gregg County' }],
+    ['insurance', 'Renee Holt', 'Farm Bureau Longview', 'renee@fb.example.com', '9035550302', 'Longview', { 'Carriers': 'Texas Farm Bureau', 'Handles Claims': 'No', 'Areas Served': 'Longview' }],
+    ['property_manager', 'Greg Albright', 'Albright Property Management', 'greg@apm.example.com', '9035550401', 'Longview', { 'Doors Managed': 140, 'Property Types': 'single family, duplex', 'Decision Maker': 'Yes' }],
+  ];
+  others.forEach(o => {
+    const id = app.addPartner({ type: o[0], name: o[1], company: o[2], email: o[3], phone: o[4], area: o[5] });
+    app.savePartner(id, { profile: o[6] });
+  });
+  app.savePartner(app.$rows('Partners').find(p => p.Name === 'Carl Dawson').ID, { response: 'Referred a job', nextStep: 'Drop off report samples Fri' });
   let s = 11; const rng = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
   app.assignVersions({ versions: ['A', 'B', 'C'], rng });
   // a little history so Campaign and records have something to show
@@ -57,7 +70,8 @@ function seed(app) {
   });
   app._appendRows_('Emails', emails);
   app._appendRows_('Events', events);
-  app.savePartner(ps[1].ID, { response: 'Sent an address', nextStep: 'Drive by 214 Bayhills Dr Thu' });
+  app.savePartner(ps[1].ID, { response: 'Sent an address', nextStep: 'Drive by 214 Bayhills Dr Thu', profile: { 'Listings Per Year': 24, 'Avg Listing Value': 385000, 'Areas Served': 'White Oak, Longview' } });
+  app.savePartner(ps[0].ID, { profile: { 'Listings Per Year': 9, 'Avg Listing Value': 410000 } });
   app._appendRows_('Referrals', [{ ID: 'R-1', Date: new Date(now - day * 3), Direction: 'in', 'Partner ID': ps[1].ID, 'Customer Or Address': '214 Bayhills Dr, Hideaway TX 75771', 'Request Type': 'listing_report', 'Listing Value': 415000, 'Roof Age Years': 14, 'Due At': new Date(now - day), 'Report Recipient': ps[1].Email, 'Report Sent At': new Date(now - day * 1.5), 'Report Link': 'https://example.com/report.pdf' }]);
   app.recountPartnerStages();
 }

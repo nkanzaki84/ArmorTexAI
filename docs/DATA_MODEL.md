@@ -15,10 +15,11 @@ Versions are keyed by Letter. Settings by Name. Users by Email.
 | ID, Name, Type, Company, Phone, Email, Area | Type: realtor · inspector · insurance · property_manager. Phone digits only. Email lowercase, the duplicate key. |
 | Stage | Prospect → Contacted → Replied → Partner. **Derived** from Emails/Events/Referrals, cached by `recountPartnerStages()`. |
 | Version | A · B · C · E. Assigned once by `assignVersions()`, never changed. |
-| Response | '' · Replied · Sent an address · Not interested · Bounced · Opted out. Derived where it can be; "Sent an address" and "Not interested" are set by a person. |
+| Response | '' · Replied · **win** · Not interested · Bounced · Opted out. The win differs by type: Sent an address (realtor) · Referred a job (inspector) · Sent a claim (insurance) · Sent a property (property manager). Wins and "Not interested" are set by a person; a win makes the Stage `Partner`. |
 | Do Not Contact | Yes. Checked at the moment of every send. |
 | Last Contact, Next Step, Notes | Last Contact = last email either way or call. |
 | Source List, Added At, Added By | which import, when, who. |
+| **Type profile columns** (sparse): Areas Served · Listings Per Year, Avg Listing Value (realtor) · Inspections Per Month, Refers Roofers (inspector) · Carriers, Handles Claims (insurance) · Doors Managed, Property Types, Decision Maker (property manager) | Which apply is defined per type in `PARTNER_TYPE_PROFILES` (Config.gs), along with the company label, the win response and the email versions. |
 
 ## Homes — one house (v3)
 

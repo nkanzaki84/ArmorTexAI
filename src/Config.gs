@@ -78,6 +78,17 @@ const HEADERS = {
     'Source List',       // which import this came from
     'Added At',
     'Added By',
+    // --- type profiles (sparse; which ones apply is in PARTNER_TYPE_PROFILES) ---
+    'Areas Served',
+    'Listings Per Year',     // realtor
+    'Avg Listing Value',     // realtor
+    'Inspections Per Month', // inspector
+    'Refers Roofers',        // inspector: Yes | No | Sometimes
+    'Carriers',              // insurance
+    'Handles Claims',        // insurance: Yes | No
+    'Doors Managed',         // property manager
+    'Property Types',        // property manager
+    'Decision Maker',        // property manager: Yes | No
   ],
   'Homes': [
     'ID',
@@ -222,7 +233,60 @@ const APP_DEV_URL_DEFAULT = '';
 const PARTNER_TYPES = ['realtor', 'inspector', 'insurance', 'property_manager'];
 const PARTNER_STAGES = ['Prospect', 'Contacted', 'Replied', 'Partner'];
 const HOME_STAGES = ['Target', 'Mailed', 'Knocked', 'Talked', 'Roof check booked'];
-const RESPONSES = ['', 'Replied', 'Sent an address', 'Not interested', 'Bounced', 'Opted out'];
+const RESPONSES = ['', 'Replied', 'Sent an address', 'Referred a job', 'Sent a claim', 'Sent a property', 'Not interested', 'Bounced', 'Opted out'];
+const WIN_RESPONSES = ['Sent an address', 'Referred a job', 'Sent a claim', 'Sent a property'];
+
+// ===== Partner type profiles =====
+// One entry per partner type: what we call them, the company label, the extra
+// facts Tanner wants before a call (Partners columns), what counts as a win
+// (a Response value), and which email versions they get. The list tab and the
+// record page read this; a new type is a new entry, not a new screen.
+const PARTNER_TYPE_PROFILES = {
+  realtor: {
+    label: 'Realtor', plural: 'Realtors', companyLabel: 'Brokerage',
+    fields: [
+      { key: 'Listings Per Year', type: 'number', hint: 'how many listings they carry a year' },
+      { key: 'Avg Listing Value', type: 'money', hint: 'typical listing price' },
+      { key: 'Areas Served', type: 'text', hint: 'Longview, White Oak…' },
+    ],
+    win: 'Sent an address', winVerb: 'sent an address for a listing report', winNoun: 'addresses',
+    pitch: 'Free photo roof report on any listing within 48 hours.',
+    versions: ['A', 'B', 'C', 'E'],
+  },
+  inspector: {
+    label: 'Home inspector', plural: 'Home inspectors', companyLabel: 'Inspection company',
+    fields: [
+      { key: 'Inspections Per Month', type: 'number', hint: 'volume' },
+      { key: 'Refers Roofers', type: 'choice', options: ['', 'Yes', 'Sometimes', 'No'], hint: 'do they already hand out a roofer' },
+      { key: 'Areas Served', type: 'text' },
+    ],
+    win: 'Referred a job', winVerb: 'referred a homeowner from an inspection', winNoun: 'referrals',
+    pitch: 'When the inspection flags the roof, we do the detailed report and the repair; they keep the credit.',
+    versions: [],
+  },
+  insurance: {
+    label: 'Insurance agent', plural: 'Insurance agents', companyLabel: 'Agency',
+    fields: [
+      { key: 'Carriers', type: 'text', hint: 'State Farm, Allstate…' },
+      { key: 'Handles Claims', type: 'choice', options: ['', 'Yes', 'No'], hint: 'do claims come through this office' },
+      { key: 'Areas Served', type: 'text' },
+    ],
+    win: 'Sent a claim', winVerb: 'sent a claim referral', winNoun: 'claims',
+    pitch: 'Roof condition reports that keep their insureds insurable; deductible always billed in full.',
+    versions: [],
+  },
+  property_manager: {
+    label: 'Property manager', plural: 'Property managers', companyLabel: 'Company',
+    fields: [
+      { key: 'Doors Managed', type: 'number', hint: 'units / houses under management' },
+      { key: 'Property Types', type: 'text', hint: 'single family, duplex, small multi…' },
+      { key: 'Decision Maker', type: 'choice', options: ['', 'Yes', 'No'], hint: 'can they pick the roofer' },
+    ],
+    win: 'Sent a property', winVerb: 'sent a property for a roof check', winNoun: 'properties',
+    pitch: 'One call for every roof in the portfolio: report, repair, replacement, yearly check.',
+    versions: [],
+  },
+};
 const EMAIL_VERSIONS = ['A', 'B', 'C', 'E'];
 const EMAIL_STATUSES = ['queued', 'sent', 'replied', 'bounced', 'cancelled'];
 const EVENT_KINDS = ['reply', 'bounce', 'opt-out', 'call', 'postcard', 'knock', 'note'];

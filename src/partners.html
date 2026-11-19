@@ -91,8 +91,16 @@
         return true;
       });
       $('rows').innerHTML = rows.length ? rows.map(function (p) {
+        var prof = O.profiles[p.Type];
+        var facts = prof ? prof.fields.map(function (f) {
+          var v = p[f.key]; if (v === '' || v === null || v === undefined) return '';
+          if (f.type === 'money') return '$' + Number(v).toLocaleString() + ' avg';
+          if (f.type === 'number') return v + ' ' + f.key.toLowerCase().replace(/^(listings|inspections|doors)( per (year|month))?( managed)?$/, function (_, w, per, unit) { return w + (per ? '/' + (unit === 'year' ? 'yr' : 'mo') : ''); });
+          if (f.type === 'choice') return f.key.toLowerCase() + ': ' + String(v).toLowerCase();
+          return v;
+        }).filter(Boolean).join(' · ') : '';
         return '<li class="link" data-id="' + esc(p.ID) + '">' + verBadge(p.Version) +
-          '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + (p.Phone ? ' · ' + fmtPhone(p.Phone) : '') + '</div></div>' +
+          '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + (p.Phone ? ' · ' + fmtPhone(p.Phone) : '') + '</div>' + (facts ? '<div class="sub" style="color:var(--navy)">' + esc(facts) + '</div>' : '') + '</div>' +
           '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + stagePill(p.Stage) + responsePill(p.Response) + '</div>' +
           (p.Phone ? '<a class="btn sm" href="tel:' + esc(p.Phone) + '" onclick="event.stopPropagation()" title="Call">📞</a>' : '') + '</li>';
       }).join('') : '<li class="empty">' + (all.length ? (filters.type && !all.some(function (p) { return p.Type === filters.type; }) ? 'No ' + TYPE_LABEL[filters.type] + ' yet. Import a list under Settings or add one by hand.' : 'No partners match.') : 'No partners yet. Import the realtor list under Settings.') + '</li>';

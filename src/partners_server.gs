@@ -178,7 +178,20 @@ function getPartner(id) {
   const emails = _readTab_(TAB.EMAILS).filter(function (e) { return String(e['Partner ID']) === String(id); });
   const events = _readTab_(TAB.EVENTS).filter(function (e) { return String(e['Partner ID']) === String(id); });
   const referrals = _readTab_(TAB.REFERRALS).filter(function (r) { return String(r['Partner ID']) === String(id); });
-  return { partner: p, emails: emails, events: events, referrals: referrals };
+  const inRefs = referrals.filter(function (r) { return r['Direction'] === 'in'; });
+  const metrics = {
+    emailsSent: emails.filter(function (e) { return e['Sent At'] && e['Status'] !== 'cancelled'; }).length,
+    replies: events.filter(function (e) { return e['Kind'] === 'reply'; }).length,
+    calls: events.filter(function (e) { return e['Kind'] === 'call'; }).length,
+    talked: events.filter(function (e) { return e['Kind'] === 'call' && String(e['Outcome']).toLowerCase() === 'talked'; }).length,
+    referralsIn: inRefs.length,
+    referralsOut: referrals.length - inRefs.length,
+    reportsSent: inRefs.filter(function (r) { return r['Report Sent At']; }).length,
+    jobsSigned: inRefs.filter(function (r) { return String(r['Signed Or Lost']).toLowerCase() === 'signed'; }).length,
+    jobValue: inRefs.reduce(function (sum, r) { return sum + (Number(r['Contract Amount']) || Number(r['Job Value']) || 0); }, 0),
+    won: WIN_RESPONSES.indexOf(String(p['Response'])) !== -1 || inRefs.length > 0,
+  };
+  return { partner: p, emails: emails, events: events, referrals: referrals, metrics: metrics, profile: PARTNER_TYPE_PROFILES[String(p['Type'])] || null };
 }
 
 /** Add a partner by hand. */
@@ -208,9 +221,21 @@ function addPartner(payload) {
   return row['ID'];
 }
 
-/** Update the editable fields of a partner (never Version, never Stage). */
+/** Every profile column across all types (header names). */
+function _profileColumns_() {
+  const out = {};
+  Object.keys(PARTNER_TYPE_PROFILES).forEach(function (t) { PARTNER_TYPE_PROFILES[t].fields.forEach(function (f) { out[f.key] = f; }); });
+  return out;
+}
+
+/**
+ * Update the editable fields of a partner (never Version, never Stage).
+ * payload keys: name, company, phone, email, area, nextStep, notes, response,
+ * plus profile fields by header name under payload.profile = { 'Doors Managed': 120 }.
+ */
 function savePartner(id, payload) {
   _requireRole_(WRITE_ROLES);
+  payload = payload || {};
   const idx = _findRowIndex_(TAB.PARTNERS, function (p) { return String(p['ID']) === String(id); });
   if (idx === -1) throw new Error('Partner not found: ' + id);
   const allowed = { name: 'Name', company: 'Company', phone: 'Phone', email: 'Email', area: 'Area', nextStep: 'Next Step', notes: 'Notes', response: 'Response' };
@@ -223,6 +248,21 @@ function savePartner(id, payload) {
     if (k === 'response' && RESPONSES.indexOf(v) === -1) throw new Error('Unknown response: ' + v);
     row[allowed[k]] = v;
   });
+  if (payload.profile) {
+    const cols = _profileColumns_();
+    Object.keys(payload.profile).forEach(function (h) {
+      const f = cols[h];
+      if (!f) throw new Error('Unknown profile field: ' + h);
+      let v = String(payload.profile[h] === null || payload.profile[h] === undefined ? '' : payload.profile[h]).trim();
+      if (f.type === 'number' || f.type === 'money') {
+        v = v.replace(/[$,\s]/g, '');
+        if (v !== '' && isNaN(Number(v))) throw new Error(h + ' must be a number.');
+        v = v === '' ? '' : Number(v);
+      }
+      if (f.type === 'choice' && f.options.indexOf(v) === -1) throw new Error(h + ' must be one of: ' + f.options.filter(Boolean).join(', '));
+      row[h] = v;
+    });
+  }
   _updateRow_(TAB.PARTNERS, idx, row);
   return { ok: true };
 }
