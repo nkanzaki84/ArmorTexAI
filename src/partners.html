@@ -70,7 +70,8 @@
       $('rows').innerHTML = rows.length ? rows.map(function (p) {
         return '<li class="link" data-id="' + esc(p.ID) + '">' + verBadge(p.Version) +
           '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + (p.Phone ? ' · ' + fmtPhone(p.Phone) : '') + '</div></div>' +
-          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + stagePill(p.Stage) + responsePill(p.Response) + '</div></li>';
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + stagePill(p.Stage) + responsePill(p.Response) + '</div>' +
+          (p.Phone ? '<a class="btn sm" href="tel:' + esc(p.Phone) + '" onclick="event.stopPropagation()" title="Call">📞</a>' : '') + '</li>';
       }).join('') : '<li class="empty">' + (all.length ? 'No partners match.' : 'No partners yet. Import the realtor list under Settings.') + '</li>';
       $('count').textContent = rows.length + ' of ' + all.length;
     }

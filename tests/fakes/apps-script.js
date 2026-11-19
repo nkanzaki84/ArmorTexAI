@@ -147,6 +147,18 @@ function renderTemplate(name, vars, ctx) {
 }
 
 // ---------- Runtime ----------
+function wrapMsg(m) {
+  return {
+    getId: () => m.id, getFrom: () => m.from, getTo: () => m.to, getSubject: () => m.subject,
+    getPlainBody: () => m.body, getBody: () => m.body, getDate: () => m.date,
+    getHeader: (n) => (n.toLowerCase() === 'message-id' ? m.rfcId : (n.toLowerCase() === 'in-reply-to' ? (m.inReplyTo || '') : '')),
+    getThread: () => wrapThread(m.$thread),
+  };
+}
+function wrapThread(t) {
+  t.messages.forEach(m => { m.$thread = t; });
+  return { getId: () => t.id, getMessages: () => t.messages.map(wrapMsg), getMessageCount: () => t.messages.length, getFirstMessageSubject: () => t.messages[0].subject };
+}
 function makeGlobals(ctx) {
   const spreadsheets = {};
   let nextId = 1;
@@ -176,42 +188,75 @@ function makeGlobals(ctx) {
       sleep() {},
       getUuid() { return 'uuid-' + (nextId++); },
       base64Encode(s) { return Buffer.from(s).toString('base64'); },
+      base64EncodeWebSafe(s) { return Buffer.from(s).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'); },
     },
     Logger: { log: (...a) => { if (ctx.verbose) console.log(...a); } },
     MailApp: { getRemainingDailyQuota() { return ctx.quota === undefined ? 1500 : ctx.quota; } },
     GmailApp: {
-      sendEmail(to, subject, body, opts) {
-        const id = 'msg' + (nextId++); const threadId = 'thr' + (nextId++);
-        sent.push({ to, subject, body, opts, id, threadId });
-        threads[threadId] = { id: threadId, messages: [{ id, from: ctx.user, to, subject, body, date: new Date() }] };
-        return { getId: () => id, getThread: () => g.GmailApp.getThreadById(threadId) };
+      sendEmail(to, subject, body, opts) { return g.GmailApp.createDraft(to, subject, body, opts).send(); },
+      createDraft(to, subject, body, opts) {
+        return { send() {
+          const id = 'msg' + (nextId++); const threadId = 'thr' + (nextId++);
+          const me = ctx.effectiveUser || ctx.user;
+          const m = { id, threadId, from: me, to, subject, body, opts, date: ctx.now ? new Date(ctx.now()) : new Date(), rfcId: '<' + id + '@mail.example>' };
+          sent.push(m);
+          threads[threadId] = { id: threadId, messages: [m] };
+          m.$thread = threads[threadId];
+          return wrapMsg(m);
+        } };
       },
-      getThreadById(id) {
-        const t = threads[id]; if (!t) return null;
-        return {
-          getId: () => t.id,
-          getMessages: () => t.messages.map(m => ({
-            getId: () => m.id, getFrom: () => m.from, getTo: () => m.to, getSubject: () => m.subject,
-            getPlainBody: () => m.body, getDate: () => m.date, getThread: () => g.GmailApp.getThreadById(t.id),
-          })),
-        };
+      getThreadById(id) { const t = threads[id]; return t ? wrapThread(t) : null; },
+      getMessageById(id) { for (const tid in threads) { const m = threads[tid].messages.find(x => x.id === id); if (m) return wrapMsg(m); } return null; },
+      /** Supports the query the app uses: "after:<unix> -from:<me>" (other terms ignored). */
+      search(query, start, max) {
+        const after = Number((query.match(/after:(\d+)/) || [])[1] || 0) * 1000;
+        const notFrom = ((query.match(/-from:(\S+)/) || [])[1] || '').toLowerCase();
+        const out = [];
+        Object.keys(threads).forEach(tid => {
+          const t = threads[tid];
+          if (t.messages.some(m => m.date.getTime() >= after && (!notFrom || String(m.from).toLowerCase().indexOf(notFrom) === -1))) out.push(wrapThread(t));
+        });
+        return out.slice(start || 0, (start || 0) + (max || 500));
       },
-      search() { return []; },
       // test helpers
       $sent: sent,
       $threads: threads,
-      $reply(threadId, from, body) {
+      $reply(threadId, from, body, extra) {
         const t = threads[threadId]; if (!t) throw new Error('no thread ' + threadId);
         const id = 'msg' + (nextId++);
-        t.messages.push({ id, from, to: ctx.user, subject: 'Re: ' + t.messages[0].subject, body, date: new Date() });
+        const m = Object.assign({ id, threadId, from, to: ctx.effectiveUser || ctx.user, subject: 'Re: ' + t.messages[0].subject, body, date: new Date(), rfcId: '<' + id + '@mail.example>' }, extra || {});
+        t.messages.push(m);
         return id;
       },
     },
-    ScriptApp: {
-      getService() { return { getUrl: () => ctx.appUrl || 'https://script.google.com/a/macros/example/s/FAKE/exec' }; },
-      getProjectTriggers() { return []; },
-      newTrigger() { const b = { timeBased: () => b, everyMinutes: () => b, create: () => ({}) }; return b; },
-    },
+    // Advanced Gmail service (raw MIME send into an existing thread).
+    Gmail: { Users: { Messages: {
+      send(resource, userId) {
+        const raw = Buffer.from(String(resource.raw).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+        const hdr = (n) => (raw.match(new RegExp('^' + n + ':\\s*(.*)$', 'mi')) || [])[1] || '';
+        const body = raw.split(/\r?\n\r?\n/).slice(1).join('\n\n');
+        const t = threads[resource.threadId]; if (!t) throw new Error('thread not found: ' + resource.threadId);
+        const id = 'msg' + (nextId++);
+        const m = { id, threadId: t.id, from: ctx.effectiveUser || ctx.user, to: hdr('To'), subject: hdr('Subject'), body, date: new Date(), rfcId: '<' + id + '@mail.example>', inReplyTo: hdr('In-Reply-To'), raw };
+        t.messages.push(m); sent.push(m);
+        return { id, threadId: t.id };
+      },
+    } } },
+    LockService: { getScriptLock() { return { tryLock: () => true, waitLock: () => {}, releaseLock: () => {}, hasLock: () => true }; } },
+    ScriptApp: (function () {
+      const triggers = [];
+      return {
+        getService() { return { getUrl: () => ctx.appUrl || 'https://script.google.com/a/macros/example/s/FAKE/exec' }; },
+        getProjectTriggers() { return triggers.slice(); },
+        deleteTrigger(t) { const i = triggers.indexOf(t); if (i !== -1) triggers.splice(i, 1); },
+        newTrigger(fn) {
+          const t = { fn, minutes: null, getHandlerFunction: () => fn, getUniqueId: () => 'trg' + (nextId++) };
+          const b = { timeBased: () => b, everyMinutes: (n) => { t.minutes = n; return b; }, create: () => { triggers.push(t); return t; } };
+          return b;
+        },
+        $triggers: triggers,
+      };
+    })(),
     HtmlService: {
       createTemplateFromFile(name) {
         const tpl = {};

@@ -110,7 +110,11 @@ function buildTodayBatch(opts) {
     if (e['Scheduled For'] && _dateKey_(new Date(e['Scheduled For'])) > todayKey) return false;
     const p = byId[e['Partner ID']];
     return p && !dnc[_normEmail_(p['Email'])] && !_yes_(p['Do Not Contact']);
-  }).map(function (e) { return Object.assign({ partner: byId[e['Partner ID']] }, e); });
+  }).map(function (e) {
+    const o = Object.assign({ partner: byId[e['Partner ID']] }, e);
+    Object.defineProperty(o, '_row', { value: e._row, enumerable: false });   // Object.assign drops it
+    return o;
+  });
 
   // First emails: partners with a version, no email ever, not DNC.
   const emailed = {};

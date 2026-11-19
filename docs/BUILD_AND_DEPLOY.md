@@ -32,10 +32,9 @@ git clone https://github.com/nkanzaki84/ArmorTexAI.git && cd ArmorTexAI && git c
 
 ## 2. One-time: the Apps Script project
 
-**Which account?** The app sends email as the account that deploys it. The
-plan is Tanner's Workspace mailbox, so create the script while logged in as
-Tanner (or have Tanner run these two commands once). Brian can still push code
-and open the Sheet; the Sheet is shared to him in step 3.
+**Which account?** The app sends email as the account that deploys it, and
+the reply check reads that inbox. Decision (2026-11-19): **Brian's mailbox**,
+brian@armortexroofs.com, which is the account `clasp login` already uses.
 
 From the repo root:
 
@@ -75,9 +74,19 @@ Then deploy once so /exec exists:
 ```
 
 Open the /dev URL (editor → Deploy → Test deployments) to work, or the /exec
-URL from the deploy output for Tanner. Under **Settings → Team** add Tanner as
-`sales` and Caitlin as `viewonly`. Fill in the business address and opt-out
-line; sending is blocked until both exist.
+URL from the deploy output for Tanner. Then on **Settings**:
+
+1. **Team**: add Tanner as `sales`, Caitlin as `viewonly`.
+2. **Sending**: business street address and opt-out line (sending is blocked
+   until both exist), sender name, signature.
+3. **Reply check**: press *Install / repair trigger* once. It runs
+   `checkReplies` every 15 minutes as you.
+4. **Test batch**: paste five of your own addresses → *Create test partners*.
+   On **Campaign** write versions A/B/C (saving checks the footer rules). On
+   **Today** press *Send anyway (test)* if it isn't a Tue–Thu. Reply from each
+   inbox; within 15 minutes (or *Check replies now*) each shows under New
+   replies against the right version. That is the version-1 done test.
+5. Import the real realtor list, *Assign versions*, and Dec 1 is a normal Tuesday.
 
 ## 4. Every change
 
@@ -119,11 +128,16 @@ npm run preview
 Open <http://127.0.0.1:8787/?page=today>. Add `&as=tanner@armortexroofs.com`
 to see it as Tanner. Data resets when you stop the server.
 
-## 6. Triggers (v1, when emails.gs lands)
+## 6. Triggers
 
-The reply check runs every 15 minutes from a time-driven trigger installed by
-`installTriggers()` (run once from the editor as the deploying account).
-Sending itself has no trigger: a person presses Send.
+The reply check runs every 15 minutes from a time-driven trigger. Install it
+from Settings → Reply check (or run `installTriggers()` in the editor) as the
+deploying account. Sending itself has no trigger: a person presses Send.
+
+Follow-ups are sent inside the original Gmail thread through the Gmail
+advanced service, which `src/appsscript.json` enables; the first `clasp push -f`
+after this change asks for the extra Gmail permission when you next run
+anything from the editor. Approve it.
 
 ## 7. Troubleshooting
 

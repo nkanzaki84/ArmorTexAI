@@ -12,12 +12,36 @@ get decided. The briefs in `docs/briefs/` are the spec; this is the overflow.
 - [x] Today batch builder: cap, sending days, pause, even spread, follow-ups first
 - [x] Version validation: address + opt-out, plain text, no links, ends with a question
 - [x] Campaign stats recounted from Emails + Events, 8-step funnel, counts beside rates
-- [ ] `emails.gs`: sendBatch (DNC check at send time, random pause, save thread/message IDs, lock versions, quota check)
-- [ ] `emails.gs`: checkReplies trigger every 15 min (thread has a message from someone else → reply event, cancel follow-up, top of call list); bounce detection; opt-out wording flag
-- [ ] Follow-up queueing: 4 business days after first, same thread, never a third
+- [x] `emails.gs`: sendTodayBatch (DNC at send time, random pause, thread/message IDs, lock versions, quota, script lock)
+- [x] `emails.gs`: checkReplies trigger every 15 min; bounce, opt-out wording (DNC + review), address guess (review); follow-up cancelled on any reply
+- [x] Follow-up queued at send time for +4 business days, sent in the same thread (In-Reply-To), never a third
+- [x] Today: Send button, Send anyway (test, owner only), New replies, Calls (replied, not yet called), Needs-a-human review queue
 - [x] Today, Partners, Partner record, Campaign, Settings screens wired to the server (Send button waits on emails.gs)
 - [x] Local preview server with fake runtime (`npm run preview`)
 - [ ] Five-address test batch; confirm inbox placement before Dec 1
+
+## Calling from the app (asked by nk, 2026-11-19)
+
+What exists: every phone number is a tap-to-call link; on a phone it opens the
+dialer, on a Mac it opens FaceTime/whatever handles `tel:`, and the app offers
+to log the call afterwards. Calls go out from the caller's own number.
+
+Options for "really" calling from the app, pick by which number should show:
+
+- [ ] **Google Voice for Workspace** (~$10–20/user/mo): a business number on
+      Brian's/Tanner's phone; `tel:` links open the Voice app; calls and
+      voicemail logged in Voice. Zero code. Caller ID = business number.
+- [ ] **Twilio click-to-call bridge** (~$1/mo number + ~$0.03/min): press Call
+      in the app → Twilio rings Tanner's cell → when he answers it dials the
+      realtor; caller ID = business number; call duration/outcome posted back
+      to the app automatically; optional recording. Works from desktop too.
+      About a day of work (UrlFetchApp to Twilio, `doPost` for status
+      callbacks). No microphone-in-browser needed, which matters because
+      Apps Script's iframe blocks mic access.
+- [ ] Browser softphone (Twilio Voice JS) — ruled out for now: HtmlService's
+      sandbox does not grant microphone access.
+- Rule either way: no cold calls to homeowners. Call buttons on Homes appear
+  only when `Phone Given By Owner` is Yes.
 
 ## Next (version 2 — work the replies)
 
@@ -57,7 +81,8 @@ get decided. The briefs in `docs/briefs/` are the spec; this is the overflow.
 
 ## Decided
 
-- 2026-11-19 — **Apps Script + Google Sheet + clasp** for the Outreach app, SFM conventions, deployed under Tanner's account. Firebase kept as the escape hatch. (Reverses the 2026-11-06 Firebase decision, which was for a different, larger app.)
+- 2026-11-19 — **Apps Script + Google Sheet + clasp** for the Outreach app, SFM conventions. Firebase kept as the escape hatch. (Reverses the 2026-11-06 Firebase decision, which was for a different, larger app.)
+- 2026-11-19 — Emails send from **Brian's mailbox** (brian@armortexroofs.com); the app deploys under his account. Tanner sees replies in the app and calls.
 - 2026-11-19 — IDs are prefixed (`P-12`, `H-340`, `E-55`, `EV-7`, `R-3`) so a Sheet reader can tell them apart.
 - 2026-11-19 — A Users tab (8th tab) holds roles, mirroring SFM's Authorized Users, instead of stuffing roles into Settings.
 - 2026-11-19 — Roof-age review gets its own columns on Homes (review result, when, who); `Roof Check Result` is reserved for the real roof check.
@@ -71,7 +96,7 @@ get decided. The briefs in `docs/briefs/` are the spec; this is the overflow.
 
 ## Open questions
 
-- Whose mailbox sends? (Assumed Tanner's.)
+- Which number should show when calling from the app (decides Google Voice vs Twilio)?
 - Realtor list source and columns.
 - Pay-at-closing limit → unlocks version E. Until then assign only A/B/C?
 - Business street address for the footer.

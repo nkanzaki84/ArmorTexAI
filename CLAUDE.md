@@ -14,7 +14,7 @@ Read this first. It holds what the next session needs without re-asking.
 ## Stack and conventions (same as SFM Job Manager, so code can be shared)
 
 - Google Apps Script web app, one Google Sheet as the database, HtmlService + vanilla JS, no build step, no npm deps in the script.
-- **Deploys under Tanner's Workspace account** so GmailApp sends as Tanner. Web app access `DOMAIN`, execute as user deploying. Brian signs in on the same domain.
+- **Deploys under Brian's Workspace account (brian@armortexroofs.com)**, decided 2026-11-19: emails send from Brian's mailbox and the reply check reads Brian's inbox. Web app access `DOMAIN`, execute as user deploying. Tanner and Caitlin sign in on the same domain and see the same app.
 - `src/` is the clasp rootDir. `.clasp.json` is git-ignored (copy `.clasp.json.example`).
 - `Config.gs` holds `TAB`, `HEADERS`, enums, `SETTING`, `ROLES`, `PAGE_CATALOG`. `setup()` creates tabs and **only appends** missing headers, never renames or reorders.
 - All Sheet access goes through `sheet.gs`: `_readTab_`, `_appendRows_` (one write for a batch), `_updateRow_` / `_updateRows_`, `_findRowIndex_`, `_nextId_` (IDs look like `P-12`, `E-40`, `EV-7`, `R-3`, `H-900`). Columns are matched by header NAME.
@@ -22,6 +22,7 @@ Read this first. It holds what the next session needs without re-asking.
 - Dates cross the server/client boundary as strings. `_readTab_` turns Date cells into ISO strings; `_coerceCell_` turns them back on write. Parse date inputs with `_parseLocalDate_`. Time zone is `America/Chicago` (manifest + `Session.getScriptTimeZone()`).
 - Stage and Response on Partners/Homes are **derived** from Emails + Events and cached by `recountPartnerStages()`. Stats are always recounted from Emails + Events (`getCampaignStats()`), never incremented.
 - Two URLs: **/dev** (HEAD, after `clasp push -f`) for testing; **/exec** for Tanner, promoted with `./deploy.sh` only when a batch is ready. Apps Script allows 200 lifetime versions per script; SFM already hit it. Don't deploy reflexively.
+- `emails.gs` conventions: all timestamps come from the `now` passed in (tests inject a clock); the Send path takes a `LockService` script lock; the reply check never deletes, only appends Events and flips statuses; `Needs Review = Yes` events are the human queue (`resolveReview`).
 - Tests: `npm test` runs `tests/*.test.js` in a Node fake runtime (`tests/fakes/apps-script.js` fakes SpreadsheetApp, GmailApp, PropertiesService, Session, Utilities, MailApp, and renders HtmlService templates). Write a test before touching version assignment, batch building, reply matching, or do-not-contact.
 - Local preview without Google: `npm run preview` → http://127.0.0.1:8787/?page=today with seeded sample data; `?as=tanner@armortexroofs.com` switches user; `--empty` for no seed. The browser's `google.script.run` is shimmed to call the fake runtime, so every screen works end to end. Use it for screenshots and UI iteration; use /dev for anything that touches Gmail.
 
@@ -51,7 +52,7 @@ One function, one package, destination swappable (Zapier → Roofr now; ArmorTex
 
 | Version | Scope | Status |
 |---|---|---|
-| 1. Send and match | Sheet + import + versions + Today batch + Send + reply check + stats | **in progress**: setup, import, assignment, batch builder, validation, stats, settings, users done and tested; Today / Partners / Partner record / Campaign / Settings screens wired. Next: `emails.gs` (sendBatch, follow-up queueing, checkReplies trigger, bounce + opt-out detection) and enable the Send button. |
+| 1. Send and match | Sheet + import + versions + Today batch + Send + reply check + stats | **code complete, untested against real Gmail**: `emails.gs` sends (createDraft().send()), queues the one follow-up (+4 business days, sent in-thread via the Gmail advanced service with In-Reply-To), `checkReplies` trigger (search `after:… -from:me`, dedupe by Gmail message id), bounce + opt-out + address detection with a review queue on Today. Done when the five-address test batch sends and replies match. |
 | 2. Work the replies | partner record, call list, follow-up, bounce/opt-out, address flag | not started |
 | 3. Homes | import, neighborhood view, roof-age review, mailing file, knock list, knock outcomes | not started |
 | 4. Referral network | referrals log, more partner types, hand-off via Zapier | not started |
@@ -60,7 +61,8 @@ Build nothing from the next version until the one before it has been used for re
 
 ## Open questions (ask Brian, don't guess)
 
-- Whose mailbox sends? Plan assumes Tanner's own Workspace mailbox on the ArmorTex domain.
+- ~~Whose mailbox sends?~~ Brian's (2026-11-19).
+- **Calling from the app** (asked 2026-11-19): today every phone number is a `tel:` link, so on a phone it opens the dialer and the app offers to log the call. Brian wants more. Options recorded in `docs/IDEAS.md` (Google Voice business number vs Twilio click-to-call bridge); the choice hinges on which number should show on caller ID. Not built yet. Never add cold-call tooling for homeowners; call buttons on Homes only when `Phone Given By Owner` is Yes.
 - Realtor list source and columns (import handles common header names; see `PARTNER_IMPORT_ALIASES`).
 - Pay-at-closing dollar limit, which unlocks version E. Until then assign only A/B/C? (`assignVersions({versions:['A','B','C']})` exists.)
 - Business street address for the footer (a Settings value; sending is blocked until set).

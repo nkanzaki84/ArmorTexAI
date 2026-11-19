@@ -13,7 +13,10 @@
     </div>
     <div class="f"><label>Business street address (required in every email)</label><input name="business_address" placeholder="123 Main St, Longview, TX 75601"></div>
     <div class="f"><label>Opt-out line (required in every email)</label><input name="opt_out_line"></div>
-    <div class="f"><label>Signature</label><textarea name="sender_signature" style="min-height:70px"></textarea></div>
+    <div class="grid2">
+      <div class="f"><label>Sender name (shows in the inbox)</label><input name="sender_name" placeholder="Brian Kanzaki"></div>
+      <div class="f"><label>Signature</label><textarea name="sender_signature" style="min-height:70px"></textarea></div>
+    </div>
     <div class="grid2">
       <div class="f"><label>Call script URL</label><input name="call_script_url" placeholder="Google Doc link"></div>
       <div class="f"><label>Job manager webhook (Zapier → Roofr)</label><input name="job_manager_webhook" placeholder="blank = manual hand-off"></div>
@@ -21,6 +24,25 @@
     <div class="f"><label>Extra do-not-contact emails (one per line)</label><textarea name="do_not_contact" style="min-height:70px"></textarea></div>
     <div class="row"><button class="btn primary" type="submit">Save settings</button></div>
   </form>
+</div>
+
+<div class="card">
+  <div class="hd"><h2>Reply check</h2><span class="sub">reads the business inbox every 15 minutes</span><div class="spacer"></div><span id="trigStatus" class="pill">…</span></div>
+  <div class="bd row">
+    <button class="btn navy" id="installTrig">Install / repair trigger</button>
+    <button class="btn" id="runCheck">Check replies now</button>
+    <span class="sub" id="trigNote"></span>
+  </div>
+  <div id="checkResult" style="padding:0 16px 12px"></div>
+</div>
+
+<div class="card">
+  <div class="hd"><h2>Test batch</h2><span class="sub">five of your own addresses before Dec 1</span></div>
+  <div class="bd">
+    <div class="f"><label>Your test addresses (one per line)</label><textarea id="testEmails" style="min-height:80px" placeholder="brian+test1@armortexroofs.com&#10;brian+test2@armortexroofs.com"></textarea></div>
+    <div class="row"><button class="btn" id="testBtn">Create test partners</button><span class="sub">They get versions assigned and appear in today's batch. Use "Send anyway (test)" on Today if it isn't a sending day. Reply from each inbox and watch them match.</span></div>
+    <div id="testResult" style="margin-top:10px"></div>
+  </div>
 </div>
 
 <div class="card">
@@ -136,6 +158,32 @@
     loadTeam();
 
     api('getSheetInfo').then(function (i) { $('sheetLink').href = i.url; }).catch(function () {});
+
+    function showTrig(t) {
+      $('trigStatus').textContent = t.installed ? 'running every ' + t.everyMinutes + ' min' : 'not installed';
+      $('trigStatus').className = 'pill ' + (t.installed ? 'ok' : 'bad');
+      $('trigNote').textContent = t.lastCheck ? 'Last check ' + fmtDateTime(t.lastCheck) : 'Never checked yet';
+    }
+    api('getTriggerStatus').then(showTrig).catch(fail);
+    on($('installTrig'), 'click', function () { busy($('installTrig'), true, 'Installing…'); api('installTriggers').then(function (t) { showTrig(t); toast('Trigger installed'); }).catch(fail).finally(function () { busy($('installTrig'), false, 'Install / repair trigger'); }); });
+    on($('runCheck'), 'click', function () {
+      busy($('runCheck'), true, 'Checking…');
+      api('runReplyCheckNow').then(function (r) {
+        $('checkResult').innerHTML = '<div class="ok-box">Checked ' + r.checked + ' threads: ' + r.replies + ' replies, ' + r.bounces + ' bounces, ' + r.optOuts + ' opt-outs, ' + r.addresses + ' possible addresses.</div>';
+        api('getTriggerStatus').then(showTrig);
+      }).catch(fail).finally(function () { busy($('runCheck'), false, 'Check replies now'); });
+    });
+    on($('testBtn'), 'click', function () {
+      var emails = $('testEmails').value.split(/[\n,;]+/).map(function (e) { return e.trim(); }).filter(Boolean);
+      if (!emails.length) return toast('Add at least one address', 'bad');
+      var csv = 'Name,Email,Company\n' + emails.map(function (e, i) { return 'Test ' + (i + 1) + ',' + e + ',TEST'; }).join('\n');
+      busy($('testBtn'), true, 'Creating…');
+      api('importPartners', csv, { type: 'realtor', sourceList: 'test' }).then(function (r) {
+        return api('assignVersions', { type: 'realtor', versions: ['A', 'B', 'C'] }).then(function (a) {
+          $('testResult').innerHTML = '<div class="ok-box">Created ' + r.added + ' test partners (' + r.skipped.duplicate + ' already existed). Versions assigned to ' + a.assigned + ' unassigned realtors. Now open Today.</div>';
+        });
+      }).catch(fail).finally(function () { busy($('testBtn'), false, 'Create test partners'); });
+    });
     on($('recountBtn'), 'click', function () {
       busy($('recountBtn'), true, 'Recounting…');
       api('recountPartnerStages').then(function (r) { toast('Updated ' + r.updated + ' partners'); }).catch(fail).finally(function () { busy($('recountBtn'), false, '↻ Recount stages'); });

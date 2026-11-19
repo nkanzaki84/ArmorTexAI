@@ -31,7 +31,7 @@
           '<form class="bd verForm" data-letter="' + esc(v.Letter) + '">' +
           '<div class="grid2"><div class="f"><label>Angle</label><input name="angle" value="' + esc(v.Angle) + '"' + ro + '></div>' +
           '<div class="f"><label>Subject</label><input name="subject" value="' + esc(v.Subject) + '"' + ro + '></div></div>' +
-          '<div class="f"><label>First email (plain text, no links, end with a question)</label><textarea name="body"' + ro + '>' + esc(v.Body) + '</textarea></div>' +
+          '<div class="f"><label>First email (plain text, no links, end with a question · {{first}} {{name}} {{company}} {{area}} are filled in)</label><textarea name="body"' + ro + '>' + esc(v.Body) + '</textarea></div>' +
           '<div class="f"><label>Follow-up (same thread, 4 business days later, only one)</label><textarea name="followUpBody" style="min-height:80px"' + ro + '>' + esc(v['Follow Up Body']) + '</textarea></div>' +
           '<div class="problems"></div>' +
           (isAdmin && !locked ? '<div class="row"><button class="btn primary" type="submit">Save version ' + esc(v.Letter) + '</button><span class="sub">Saving checks the footer rules.</span></div>' : '') +

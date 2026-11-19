@@ -48,7 +48,7 @@ CRM sends is identical either way.
 |---|---|
 | 2026-11-06 | Repo starts as a contact-book idea on Apps Script; moved to Firebase for a whole-company hub. |
 | 2026-11-18 | Brian's three briefs reframe the work as CRM (people) + job manager (houses). |
-| 2026-11-19 | **Outreach app on Apps Script + Google Sheet + clasp**, SFM conventions, deployed under Tanner's account. Firebase stays as the escape hatch past a few thousand contacts (commit `0a7865b`, local tag `firebase-foundation`). |
+| 2026-11-19 | **Outreach app on Apps Script + Google Sheet + clasp**, SFM conventions, deployed under Brian's account (emails send from brian@armortexroofs.com). Firebase stays as the escape hatch past a few thousand contacts (commit `0a7865b`, local tag `firebase-foundation`). |
 | 2026-11-19 | Stripe for payments and QuickBooks Online as the books stay true for the job manager; not relevant to the CRM. |
 
 ## Who

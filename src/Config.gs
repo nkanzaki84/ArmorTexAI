@@ -14,6 +14,19 @@ const APP_BUILD_DATE = '2026-11-19';
 
 // ===== Script Property keys =====
 const PROP_SHEET_ID = 'OUTREACH_SHEET_ID';
+const PROP_LAST_REPLY_CHECK = 'OUTREACH_LAST_REPLY_CHECK';   // unix seconds
+
+// ===== Sending behaviour =====
+const REPLY_CHECK_MINUTES = 15;          // time-driven trigger cadence
+const SEND_PAUSE_MS = [1500, 4000];      // random pause between sends
+const REPLY_LOOKBACK_DAYS = 45;          // how far back the reply check searches
+// Opt-out wording, any of these in a reply → do-not-contact + flagged for review.
+const OPT_OUT_RE = /\b(no thanks|no thank you|unsubscribe|remove me|take me off|stop (emailing|contacting|sending)|opt out|don't email|do not email|not interested)\b/i;
+// Looks like a street address → suggest "Sent an address" for a person to confirm.
+const ADDRESS_RE = /\b\d{2,6}\s+(?:[NSEW]\.?\s+)?[A-Za-z0-9][A-Za-z0-9.'\- ]{1,40}?\s(?:St|Street|Dr|Drive|Rd|Road|Ln|Lane|Ave|Avenue|Ct|Court|Cir|Circle|Blvd|Boulevard|Way|Trail|Trl|Pl|Place|Loop|Pkwy|Parkway|Hwy|Highway|Cv|Cove|Ter|Terrace|FM\s?\d+|CR\s?\d+)\b\.?/i;
+// Bounce senders / subjects.
+const BOUNCE_FROM_RE = /mailer-daemon|postmaster|noreply@google\.com/i;
+const BOUNCE_SUBJECT_RE = /delivery status notification|undeliverable|delivery (has )?failed|returned mail|failure notice/i;
 
 // ===== Master sheet =====
 const SHEET_NAME = 'ArmorTex Outreach';
@@ -115,6 +128,7 @@ const HEADERS = {
     'Snippet',           // reply snippet or note
     'By',
     'Needs Review',      // Yes when an automation guessed (opt-out wording, address detected)
+    'Gmail Message ID',  // reply/bounce: the Gmail message this event came from (dedupe key)
   ],
   'Referrals': [
     'ID',
@@ -187,6 +201,7 @@ const SETTING = {
   PAUSE_SENDING:    'pause_sending',      // Yes | No
   FOLLOW_UP_DAYS:   'follow_up_days',     // business days after first email
   KNOCK_DELAY_DAYS: 'knock_delay_days',   // days after a mailing before the knock list opens
+  SENDER_NAME:      'sender_name',        // display name on outgoing email
   SENDER_SIGNATURE: 'sender_signature',
   BUSINESS_ADDRESS: 'business_address',   // required in every email footer
   OPT_OUT_LINE:     'opt_out_line',       // required in every email footer
@@ -203,7 +218,8 @@ const SETTING_DEFAULTS = {
   pause_sending:        'No',
   follow_up_days:       '4',
   knock_delay_days:     '5',
-  sender_signature:     'Tanner\nArmorTex Roofing',
+  sender_name:          'Brian Kanzaki',
+  sender_signature:     'Brian Kanzaki\nArmorTex Roofs',
   business_address:     '',
   opt_out_line:         "Reply 'no thanks' and I won't email again.",
   job_manager_webhook:  '',
