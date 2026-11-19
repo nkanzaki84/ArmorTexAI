@@ -15,7 +15,9 @@ Read this first. It holds what the next session needs without re-asking.
 
 - Google Apps Script web app, one Google Sheet as the database, HtmlService + vanilla JS, no build step, no npm deps in the script.
 - **Deploys under Brian's Workspace account (brian@armortexroofs.com)**, decided 2026-11-19: emails send from Brian's mailbox and the reply check reads Brian's inbox. Web app access `DOMAIN`, execute as user deploying. Tanner and Caitlin sign in on the same domain and see the same app.
-- `src/` is the clasp rootDir. `.clasp.json` is git-ignored (copy `.clasp.json.example`).
+- `src/` is the clasp rootDir. `.clasp.json` is git-ignored (copy `.clasp.json.example`). Script id of the live project: `1z2Eqy4wg5bS4yvP-XTJqySW0mApdymXBlsT7Ps2scgydlwjz4HJ8foqv` (created 2026-11-19 under brian@armortexroofs.com).
+- **Apps Script forbids two files with the same base name** (`campaign.gs` + `campaign.html` fails to push). Server files that share a name with a page take the `_server.gs` suffix, as in SFM.
+- Brian's Mac runs **clasp 2.x**: commands are `clasp create`, `clasp open`, `clasp push -f`, `clasp deploy -i <id>`, `clasp deployments`. The 3.x names (`create-script`, `open-script`, `create-deployment`) don't exist there.
 - `Config.gs` holds `TAB`, `HEADERS`, enums, `SETTING`, `ROLES`, `PAGE_CATALOG`. `setup()` creates tabs and **only appends** missing headers, never renames or reorders.
 - All Sheet access goes through `sheet.gs`: `_readTab_`, `_appendRows_` (one write for a batch), `_updateRow_` / `_updateRows_`, `_findRowIndex_`, `_nextId_` (IDs look like `P-12`, `E-40`, `EV-7`, `R-3`, `H-900`). Columns are matched by header NAME.
 - **Every server function that writes starts with `_requireRole_(WRITE_ROLES)` or `_requireRole_(ADMIN_ROLES)`.** Roles: `owner` (Brian, implicit via `OWNER_EMAIL`), `sales` (Tanner), `viewonly` (Caitlin). Hiding a screen is never the only protection.

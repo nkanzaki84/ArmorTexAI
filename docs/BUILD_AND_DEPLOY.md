@@ -36,11 +36,17 @@ git clone https://github.com/nkanzaki84/ArmorTexAI.git && cd ArmorTexAI && git c
 the reply check reads that inbox. Decision (2026-11-19): **Brian's mailbox**,
 brian@armortexroofs.com, which is the account `clasp login` already uses.
 
-From the repo root:
+Already done on 2026-11-19: script id
+`1z2Eqy4wg5bS4yvP-XTJqySW0mApdymXBlsT7Ps2scgydlwjz4HJ8foqv`. On a new machine
+just write `.clasp.json` from `.clasp.json.example` with that id. To create a
+fresh project instead (clasp 2.x on Brian's Mac; 3.x accepts the same):
 
 ```bash
-clasp create-script --type webapp --title "ArmorTex Outreach" --rootDir src
+clasp create --title "ArmorTex Outreach" --rootDir src
 ```
+
+Choose `webapp` at the prompt. If no `.clasp.json` appears in the repo root,
+write it by hand with the script id clasp printed.
 
 ```bash
 git checkout -- src/appsscript.json
@@ -57,10 +63,10 @@ clasp push -f
 ```
 
 ```bash
-clasp open-script
+clasp open
 ```
 
-In the editor: pick `setup` in the function dropdown → Run → approve the
+(`clasp open-script` on clasp 3.x.) In the editor: pick `setup` in the function dropdown → Run → approve the
 permissions (Sheets, Drive, Gmail). `setup()` creates the Sheet "ArmorTex
 Outreach" with all tabs, seeds settings and versions A/B/C/E, and adds Brian
 as owner. Re-running it is safe; it only appends missing columns.
@@ -162,8 +168,8 @@ ArmorTexAI/
 │   ├── Code.gs           # doGet routing, include(), setup()
 │   ├── sheet.gs          # read/write helpers
 │   ├── users.gs          # roles + permission checks
-│   ├── partners.gs       # import, version assignment, partner record
-│   ├── campaign.gs       # versions, daily batch, stats, settings
+│   ├── partners_server.gs       # import, version assignment, partner record
+│   ├── campaign_server.gs       # versions, daily batch, stats, settings
 │   └── *.html            # index shell + one include per page
 ├── tests/                # node --test; fakes/apps-script.js is the runtime
 ├── docs/

@@ -6,8 +6,8 @@
  *   Config.gs    constants, headers, enums, settings, roles
  *   sheet.gs     read/write helpers (all Sheet access goes through these)
  *   users.gs     roles + permission checks
- *   partners.gs  partner import, version assignment, partner record
- *   campaign.gs  daily batch, versions, stats, do-not-contact
+ *   partners_server.gs  partner import, version assignment, partner record
+ *   campaign_server.gs  daily batch, versions, stats, do-not-contact
  *   (v1 next)    emails.gs — send batch, reply check trigger
  *   *.html       UI: index shell + one include per page
  */
