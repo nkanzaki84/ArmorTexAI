@@ -81,6 +81,13 @@ daily_cap (50) · sending_days (Tue,Wed,Thu) · sending_hour (9) · pause_sendin
 business_address · opt_out_line · job_manager_webhook · printer_format ·
 call_script_url · do_not_contact (extra emails, one per line).
 
+## Comments — pinned comments (developer tool)
+
+ID (`C-12`), Thread ID (root's ID), Status (Open · Resolved, root only), Page,
+Side, Record ID, Selector, Quote, Label, Text, Author, Author Name, To,
+Created At, Resolved At, Resolved By, Screenshot Drive ID, Screenshot URL.
+Replies repeat the Thread ID and leave the anchor blank.
+
 ## Users — Email / Name / Role / Active
 
 Roles: owner · sales · viewonly. `OWNER_EMAIL` is owner even if absent.

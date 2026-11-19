@@ -189,9 +189,28 @@ function makeGlobals(ctx) {
       getUuid() { return 'uuid-' + (nextId++); },
       base64Encode(s) { return Buffer.from(s).toString('base64'); },
       base64EncodeWebSafe(s) { return Buffer.from(s).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'); },
+      base64Decode(s) { return Array.from(Buffer.from(String(s), 'base64')); },
+      newBlob(bytes, mime, name) { const buf = Buffer.from(bytes); return { getBytes: () => Array.from(buf), getContentType: () => mime, getName: () => name, setName(n) { name = n; return this; } }; },
     },
     Logger: { log: (...a) => { if (ctx.verbose) console.log(...a); } },
-    MailApp: { getRemainingDailyQuota() { return ctx.quota === undefined ? 1500 : ctx.quota; } },
+    MailApp: {
+      getRemainingDailyQuota() { return ctx.quota === undefined ? 1500 : ctx.quota; },
+      sendEmail(a, subject, body, opts) { (ctx.mail = ctx.mail || []).push(typeof a === 'object' ? a : { to: a, subject, body, opts }); },
+    },
+    DriveApp: (function () {
+      let n = 1;
+      function folder(name) {
+        const f = { name, folders: [], files: [], id: 'fld' + (n++) };
+        f.getId = () => f.id; f.getName = () => f.name;
+        f.getFoldersByName = (nm) => { const hits = f.folders.filter(x => x.name === nm); let i = 0; return { hasNext: () => i < hits.length, next: () => hits[i++] }; };
+        f.createFolder = (nm) => { const c = folder(nm); f.folders.push(c); return c; };
+        f.createFile = (blob) => { const id = 'file' + (n++); const file = { id, blob, getId: () => id, getUrl: () => 'https://drive.google.com/file/d/' + id, getName: () => blob.getName(), getMimeType: () => blob.getContentType(), getBlob: () => blob }; f.files.push(file); files[id] = file; return file; };
+        return f;
+      }
+      const files = {};
+      const root = folder('root');
+      return { getRootFolder: () => root, getFolderById: () => root, getFileById: (id) => { if (!files[id]) throw new Error('no file ' + id); return files[id]; }, $root: root, $files: files };
+    })(),
     GmailApp: {
       sendEmail(to, subject, body, opts) { return g.GmailApp.createDraft(to, subject, body, opts).send(); },
       createDraft(to, subject, body, opts) {

@@ -93,6 +93,9 @@ URL from the deploy output for Tanner. Then on **Settings**:
    inbox; within 15 minutes (or *Check replies now*) each shows under New
    replies against the right version. That is the version-1 done test.
 5. Import the real realtor list, *Assign versions*, and Dec 1 is a normal Tuesday.
+6. **Developer**: paste the /dev URL (editor → Deploy → Test deployments) so the
+   🛠 owner tools can flip every link between /dev and /exec. On /dev the app
+   turns amber with a DEV tag.
 
 ## 4. Every change
 

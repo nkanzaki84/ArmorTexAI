@@ -43,6 +43,14 @@ Options for "really" calling from the app, pick by which number should show:
 - Rule either way: no cold calls to homeowners. Call buttons on Homes appear
   only when `Phone Given By Owner` is Yes.
 
+## Developer tools (ported from SFM 2026-11-19)
+
+- [x] Pinned comments with screenshots + email, owner-only, inbox on Settings
+- [x] /dev ↔ /exec link switch, amber dev bench, Dev Mode flag
+- [ ] "View as" (see the app as Tanner / Caitlin without their login): SFM has impersonation via user properties; port when needed
+- [ ] Screenshot mark-up (draw on the picture before posting), SFM's Screenshot tool
+- [ ] Open comments to Tanner (`COMMENT_ROLES`) once he is using the app daily
+
 ## Next (version 2 — work the replies)
 
 - [ ] Partner record: emails + replies inline, call notes, referrals both ways

@@ -46,6 +46,14 @@ Read this first. It holds what the next session needs without re-asking.
 - The homeowner list never leaves the app except as the printer's mailing file.
 - Open rates are not measured. Counts sit beside every rate; the Campaign table carries the "125 per version is too few" note.
 
+## Developer tools (ported from SFM, 2026-11-19; source zip from Brian)
+
+- **Pinned comments**: 🛠 owner tools → 💬 Comment arms the page, next click drops a pin (CSS path + quoted text + card heading) and opens a composer with teammate chips and a best-effort html2canvas screenshot filed to Drive (`ArmorTex Comment Screenshots/<year>`). Threads, replies, Resolve/Reopen; emails the addressee with a `#comment=C-12` deep link. Tab `Comments`, `comments_server.gs`, `comments.html`. Visible to `COMMENT_ROLES` (owner only for now; add `'sales'` to open it to Tanner). Settings → Developer lists every open thread.
+- **/dev ↔ /exec switcher**: `window.APP_EXEC_URL` / `APP_DEV_URL` from doGet; `useDevLinks()` sticks in localStorage; `go()` and all server-rendered links follow it. The /dev URL comes from the `dev_url` setting (Settings → Developer), else `APP_DEV_URL_DEFAULT`, else `/exec` rewritten (wrong: serves the pinned version). On /dev the body gets `dev-bench` (amber bar, DEV tag).
+- **Dev Mode**: `isDevMode()` flag + yellow banner for preview UIs; nothing reads it yet.
+- Not ported: SFM's "View as" impersonation and the screenshot mark-up modal (listed in IDEAS).
+- Preview server serves both doors: `/exec` and `/dev`.
+
 ## Hand-off to the job manager (keep in mind in every version)
 
 One function, one package, destination swappable (Zapier → Roofr now; ArmorTex Job Manager later). Every request gets its own Referrals row with our ID; the row keeps the job manager's ID and the four status updates (report sent + link, estimate started, signed/lost + amount, paid + amount). Package fields are listed in both briefs (CRM record ID, side, request type, requested/due, source, property split into parts, report recipient, owner contact and how obtained, notes/photos).

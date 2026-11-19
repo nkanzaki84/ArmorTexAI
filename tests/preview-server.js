@@ -16,7 +16,7 @@ const { loadApp } = require('./fakes/apps-script');
 
 const PORT = Number(process.env.PORT || 8787);
 const OWNER = 'brian@armortexroofs.com';
-const ctx = { user: OWNER, appUrl: 'http://127.0.0.1:' + PORT + '/', quota: 1500 };
+const ctx = { user: OWNER, appUrl: 'http://127.0.0.1:' + PORT + '/exec', quota: 1500 };
 const app = loadApp(ctx);
 app.setup();
 
@@ -25,7 +25,7 @@ if (process.argv.indexOf('--empty') === -1) seed(app);
 function seed(app) {
   const ADDRESS = '1200 Judson Rd, Longview, TX 75601';
   const OPT = "Reply 'no thanks' and I won't email again.";
-  app.saveSettings({ business_address: ADDRESS, opt_out_line: OPT, call_script_url: 'https://docs.google.com/document/d/example' });
+  app.saveSettings({ business_address: ADDRESS, opt_out_line: OPT, call_script_url: 'https://docs.google.com/document/d/example', dev_url: 'http://127.0.0.1:' + PORT + '/dev' });
   app.saveUser({ email: 'tanner@armortexroofs.com', name: 'Tanner Fought', role: 'sales' });
   app.saveUser({ email: 'caitlin@armortexroofs.com', name: 'Caitlin', role: 'viewonly' });
   const bodies = {
@@ -102,7 +102,10 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
-  if (url.pathname !== '/') { res.writeHead(404); res.end('not found'); return; }
+  if (url.pathname === '/') { res.writeHead(302, { location: '/exec' + url.search }); res.end(); return; }
+  if (url.pathname !== '/exec' && url.pathname !== '/dev') { res.writeHead(404); res.end('not found'); return; }
+  // Two doors like Apps Script: /exec (Tanner's) and /dev (the amber test bench).
+  ctx.appUrl = 'http://127.0.0.1:' + PORT + url.pathname;
   if (url.searchParams.get('as')) ctx.user = url.searchParams.get('as');
   const parameter = {};
   url.searchParams.forEach((v, k) => { parameter[k] = v; });
@@ -118,5 +121,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log('ArmorTex Outreach preview: http://127.0.0.1:' + PORT + '/?page=today   (user: ' + ctx.user + '; add &as=email to switch)');
+  console.log('ArmorTex Outreach preview: http://127.0.0.1:' + PORT + '/exec?page=today  (also /dev for the test bench; user: ' + ctx.user + '; add &as=email to switch)');
 });

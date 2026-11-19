@@ -44,6 +44,7 @@ const TAB = {
   VERSIONS:  'Versions',
   SETTINGS:  'Settings',
   USERS:     'Users',
+  COMMENTS:  'Comments',   // pinned comments on pages (developer tool, from SFM)
 };
 
 // ===== ID prefixes (IDs are "P-12", "H-340", … readable in the Sheet) =====
@@ -53,6 +54,7 @@ const ID_PREFIX = {
   'Emails':    'E',
   'Events':    'EV',
   'Referrals': 'R',
+  'Comments':  'C',
 };
 
 // ===== Column headers per tab. Order matters for new tabs; existing tabs are
@@ -181,7 +183,40 @@ const HEADERS = {
     'Added At',
     'Added By',
   ],
+  // Pinned comments (developer tool): one row per comment. The first comment
+  // of a thread has Thread ID = its own ID and carries the anchor + Status;
+  // replies repeat the Thread ID and leave the anchor blank.
+  'Comments': [
+    'ID',
+    'Thread ID',
+    'Status',            // Open | Resolved (root row only)
+    'Page',              // today | partners | partner | …
+    'Side',              // partners | homes
+    'Record ID',         // partner/home id when pinned on a record page
+    'Selector',          // CSS path to the element
+    'Quote',             // the element's text at the time
+    'Label',             // card heading
+    'Text',
+    'Author',
+    'Author Name',
+    'To',
+    'Created At',
+    'Resolved At',
+    'Resolved By',
+    'Screenshot Drive ID',
+    'Screenshot URL',
+  ],
 };
+
+// ===== Developer tools =====
+// Who sees the 💬 Comment pins. Owner only for now (as in SFM); add 'sales' to open it to Tanner.
+const COMMENT_ROLES = ['owner'];
+const COMMENT_SHOTS_FOLDER = 'ArmorTex Comment Screenshots';   // Drive: My Drive/<folder>/<year>/comment-C-12.png
+const COMMENT_SHOT_MAX = 8 * 1024 * 1024;
+// The /dev URL of this web app (Apps Script editor → Deploy → Test deployments).
+// The "Links: /dev" switch needs it; blank falls back to the dev_url setting,
+// then to rewriting /exec → /dev (which serves the pinned version, not HEAD).
+const APP_DEV_URL_DEFAULT = '';
 
 // ===== Enums =====
 const PARTNER_TYPES = ['realtor', 'inspector', 'insurance', 'property_manager'];
@@ -209,6 +244,7 @@ const SETTING = {
   PRINTER_FORMAT:   'printer_format',     // mailing-file column order, comma separated
   CALL_SCRIPT_URL:  'call_script_url',    // Tanner's written call script (Doc link)
   DO_NOT_CONTACT:   'do_not_contact',     // extra emails never to contact, one per line
+  DEV_URL:          'dev_url',            // optional: the /dev URL of this web app (owner tool)
 };
 
 const SETTING_DEFAULTS = {
@@ -226,6 +262,7 @@ const SETTING_DEFAULTS = {
   printer_format:       'Owner Name,Mailing Address,Mailing City,Mailing State,Mailing ZIP',
   call_script_url:      '',
   do_not_contact:       '',
+  dev_url:              '',
 };
 
 const ROOF_AGE_REVIEWS = ['', 'original', 'replaced', 'unsure'];

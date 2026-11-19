@@ -123,6 +123,24 @@
   .notes h3{margin:0 0 6px;font-size:13px;color:#9a4d00}
   .notes ol{margin:0;padding-left:18px}
   .notes li{margin:3px 0}
+  /* /dev test bench (owner tool, from SFM): amber top bar + nav + DEV tag so the dev copy is never mistaken for Tanner's. */
+  .dev-tag{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;background:#ea580c;color:#fff;font-size:10px;font-weight:800;letter-spacing:.6px;vertical-align:middle}
+  body.dev-bench .top{background:#7c2d12}
+  body.dev-bench .side-switch{background:#9a3412}
+  body.dev-bench .nav{background:#fff7ed;border-color:#fdba74}
+  body.dev-bench .nav a.active{background:#ffedd5;color:#9a3412;box-shadow:inset 3px 0 0 #ea580c}
+  body.dev-bench .nav-foot{color:#c2410c;font-weight:700}
+  /* owner tools: floating 🛠 button bottom-right, above the phone nav */
+  .owner-tools{position:fixed;right:14px;bottom:calc(var(--nav-h) + 14px);z-index:40;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  @media (min-width:761px){.owner-tools{bottom:18px}}
+  .ot-toggle{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:#fff;box-shadow:var(--shadow);font-size:18px}
+  .ot-panel{display:none;flex-direction:column;gap:4px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:8px;min-width:190px}
+  .ot-panel.show{display:flex}
+  .ot-panel button{border:0;background:transparent;text-align:left;padding:8px 10px;border-radius:8px;font-weight:600;font-size:13px;color:#3a4257}
+  .ot-panel button:hover{background:#f7f8fb}
+  .ot-panel button.on{background:#e8f6ee;color:#17743d}
+  .ot-count{display:inline-block;min-width:18px;text-align:center;background:var(--accent);color:#1c1917;border-radius:999px;font-size:11px;font-weight:700;padding:0 5px;margin-left:6px}
+  .ot-foot{font-size:11px;color:var(--muted);padding:4px 10px 2px;border-top:1px solid var(--line);margin-top:4px}
   details.card summary{padding:12px 16px;cursor:pointer;font-weight:700;list-style:none;display:flex;align-items:center;gap:8px}
   details.card summary::after{content:'▸';margin-left:auto;color:var(--muted)}
   details.card[open] summary::after{content:'▾'}

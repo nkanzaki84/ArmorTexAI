@@ -2,6 +2,56 @@
   // ---------- shared client helpers (included on every page) ----------
   var O = window.OUTREACH;
 
+  // ===== /dev ↔ /exec link switcher (owner tool, from SFM) =====
+  // /exec is Tanner's pinned deployment; /dev runs the last clasp push. The
+  // server can't tell which door the page came through, so the client keeps a
+  // sticky "use /dev links" flag: set automatically when the browser came from
+  // a /dev address, or by hand with "Links: /dev" in the owner tools. Every
+  // link and go() then stays on the same door.
+  window.APP_EXEC_URL = O.appUrl;
+  window.APP_DEV_URL = O.appDevUrl || O.appUrl;
+  (function () {
+    var KEY = 'atx_dev_links';
+    var ref = '';
+    try { ref = String(document.referrer || ''); } catch (e) { ref = ''; }
+    try {
+      if (O.isDev || /\/dev(\?|#|$)/.test(ref)) localStorage.setItem(KEY, '1');
+      else if (/\/exec(\?|#|$)/.test(ref)) localStorage.removeItem(KEY);
+    } catch (e) {}
+    window.useDevLinks = function () { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } };
+    window.setDevLinks = function (on) {
+      try { if (on) localStorage.setItem(KEY, '1'); else localStorage.removeItem(KEY); } catch (e) {}
+      window.APP_URL = on ? window.APP_DEV_URL : window.APP_EXEC_URL;
+    };
+    window.APP_URL = useDevLinks() ? window.APP_DEV_URL : window.APP_EXEC_URL;
+  })();
+  // Server-rendered links are written with the /exec base; swap them once the DOM is ready.
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.APP_URL === window.APP_EXEC_URL) return;
+    Array.prototype.forEach.call(document.querySelectorAll('a[href]'), function (a) {
+      var h = a.getAttribute('href') || '';
+      if (h.indexOf(window.APP_EXEC_URL) === 0) a.setAttribute('href', window.APP_URL + h.substring(window.APP_EXEC_URL.length));
+    });
+  });
+
+  // ===== Dev Mode (owner tool): a sticky flag pages can read to show preview UIs =====
+  window.isDevMode = function () { try { return localStorage.getItem('atx_dev_mode') === '1'; } catch (e) { return false; } };
+  window.setDevMode = function (on) {
+    try { if (on) localStorage.setItem('atx_dev_mode', '1'); else localStorage.removeItem('atx_dev_mode'); } catch (e) { alert('Could not save Dev Mode: ' + (e.message || e)); return; }
+    reloadApp();
+  };
+  window.reloadApp = function () {
+    try { window.top.location.reload(); } catch (e1) { try { window.location.reload(); } catch (e2) { alert('Please reload the page.'); } }
+  };
+  document.addEventListener('DOMContentLoaded', function () {
+    if (!isDevMode()) return;
+    var banner = document.createElement('div');
+    banner.id = 'devModeBanner';
+    banner.innerHTML = '🔧 <strong>DEV MODE</strong> — preview UIs may be shown. Turn off in the owner tools.';
+    banner.style.cssText = 'position:sticky; top:0; z-index:200; background:#fef3c7; color:#78350f; padding:6px 14px; font-size:12px; border-bottom:1px solid #f0d97a;';
+    document.body.insertBefore(banner, document.body.firstChild);
+  });
+
   /** Call a server function, get a Promise. api('listPartners', {q:'kw'}) */
   function api(name) {
     var args = Array.prototype.slice.call(arguments, 1);
@@ -14,7 +64,7 @@
   }
 
   function go(page, params) {
-    var url = O.appUrl + '?page=' + encodeURIComponent(page) + '&side=' + encodeURIComponent(O.side);
+    var url = window.APP_URL + '?page=' + encodeURIComponent(page) + '&side=' + encodeURIComponent(O.side);
     Object.keys(params || {}).forEach(function (k) { url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); });
     window.top.location.href = url;
   }

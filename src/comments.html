@@ -1,0 +1,287 @@
+<!-- comments.html — pinned comments on any page (developer tool, ported from SFM). Included once from index.html
+     for COMMENT_ROLES. Server: comments_server.gs. 💬 Comment (owner tools) arms the page: the next click drops a pin
+     on that element and opens a box. Pins show on every load; click one for the thread, reply, resolve.
+     Anchor = CSS path (nearest id, then tag:nth-of-type) + the element's text. Screenshot is best-effort via
+     html2canvas (CDN); if it can't load, the comment posts without one. -->
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js" onerror="window.__h2cFailed=true"></script>
+<style>
+  body.cm-arming, body.cm-arming * { cursor: crosshair !important; }
+  .cm-banner { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1200; background: #1b2130; color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,.3); display: none; align-items: center; gap: 12px; }
+  .cm-banner.show { display: flex; }
+  .cm-banner button { background: transparent; border: 1px solid #6b7280; color: #e5e7eb; font-size: 12px; padding: 2px 10px; border-radius: 999px; cursor: pointer; }
+  .cm-hover { outline: 2px solid #f28c28 !important; outline-offset: 2px; }
+  .cm-pin { position: fixed; z-index: 1100; width: 22px; height: 22px; border-radius: 50% 50% 50% 4px; background: #f28c28; color: #1c1917; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,.35); cursor: pointer; border: 2px solid #fff; transform: translate(-50%, -100%); user-select: none; }
+  .cm-pin.mine { background: #14213d; color: #fff; }
+  .cm-pin:hover { transform: translate(-50%, -100%) scale(1.15); }
+  .cm-pop, .cm-thread { position: fixed; z-index: 1300; width: 360px; max-width: calc(100vw - 24px); background: #fff; border: 1px solid #e3e6ee; border-left: 4px solid #f28c28; border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,.22); padding: 12px 14px; font-size: 13px; display: none; }
+  .cm-pop.show, .cm-thread.show { display: block; }
+  .cm-thread { border-left-color: #14213d; width: 400px; max-height: 80vh; overflow: auto; }
+  .cm-where { font-size: 11px; color: #6b7385; }
+  .cm-quote { font-size: 12px; color: #374151; background: #f7f8fb; border-left: 3px solid #d1d5db; padding: 4px 8px; margin: 6px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cm-pop textarea, .cm-thread textarea { width: 100%; min-height: 70px; font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; box-sizing: border-box; }
+  .cm-to { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+  .cm-to .chip { font-size: 11px; padding: 2px 9px; }
+  .cm-to .chip.on { background: #14213d; border-color: #14213d; color: #fff; }
+  .cm-to input { font-size: 12px; padding: 2px 8px; border: 1px solid #d1d5db; border-radius: 999px; width: 170px; }
+  .cm-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; align-items: center; }
+  .cm-actions .hint { flex: 1; font-size: 11px; color: #6b7385; }
+  .cm-c { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+  .cm-c .who { font-size: 11px; color: #6b7385; }
+  .cm-c .who b { color: #111827; }
+  .cm-c .txt { margin-top: 2px; white-space: pre-wrap; line-height: 1.45; }
+  .cm-resolved { background: #e8f6ee; color: #17743d; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+  .cm-x { position: absolute; top: 6px; right: 8px; background: transparent; border: 0; font-size: 16px; cursor: pointer; color: #6b7385; }
+  .cm-shot { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 12px; color: #374151; }
+  .cm-shot img { width: 120px; height: 72px; object-fit: cover; object-position: top left; border: 1px solid #d1d5db; border-radius: 6px; background: #f3f4f6; }
+  .cm-shot .btns { display: flex; flex-direction: column; gap: 4px; }
+  .cm-shot .wait { color: #6b7385; font-style: italic; }
+  .cm-c img.cm-thumb { display: block; margin-top: 6px; max-width: 100%; max-height: 160px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; }
+</style>
+
+<div class="cm-banner" id="cmBanner"><span>💬 Click anything on the page to comment on it</span><button type="button" onclick="cancelCommentMode()">Esc · cancel</button></div>
+<div id="cmPins"></div>
+
+<div class="cm-pop" id="cmPop">
+  <button type="button" class="cm-x" onclick="cmClosePop()">✕</button>
+  <div class="cm-where" id="cmPopWhere"></div>
+  <div class="cm-quote" id="cmPopQuote"></div>
+  <textarea id="cmPopText" placeholder="What about this? Plain words; the pin shows where."></textarea>
+  <div class="cm-shot" id="cmPopShot"></div>
+  <div class="cm-where" style="margin-top:6px;">Send to (optional)</div>
+  <div class="cm-to" id="cmPopTo"></div>
+  <div class="cm-actions"><span class="hint">Everyone with comment access sees the pin.</span><button type="button" class="btn sm ghost" onclick="cmClosePop()">Cancel</button><button type="button" class="btn sm navy" id="cmPopPost">Post</button></div>
+</div>
+
+<div class="cm-thread" id="cmThread">
+  <button type="button" class="cm-x" onclick="cmCloseThread()">✕</button>
+  <div class="cm-where" id="cmThreadWhere"></div>
+  <div class="cm-quote" id="cmThreadQuote"></div>
+  <div id="cmThreadList"></div>
+  <textarea id="cmThreadReply" placeholder="Reply…" style="margin-top:8px;"></textarea>
+  <div class="cm-shot" id="cmThreadShot"></div>
+  <div class="cm-actions"><span class="hint" id="cmThreadHint"></span><button type="button" class="btn sm ghost" id="cmThreadResolve">✓ Resolve</button><button type="button" class="btn sm navy" id="cmThreadSend">Reply</button></div>
+</div>
+
+<script>
+  (function () {
+    var PAGE = String(O.page || ''), SIDE = String(O.side || ''), RID = String(O.recordId || '');
+    var ME = String((O.session && O.session.email) || '').toLowerCase();
+    var threads = [], arming = false, hoverEl = null, pending = null, team = null, picked = [], openThread = null;
+    var shots = {};
+
+    function appLink() { var base = window.APP_EXEC_URL || window.APP_URL || ''; return base ? base + '?page=' + encodeURIComponent(PAGE) + '&side=' + encodeURIComponent(SIDE) + (RID ? '&id=' + encodeURIComponent(RID) : '') : ''; }
+    function when(iso) { if (!iso) return ''; var d = new Date(iso); if (isNaN(d)) return ''; var diff = (Date.now() - d) / 60000; if (diff < 1) return 'just now'; if (diff < 60) return Math.round(diff) + ' min ago'; return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+
+    // ----- anchors
+    function selectorFor(el) {
+      var parts = [];
+      while (el && el !== document.body && el.nodeType === 1) {
+        if (el.id && !/^\d/.test(el.id)) { parts.unshift('#' + el.id); break; }
+        var tag = el.tagName.toLowerCase(), i = 1, sib = el;
+        while ((sib = sib.previousElementSibling)) { if (sib.tagName === el.tagName) i++; }
+        parts.unshift(tag + ':nth-of-type(' + i + ')');
+        el = el.parentElement;
+      }
+      return parts.join(' > ');
+    }
+    function pickTarget(el) {
+      while (el && el !== document.body) {
+        if (el.closest && (el.closest('#cmPins') || el.closest('#cmPop') || el.closest('#cmThread') || el.closest('#cmBanner') || el.closest('#ownerTools'))) return null;
+        var r = el.getBoundingClientRect && el.getBoundingClientRect();
+        if (r && r.width > 8 && r.height > 8) return el;
+        el = el.parentElement;
+      }
+      return null;
+    }
+    function quoteFor(el) {
+      var t = '';
+      if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
+        var lab = el.closest('label') || (el.id ? document.querySelector('label[for="' + el.id + '"]') : null) || (el.closest('.f') && el.closest('.f').querySelector('label'));
+        t = (lab ? lab.textContent : '') || el.placeholder || el.name || el.id || el.tagName.toLowerCase();
+        if (el.value && String(el.value).length < 60) t += ' = ' + el.value;
+      } else t = el.textContent || el.getAttribute('title') || el.getAttribute('aria-label') || el.tagName.toLowerCase();
+      return String(t).replace(/\s+/g, ' ').trim().slice(0, 160);
+    }
+    function labelFor(el) {
+      var card = el.closest('.card, section');
+      var h = card && card.querySelector('h1, h2, h3');
+      return h ? h.textContent.replace(/\s+/g, ' ').trim().slice(0, 80) : '';
+    }
+
+    // ----- comment mode
+    window.openCommentMode = function () {
+      if (arming) { cancelCommentMode(); return; }
+      arming = true; document.body.classList.add('cm-arming'); $('cmBanner').classList.add('show'); cmClosePop(); cmCloseThread();
+      if (window.closeOwnerTools) closeOwnerTools();
+    };
+    window.cancelCommentMode = function () {
+      arming = false; document.body.classList.remove('cm-arming'); $('cmBanner').classList.remove('show');
+      if (hoverEl) { hoverEl.classList.remove('cm-hover'); hoverEl = null; }
+    };
+    document.addEventListener('mousemove', function (ev) {
+      if (!arming) return;
+      var el = pickTarget(ev.target);
+      if (el === hoverEl) return;
+      if (hoverEl) hoverEl.classList.remove('cm-hover');
+      hoverEl = el; if (hoverEl) hoverEl.classList.add('cm-hover');
+    }, true);
+    document.addEventListener('click', function (ev) {
+      if (!arming) return;
+      var el = pickTarget(ev.target);
+      if (!el) return;
+      ev.preventDefault(); ev.stopPropagation();
+      cancelCommentMode();
+      pending = { selector: selectorFor(el), quote: quoteFor(el), label: labelFor(el), x: ev.clientX, y: ev.clientY };
+      openPop();
+    }, true);
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { if (arming) cancelCommentMode(); else { cmClosePop(); cmCloseThread(); } } });
+
+    function openPop() {
+      var p = $('cmPop');
+      $('cmPopWhere').textContent = PAGE + (RID ? ' · ' + RID : '') + (pending.label ? ' › ' + pending.label : '');
+      $('cmPopQuote').textContent = pending.quote ? '“' + pending.quote + '”' : '(no text here)';
+      $('cmPopText').value = ''; picked = [];
+      delete shots.cmPopShot; renderShot('cmPopShot');
+      renderTo();
+      place(p, pending.x, pending.y);
+      $('cmPopText').focus();
+      if (!team) api('listTeamContacts').then(function (r) { team = r || []; renderTo(); }).catch(function () { team = []; renderTo(); });
+    }
+    function place(box, x, y) {
+      box.classList.add('show');
+      var w = box.offsetWidth || 400, h = box.offsetHeight || 260, pad = 8;
+      var left = x + 12; if (left + w > window.innerWidth - pad) left = x - w - 12; if (left < pad) left = Math.max(pad, window.innerWidth - w - pad);
+      var top = y + 12; if (top + h > window.innerHeight - pad) top = y - h - 12; if (top < pad) top = Math.max(pad, window.innerHeight - h - pad);
+      box.style.left = left + 'px'; box.style.top = top + 'px';
+    }
+    function renderTo() {
+      var host = $('cmPopTo'), h = '';
+      (team || []).forEach(function (c) { var e = String(c.email || '').toLowerCase(); if (!e || e === ME) return; h += '<span class="chip' + (picked.indexOf(e) !== -1 ? ' on' : '') + '" data-e="' + esc(e) + '" title="' + esc(e) + '">' + esc(c.name || e) + '</span>'; });
+      h += '<input type="email" id="cmPopOther" placeholder="or type an email…">';
+      host.innerHTML = h;
+      Array.prototype.forEach.call(host.querySelectorAll('.chip'), function (ch) { ch.addEventListener('click', function () { var e = ch.getAttribute('data-e'), i = picked.indexOf(e); if (i === -1) picked.push(e); else picked.splice(i, 1); ch.classList.toggle('on'); }); });
+    }
+    window.cmClosePop = function () { $('cmPop').classList.remove('show'); pending = null; delete shots.cmPopShot; };
+
+    // ----- screenshots (best-effort, html2canvas from CDN)
+    function renderShot(slot) {
+      var host = $(slot); if (!host) return;
+      var d = shots[slot];
+      if (d === null) { host.innerHTML = '<span class="wait">📸 Taking the picture…</span>'; return; }
+      if (!window.html2canvas) { host.innerHTML = '<span class="hint">Screenshots unavailable here.</span>'; return; }
+      if (!d) host.innerHTML = '<button type="button" class="btn sm" data-act="take">📸 Attach a screenshot</button><span class="hint">the commented spot gets an orange outline</span>';
+      else host.innerHTML = '<img src="' + d + '" alt="screenshot"><div class="btns"><button type="button" class="btn sm" data-act="take">↻ Retake</button><button type="button" class="btn sm ghost" data-act="drop">✕ Remove</button></div>';
+      Array.prototype.forEach.call(host.querySelectorAll('[data-act]'), function (b) { b.addEventListener('click', function () { if (b.dataset.act === 'take') shotTake(slot); else { delete shots[slot]; renderShot(slot); } }); });
+    }
+    function shotTake(slot) {
+      if (!window.html2canvas) return Promise.resolve();
+      shots[slot] = null; renderShot(slot);
+      var hide = [$('cmPop'), $('cmThread'), $('cmBanner'), $('cmPins'), $('ownerTools')].filter(Boolean);
+      var prev = hide.map(function (el) { return el.style.visibility; });
+      hide.forEach(function (el) { el.style.visibility = 'hidden'; });
+      return html2canvas(document.body, { useCORS: true, logging: false, scale: Math.min(2, window.devicePixelRatio || 1) }).then(function (cv) {
+        var sel = slot === 'cmPopShot' ? (pending && pending.selector) : (openThread && openThread.selector);
+        var el = null; try { el = sel ? document.querySelector(sel) : null; } catch (e) { el = null; }
+        if (el) {
+          var r = el.getBoundingClientRect(), k = cv.width / Math.max(1, document.documentElement.scrollWidth), c = cv.getContext('2d');
+          c.save(); c.strokeStyle = '#f28c28'; c.lineWidth = Math.max(3, 4 * k); c.strokeRect((r.left + window.scrollX) * k - 4 * k, (r.top + window.scrollY) * k - 4 * k, r.width * k + 8 * k, r.height * k + 8 * k); c.restore();
+        }
+        shots[slot] = cv.toDataURL('image/png');
+      }).catch(function (e) { delete shots[slot]; toast('Could not take the picture: ' + (e && e.message || e), 'bad'); })
+        .then(function () { hide.forEach(function (el, i) { el.style.visibility = prev[i]; }); renderShot(slot); });
+    }
+    function shotPayload(slot) { var d = shots[slot]; if (!d) return {}; var m = /^data:(image\/[a-z]+);base64,(.+)$/i.exec(d); return m ? { screenshotMime: m[1], screenshotBase64: m[2] } : {}; }
+
+    $('cmPopPost').addEventListener('click', function () {
+      var text = $('cmPopText').value.trim(); if (!text || !pending) { $('cmPopText').focus(); return; }
+      var other = ($('cmPopOther') && $('cmPopOther').value.trim()) || '';
+      var to = picked.concat(other ? [other] : []).join(', ');
+      var btn = $('cmPopPost'); btn.disabled = true; btn.textContent = 'Posting…';
+      var anchor = pending;
+      var pre = (!shots.cmPopShot && window.html2canvas) ? shotTake('cmPopShot') : Promise.resolve();
+      pre.then(function () {
+        return api('addPageComment', Object.assign({ page: PAGE, side: SIDE, recordId: RID, selector: anchor.selector, quote: anchor.quote, label: anchor.label, text: text, to: to, url: appLink() }, shotPayload('cmPopShot')));
+      }).then(function (r) {
+        cmClosePop();
+        toast((r && r.emailed ? 'Comment pinned and sent to ' + r.notified.join(', ') : 'Comment pinned.') + (r && r.screenshotId ? ' Screenshot attached.' : ''));
+        return load();
+      }).catch(fail).then(function () { btn.disabled = false; btn.textContent = 'Post'; });
+    });
+
+    // ----- pins
+    function load() {
+      return api('listPageComments', { page: PAGE, recordId: RID }).then(function (t) { threads = t || []; renderPins(); renderBadge();
+        var m = /[#&]comment=([^&]+)/.exec(location.hash || '');
+        if (m) { var th = threads.filter(function (x) { return String(x.threadId) === decodeURIComponent(m[1]); })[0]; if (th) openThreadPanel(th, document.querySelector('.cm-pin[data-t="' + th.threadId + '"]')); }
+      }).catch(function () { threads = []; });
+    }
+    function renderPins() {
+      var host = $('cmPins'); host.innerHTML = '';
+      threads.forEach(function (t) {
+        var pin = document.createElement('div'); pin.className = 'cm-pin' + (t.mine ? ' mine' : ''); pin.setAttribute('data-t', t.threadId);
+        pin.textContent = t.comments.length; pin.title = (t.authorName || t.author) + ': ' + t.comments[0].text.slice(0, 120);
+        pin.addEventListener('click', function (ev) { ev.stopPropagation(); openThreadPanel(t, pin); });
+        host.appendChild(pin);
+      });
+      position();
+    }
+    function visible(el) { if (!el) return false; var r = el.getBoundingClientRect(); return (el.offsetParent !== null || el.tagName === 'BODY') && r.width > 0 && r.height > 0; }
+    function position() {
+      Array.prototype.forEach.call(document.querySelectorAll('.cm-pin'), function (pin) {
+        var t = threads.filter(function (x) { return String(x.threadId) === pin.getAttribute('data-t'); })[0];
+        var el = null; try { el = t && t.selector ? document.querySelector(t.selector) : null; } catch (e) { el = null; }
+        if (!el || !visible(el)) { pin.style.display = 'none'; return; }
+        var r = el.getBoundingClientRect();
+        pin.style.display = '';
+        pin.style.left = Math.max(14, Math.min(r.right - 4, window.innerWidth - 24)) + 'px';
+        pin.style.top = Math.max(26, r.top + 4) + 'px';
+        var inView = r.bottom > 0 && r.top < window.innerHeight;
+        pin.style.opacity = inView ? '1' : '0'; pin.style.pointerEvents = inView ? '' : 'none';
+      });
+    }
+    function renderBadge() { var b = $('commentCount'); if (b) { b.textContent = threads.length ? String(threads.length) : ''; b.style.display = threads.length ? '' : 'none'; } }
+    window.addEventListener('scroll', position, true); window.addEventListener('resize', position);
+    setInterval(position, 700);
+
+    // ----- thread panel
+    function openThreadPanel(t, pin) {
+      openThread = t; var box = $('cmThread');
+      $('cmThreadWhere').textContent = (t.page || '') + (t.recordId ? ' · ' + t.recordId : '') + (t.label ? ' › ' + t.label : '');
+      $('cmThreadQuote').textContent = t.quote ? '“' + t.quote + '”' : '';
+      renderThread();
+      var r = pin ? pin.getBoundingClientRect() : { left: window.innerWidth / 2, top: 80 };
+      place(box, r.left, r.top);
+    }
+    function renderThread() {
+      var t = openThread; if (!t) return;
+      var h = '';
+      t.comments.forEach(function (c) { h += '<div class="cm-c"><div class="who"><b>' + esc(c.authorName || c.author) + '</b> · ' + esc(when(c.createdAt)) + '</div><div class="txt">' + esc(c.text) + '</div>' + (c.screenshotId ? '<img class="cm-thumb" data-cid="' + esc(c.commentId) + '" alt="loading screenshot…">' : '') + '</div>'; });
+      if (t.status === 'Resolved') h += '<div style="margin-top:8px;"><span class="cm-resolved">Resolved by ' + esc(t.resolvedBy || '') + ' · ' + esc(when(t.resolvedAt)) + '</span></div>';
+      $('cmThreadList').innerHTML = h;
+      $('cmThreadHint').textContent = t.toList && t.toList.length ? 'Sent to ' + t.toList.join(', ') : '';
+      $('cmThreadResolve').textContent = t.status === 'Resolved' ? '↺ Reopen' : '✓ Resolve';
+      $('cmThreadReply').value = '';
+      delete shots.cmThreadShot; renderShot('cmThreadShot');
+      Array.prototype.forEach.call($('cmThreadList').querySelectorAll('img.cm-thumb'), function (im) {
+        api('getCommentScreenshot', im.dataset.cid).then(function (r) { im.src = 'data:' + r.mime + ';base64,' + r.base64; }).catch(function () { im.alt = 'screenshot unavailable'; });
+      });
+    }
+    window.cmCloseThread = function () { $('cmThread').classList.remove('show'); openThread = null; delete shots.cmThreadShot; };
+    $('cmThreadSend').addEventListener('click', function () {
+      var text = $('cmThreadReply').value.trim(); if (!text || !openThread) return;
+      var btn = $('cmThreadSend'); btn.disabled = true;
+      api('addPageComment', Object.assign({ threadId: openThread.threadId, text: text, url: appLink() }, shotPayload('cmThreadShot')))
+        .then(function (r) { if (r && r.thread) { openThread = r.thread; renderThread(); } toast(r && r.emailed ? 'Reply sent to ' + r.notified.join(', ') : 'Reply posted.'); return load(); })
+        .catch(fail).then(function () { btn.disabled = false; });
+    });
+    $('cmThreadResolve').addEventListener('click', function () {
+      if (!openThread) return;
+      var reopen = openThread.status === 'Resolved';
+      api('resolveCommentThread', openThread.threadId, reopen).then(function () { toast(reopen ? 'Reopened.' : 'Resolved. The pin is gone.'); cmCloseThread(); return load(); }).catch(fail);
+    });
+
+    function start() { setTimeout(load, 1200); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+    window.reloadPageComments = load;
+  })();
+</script>

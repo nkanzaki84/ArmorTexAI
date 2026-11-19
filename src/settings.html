@@ -85,6 +85,16 @@
 </div>
 
 <div class="card">
+  <div class="hd"><h2>Developer</h2><span class="sub">owner tools</span></div>
+  <form class="bd" id="devForm">
+    <div class="f"><label>/dev URL of this web app</label><input name="dev_url" placeholder="https://script.google.com/a/macros/armortexroofs.com/s/…/dev"><span class="sub">Apps Script editor → Deploy → Test deployments → copy the URL. Lets the 🛠 "Links: /dev" switch move the whole app onto the test bench.</span></div>
+    <div class="row"><button class="btn" type="submit">Save</button></div>
+  </form>
+  <div class="hd" style="border-top:1px solid var(--line)"><h2>Open comments</h2><span class="sub">pins across every page</span><div class="spacer"></div><select id="cmStatus" class="chip"><option>Open</option><option>Resolved</option><option>All</option></select></div>
+  <ul class="list" id="cmInbox"><li class="empty">Loading…</li></ul>
+</div>
+
+<div class="card">
   <div class="hd"><h2>Data</h2></div>
   <div class="bd row">
     <a class="btn" id="sheetLink" href="#" target="_blank">📗 Open the Sheet</a>
@@ -165,6 +175,22 @@
       $('trigNote').textContent = t.lastCheck ? 'Last check ' + fmtDateTime(t.lastCheck) : 'Never checked yet';
     }
     api('getTriggerStatus').then(showTrig).catch(fail);
+
+    on($('devForm'), 'submit', function (e) {
+      e.preventDefault();
+      api('saveSettings', { dev_url: e.target.dev_url.value.trim() }).then(function () { toast('Saved. Reload to use it.'); }).catch(fail);
+    });
+    api('getSettings').then(function (s) { if ($('devForm')) $('devForm').dev_url.value = s.dev_url || ''; }).catch(function () {});
+    function loadInbox() {
+      api('listCommentThreads', { status: $('cmStatus').value }).then(function (ts) {
+        $('cmInbox').innerHTML = ts.length ? ts.map(function (t) {
+          var href = window.APP_URL + '?page=' + encodeURIComponent(t.page) + '&side=' + encodeURIComponent(t.side || 'partners') + (t.recordId ? '&id=' + encodeURIComponent(t.recordId) : '') + '#comment=' + encodeURIComponent(t.threadId);
+          return '<li><div style="flex:1;min-width:0"><div class="name">' + esc(t.comments[0].text.slice(0, 120)) + '</div><div class="sub">' + esc(t.page) + (t.recordId ? ' · ' + esc(t.recordId) : '') + (t.label ? ' › ' + esc(t.label) : '') + ' · ' + esc(t.authorName || t.author) + ' · ' + t.comments.length + (t.comments.length === 1 ? ' comment' : ' comments') + (t.hasScreenshot ? ' · 📸' : '') + '</div></div>' + (t.status === 'Resolved' ? '<span class="pill ok">resolved</span>' : '') + '<a class="btn sm" href="' + href + '">Open</a></li>';
+        }).join('') : '<li class="empty">No ' + $('cmStatus').value.toLowerCase() + ' comments.</li>';
+      }).catch(function (e) { $('cmInbox').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; });
+    }
+    on($('cmStatus'), 'change', loadInbox);
+    loadInbox();
     on($('installTrig'), 'click', function () { busy($('installTrig'), true, 'Installing…'); api('installTriggers').then(function (t) { showTrig(t); toast('Trigger installed'); }).catch(fail).finally(function () { busy($('installTrig'), false, 'Install / repair trigger'); }); });
     on($('runCheck'), 'click', function () {
       busy($('runCheck'), true, 'Checking…');

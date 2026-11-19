@@ -41,6 +41,9 @@ function doGet(e) {
   tpl.recordId = String(params.id || '');
   tpl.side = (String(params.side || '') === 'homes') ? 'homes' : 'partners';
   tpl.appUrl = ScriptApp.getService().getUrl();
+  tpl.appDevUrl = _appDevUrl_(tpl.appUrl);
+  tpl.isDev = /\/dev(\?.*)?$/.test(String(tpl.appUrl || ''));   // the test bench wears amber so nobody mistakes it for Tanner's copy
+  tpl.canComment = !session.denied && COMMENT_ROLES.indexOf(session.role) !== -1;
   tpl.appVersion = APP_VERSION;
   tpl.appBuildDate = APP_BUILD_DATE;
   tpl.session = session;
@@ -48,6 +51,19 @@ function doGet(e) {
   return tpl.evaluate()
     .setTitle('ArmorTex Outreach')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+}
+
+/**
+ * The /dev address of this web app, for the "Links: /dev" switch: an explicit
+ * dev_url setting, else APP_DEV_URL_DEFAULT, else /exec rewritten to /dev
+ * (that last one serves the pinned version, not HEAD, so set one of the first two).
+ */
+function _appDevUrl_(execUrl) {
+  let explicit = '';
+  try { explicit = String(_setting_(SETTING.DEV_URL) || '').trim(); } catch (err) { explicit = ''; }
+  if (explicit) return explicit;
+  if (APP_DEV_URL_DEFAULT) return APP_DEV_URL_DEFAULT;
+  return String(execUrl || '').replace(/\/exec(\?.*)?$/, '/dev');
 }
 
 /** Include an HTML partial, optionally with template variables. */
