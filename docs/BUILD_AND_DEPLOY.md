@@ -1,164 +1,164 @@
-# Build & Deploy — ArmorTex Platform (Firebase)
+# Build & Deploy — ArmorTex Outreach (Apps Script + clasp)
 
-The app runs on **Firebase** (Google Cloud): Hosting serves `public/`,
-Authentication handles sign-in, Firestore is the database, Cloud Storage holds
-photos and PDFs. Nothing is compiled; `firebase deploy` uploads what's in the
-repo.
+The app is a Google Apps Script web app backed by one Google Sheet. `src/` is
+pushed as-is with clasp. There are two URLs:
+
+- **/dev** runs whatever was last pushed. Daily driver. Only the deploying
+  account can open it.
+- **/exec** is pinned to a numbered version. Tanner's URL. Promote to it only
+  when a batch is ready, because every promotion uses one of the script's 200
+  lifetime versions.
 
 ```
-GitHub (this repo) --git pull--> your laptop --firebase deploy--> https://<project>.web.app
+GitHub ──git pull──▶ laptop ──clasp push -f──▶ /dev (test) ──./deploy.sh──▶ /exec (Tanner)
 ```
 
-> Moving from Apps Script? The old `src/` + clasp setup is gone as of phase 0.
-> `clasp` is no longer used.
-
----
-
-## 1. One-time: your laptop
-
-1. **Node 20 or newer** (`node -v`).
-2. **Firebase CLI**:
-
-   ```bash
-   npm install -g firebase-tools
-   ```
-
-3. **Log in** (opens a browser):
-
-   ```bash
-   firebase login
-   ```
-
-4. **Clone and check out the branch**:
-
-   ```bash
-   git clone https://github.com/nkanzaki84/ArmorTexAI.git
-   ```
-
-   ```bash
-   cd ArmorTexAI && git checkout claude/brave-ride-ut2ts5 && npm install
-   ```
-
-## 2. One-time: create the Firebase project (in the browser, ~10 minutes)
-
-1. Go to <https://console.firebase.google.com> → **Create a project** → name it
-   `ArmorTex` (Firebase will suggest an id like `armortex-app` or
-   `armortex-xxxxx`; note the id). Google Analytics: off is fine.
-2. **Upgrade to the Blaze plan** (⚙ → *Usage and billing* → *Modify plan*).
-   Pay-as-you-go with the same free tier; needed for Cloud Storage and, later,
-   Cloud Functions. At our size this stays at $0–10/month. Set a budget alert
-   ($25) while you're there.
-3. **Authentication** → *Get started* → *Sign-in method* → **Google** → Enable
-   → pick a support email → Save.
-4. **Firestore Database** → *Create database* → location **`us-south1`
-   (Dallas)** → *Start in production mode* (our rules file takes over on first
-   deploy).
-5. **Storage** → *Get started* → same location → production mode.
-6. Point the repo at the project:
-
-   ```bash
-   firebase use --add
-   ```
-
-   Pick the project, alias `default`. (This rewrites `.firebaserc`; commit it.)
-
-## 3. First deploy
+## 1. One-time: laptop
 
 ```bash
-firebase deploy
+npm install -g @google/clasp
 ```
 
-Deploys hosting, Firestore rules + indexes, and Storage rules. The output ends
-with `Hosting URL: https://<project-id>.web.app`.
+```bash
+clasp login
+```
 
-**Bootstrap yourself as owner** (one time, the rules won't let anyone in until
-a `staff` doc exists):
+Log in as the account the app will run under (see section 2). Turn on the
+Apps Script API for that account at <https://script.google.com/home/usersettings>.
 
-1. Firebase console → *Firestore Database* → **Start collection**.
-2. Collection ID: `staff`
-3. Document ID: `nkanzaki84@gmail.com` (your Google sign-in email, lowercase)
-4. Fields: `name` (string) = your name, `role` (string) = `owner` → Save.
+```bash
+git clone https://github.com/nkanzaki84/ArmorTexAI.git && cd ArmorTexAI && git checkout claude/brave-ride-ut2ts5 && npm install
+```
 
-Open the Hosting URL, **Sign in with Google**, go to **Team**, add the PM and
-the admin. They sign in at the same URL.
+## 2. One-time: the Apps Script project
 
-## 4. Every update — the copy-paste loop
+**Which account?** The app sends email as the account that deploys it. The
+plan is Tanner's Workspace mailbox, so create the script while logged in as
+Tanner (or have Tanner run these two commands once). Brian can still push code
+and open the Sheet; the Sheet is shared to him in step 3.
+
+From the repo root:
+
+```bash
+clasp create-script --type webapp --title "ArmorTex Outreach" --rootDir src
+```
+
+```bash
+git checkout -- src/appsscript.json
+```
+
+The second command restores our manifest (time zone, scopes, domain access),
+which `create-script` overwrites with an empty one. You now have a
+git-ignored `.clasp.json`.
+
+## 3. First push and setup
+
+```bash
+clasp push -f
+```
+
+```bash
+clasp open-script
+```
+
+In the editor: pick `setup` in the function dropdown → Run → approve the
+permissions (Sheets, Drive, Gmail). `setup()` creates the Sheet "ArmorTex
+Outreach" with all tabs, seeds settings and versions A/B/C/E, and adds Brian
+as owner. Re-running it is safe; it only appends missing columns.
+
+Share the Sheet with Brian (Editor). Its URL shows on the Settings page too.
+
+Then deploy once so /exec exists:
+
+```bash
+./deploy.sh "v0.1.0 first deploy"
+```
+
+Open the /dev URL (editor → Deploy → Test deployments) to work, or the /exec
+URL from the deploy output for Tanner. Under **Settings → Team** add Tanner as
+`sales` and Caitlin as `viewonly`. Fill in the business address and opt-out
+line; sending is blocked until both exist.
+
+## 4. Every change
+
+Pull and push to /dev, reload the /dev tab:
 
 ```bash
 git pull
 ```
 
 ```bash
-firebase deploy
+clasp push -f
 ```
 
-Or both in one:
+Only when a batch is ready for Tanner:
 
 ```bash
-./deploy.sh "what changed"
+./deploy.sh "v0.1.1 - what changed"
 ```
 
-Deploy only part of it when you know what changed:
+Bump `APP_VERSION` / `APP_BUILD_DATE` in `src/Config.gs` when you promote; the
+footer shows it so screenshots tell you which build they are from.
+
+## 5. Tests
 
 ```bash
-firebase deploy --only hosting
+npm test
 ```
+
+Runs the Node test harness against a fake Apps Script runtime. No Google
+account involved. Add a test before changing version assignment, batch
+building, reply matching or do-not-contact.
+
+Preview the whole app locally, with sample data and no Google account:
 
 ```bash
-firebase deploy --only firestore:rules
+npm run preview
 ```
 
-## 5. Run it locally (optional, no cloud touched)
+Open <http://127.0.0.1:8787/?page=today>. Add `&as=tanner@armortexroofs.com`
+to see it as Tanner. Data resets when you stop the server.
 
-```bash
-npm run dev
-```
+## 6. Triggers (v1, when emails.gs lands)
 
-Starts the emulators: app at <http://127.0.0.1:5000>, emulator UI at
-<http://127.0.0.1:4000>. The Auth emulator lets you invent any sign-in. Add a
-`staff` doc in the emulator UI (Firestore tab) to get past the gate. Nothing
-persists between runs unless you export.
-
-Rules tests (emulator starts and stops itself):
-
-```bash
-npm run test:rules
-```
-
-## 6. Custom domain (when you want app.armortex.com)
-
-Firebase console → *Hosting* → *Add custom domain* → follow the DNS steps.
-Then Authentication → *Settings* → *Authorized domains* → add it. Sign-in
-keeps working on the `.web.app` URL too.
+The reply check runs every 15 minutes from a time-driven trigger installed by
+`installTriggers()` (run once from the editor as the deploying account).
+Sending itself has no trigger: a person presses Send.
 
 ## 7. Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| `Could not load Firebase config` on the page | Page wasn't served by Hosting (opened the file directly?). Use the Hosting URL or `npm run dev`. |
-| Sign-in popup closes, then "is not on the team yet" | Expected until your `staff/<email>` doc exists (section 3). Email must match exactly, lowercase. |
-| `Missing or insufficient permissions` | Rules deployed? `firebase deploy --only firestore:rules`. Signed in with the right Google account? |
-| `HTTP Error: 403 … billing` on deploy | Blaze plan not enabled (section 2.2). |
-| `No project active` | `firebase use --add`. |
-| Popup blocked on sign-in | Allow popups for the site, or try again (second click usually works). |
-| Changes don't show after deploy | Hard refresh (Ctrl/Cmd+Shift+R); JS/CSS cache is 5 minutes. |
+| `User has not enabled the Apps Script API` | Section 1 link, wait a minute, retry. |
+| `Project file already exists` | `.clasp.json` is there already; skip to section 3. |
+| "Outreach Sheet not initialized" | Run `setup()` from the editor as the deploying account. |
+| Page says you're not on the Users list | Owner adds you under Settings → Team. Email must match your Google sign-in exactly. |
+| /exec shows old code | You pushed but didn't promote. `./deploy.sh`. |
+| Emails send from the wrong person | The script runs as whoever deployed it. Re-create the project under the right account (section 2). |
+| Wrong times | Time zone is in `src/appsscript.json` (`America/Chicago`). |
+| Out of versions (200) | Create a new Apps Script project, point `.clasp.json` at it, push, run `setup()` with the existing Sheet ID set in Script Properties (`OUTREACH_SHEET_ID`). |
 
 ## 8. Repo layout
 
 ```
 ArmorTexAI/
-├── public/                  # the web app (Hosting)
-│   ├── index.html           # auth gate + app shell + screens
-│   ├── app.js               # Firebase init, sign-in, roles, Team screen, mock interactions
-│   └── styles.css
-├── firestore.rules          # who can read/write what
-├── firestore.indexes.json
-├── storage.rules
-├── firebase.json            # hosting/firestore/storage/emulator config
-├── .firebaserc              # which Firebase project (set by `firebase use --add`)
-├── tests/                   # rules tests (run in the emulator)
-├── mockups/                 # frozen UI mockups
-├── docs/                    # this file, PLATFORM_PLAN.md, DATA_MODEL.md, IDEAS.md
-├── deploy.sh                # git pull + firebase deploy
-└── package.json             # dev scripts: dev, test:rules, deploy
+├── src/                  # pushed to Apps Script
+│   ├── appsscript.json   # manifest: tz, scopes, DOMAIN access, run as deployer
+│   ├── Config.gs         # tabs, headers, enums, settings, roles
+│   ├── Code.gs           # doGet routing, include(), setup()
+│   ├── sheet.gs          # read/write helpers
+│   ├── users.gs          # roles + permission checks
+│   ├── partners.gs       # import, version assignment, partner record
+│   ├── campaign.gs       # versions, daily batch, stats, settings
+│   └── *.html            # index shell + one include per page
+├── tests/                # node --test; fakes/apps-script.js is the runtime
+├── docs/
+│   ├── briefs/           # the three PDF specs
+│   ├── SYSTEM.md         # how the two apps fit, decisions
+│   ├── DATA_MODEL.md     # every tab and column
+│   ├── IDEAS.md          # ideas notebook
+│   └── BUILD_AND_DEPLOY.md
+├── CLAUDE.md             # working context for the next session
+├── deploy.sh             # push + promote to /exec
+└── .clasp.json.example
 ```

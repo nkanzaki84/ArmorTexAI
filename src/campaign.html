@@ -1,0 +1,75 @@
+<h1>Campaign</h1>
+
+<div class="card">
+  <div class="hd"><h2>Email versions</h2><span class="sub">realtors · only the angle changes</span><div class="spacer"></div><span class="sub" id="lockNote"></span></div>
+  <div id="versions"><div class="empty">Loading…</div></div>
+</div>
+
+<div class="card">
+  <div class="hd"><h2>Results by version</h2><span class="sub">counts beside every rate</span><div class="spacer"></div><button class="btn sm ghost" id="statsRefresh">↻</button></div>
+  <div class="scroll-x" id="stats"><div class="empty">Loading…</div></div>
+  <div class="ft"><span class="sub" id="statsNote"></span></div>
+</div>
+
+<div class="card">
+  <div class="hd"><h2>Funnel</h2><span class="sub">steps 5–8 come back from the job manager</span></div>
+  <div class="scroll-x" id="funnel"><div class="empty">Loading…</div></div>
+</div>
+
+<script>
+  (function () {
+    var versions = [];
+    function renderVersions() {
+      if (!versions.length) { $('versions').innerHTML = '<div class="empty">No versions. Run setup().</div>'; return; }
+      var anyLocked = versions.some(function (v) { return String(v.Locked).toLowerCase() === 'yes'; });
+      $('lockNote').textContent = anyLocked ? '🔒 locked: sending has started' : 'editable until the first send';
+      $('versions').innerHTML = versions.filter(function (v) { return v.Channel === 'email'; }).map(function (v) {
+        var locked = String(v.Locked).toLowerCase() === 'yes';
+        var ro = (!isAdmin || locked) ? ' readonly' : '';
+        return '<details class="card" style="margin:10px 12px;box-shadow:none">' +
+          '<summary>' + verBadge(v.Letter) + '<span>' + esc(v.Angle || 'untitled') + '</span><span class="sub">' + esc(v.Subject || 'no subject yet') + '</span>' + (locked ? '<span class="pill">locked</span>' : '') + '</summary>' +
+          '<form class="bd verForm" data-letter="' + esc(v.Letter) + '">' +
+          '<div class="grid2"><div class="f"><label>Angle</label><input name="angle" value="' + esc(v.Angle) + '"' + ro + '></div>' +
+          '<div class="f"><label>Subject</label><input name="subject" value="' + esc(v.Subject) + '"' + ro + '></div></div>' +
+          '<div class="f"><label>First email (plain text, no links, end with a question)</label><textarea name="body"' + ro + '>' + esc(v.Body) + '</textarea></div>' +
+          '<div class="f"><label>Follow-up (same thread, 4 business days later, only one)</label><textarea name="followUpBody" style="min-height:80px"' + ro + '>' + esc(v['Follow Up Body']) + '</textarea></div>' +
+          '<div class="problems"></div>' +
+          (isAdmin && !locked ? '<div class="row"><button class="btn primary" type="submit">Save version ' + esc(v.Letter) + '</button><span class="sub">Saving checks the footer rules.</span></div>' : '') +
+          '</form></details>';
+      }).join('');
+      $('versions').querySelectorAll('.verForm').forEach(function (f) {
+        f.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Saving…');
+          api('saveVersion', f.dataset.letter, { angle: f.angle.value, subject: f.subject.value, body: f.body.value, followUpBody: f.followUpBody.value })
+            .then(function (r) {
+              var box = f.querySelector('.problems');
+              box.innerHTML = r.problems.length ? r.problems.map(function (p) { return '<div class="problem">' + esc(p) + '</div>'; }).join('') : '<div class="ok-box">✓ Passes the footer and plain-text rules.</div>';
+              toast('Saved'); loadVersions();
+            }).catch(fail).finally(function () { busy(btn, false, 'Save version ' + f.dataset.letter); });
+        });
+      });
+    }
+    function loadVersions() { api('listVersions').then(function (v) { versions = v; renderVersions(); }).catch(fail); }
+
+    function renderStats(s) {
+      if (!s.rows.length) { $('stats').innerHTML = '<div class="empty">Nothing sent yet.</div>'; $('funnel').innerHTML = '<div class="empty">Nothing yet.</div>'; return; }
+      var cell = function (n, rate) { return '<td class="num">' + n + (rate !== undefined ? ' <span class="sub">' + pct(rate) + '</span>' : '') + '</td>'; };
+      $('stats').innerHTML = '<table><thead><tr><th>Version</th><th class="num">Assigned</th><th class="num">Sent</th><th class="num">Follow-ups</th><th class="num">Bounced</th><th class="num">Replied</th><th class="num">Addresses</th><th class="num">Opted out</th></tr></thead><tbody>' +
+        s.rows.map(function (r) {
+          return '<tr><td>' + verBadge(r.version) + '</td>' + cell(r.assigned) + cell(r.sent) + cell(r.followUps) + cell(r.bounced, r.sent ? r.bounced / r.sent : 0) + cell(r.replied, r.replyRate) + cell(r.addresses, r.addressRate) + cell(r.optedOut) + '</tr>';
+        }).join('') + '</tbody></table>';
+      $('statsNote').textContent = s.note;
+      var steps = [['Emailed', 'sent'], ['Replied', 'replied'], ['Talked on a call', 'talked'], ['Sent an address', 'addresses'], ['Report delivered', 'reportsSent'], ['Estimate started', 'estimates'], ['Job signed', 'signed'], ['Paid', 'paid']];
+      $('funnel').innerHTML = '<table><thead><tr><th>#</th><th>Step</th>' + s.rows.map(function (r) { return '<th class="num">' + esc(r.version) + '</th>'; }).join('') + '<th class="num">All</th></tr></thead><tbody>' +
+        steps.map(function (st, i) {
+          var total = 0;
+          var cells = s.rows.map(function (r) { total += r[st[1]]; return '<td class="num">' + r[st[1]] + (r.sent && i > 0 ? ' <span class="sub">' + pct(r[st[1]] / r.sent) + '</span>' : '') + '</td>'; }).join('');
+          return '<tr><td class="sub">' + (i + 1) + '</td><td>' + st[0] + (i >= 4 ? ' <span class="sub">(job manager)</span>' : '') + '</td>' + cells + '<td class="num"><b>' + total + '</b></td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    function loadStats() { api('getCampaignStats').then(renderStats).catch(fail); }
+    on($('statsRefresh'), 'click', loadStats);
+    loadVersions(); loadStats();
+  })();
+</script>

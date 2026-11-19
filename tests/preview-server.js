@@ -1,0 +1,122 @@
+#!/usr/bin/env node
+/**
+ * Local preview of the web app with NO Google account: renders the Apps
+ * Script templates and routes google.script.run calls into the fake runtime.
+ *
+ *   node tests/preview-server.js            # http://127.0.0.1:8787/?page=today
+ *   node tests/preview-server.js --empty    # no sample data
+ *   PORT=9000 node tests/preview-server.js
+ *
+ * Switch user with ?as=tanner@armortexroofs.com (sticks until changed).
+ * Data lives in memory and resets when the server restarts.
+ */
+const http = require('node:http');
+const { URL } = require('node:url');
+const { loadApp } = require('./fakes/apps-script');
+
+const PORT = Number(process.env.PORT || 8787);
+const OWNER = 'brian@armortexroofs.com';
+const ctx = { user: OWNER, appUrl: 'http://127.0.0.1:' + PORT + '/', quota: 1500 };
+const app = loadApp(ctx);
+app.setup();
+
+if (process.argv.indexOf('--empty') === -1) seed(app);
+
+function seed(app) {
+  const ADDRESS = '1200 Judson Rd, Longview, TX 75601';
+  const OPT = "Reply 'no thanks' and I won't email again.";
+  app.saveSettings({ business_address: ADDRESS, opt_out_line: OPT, call_script_url: 'https://docs.google.com/document/d/example' });
+  app.saveUser({ email: 'tanner@armortexroofs.com', name: 'Tanner Fought', role: 'sales' });
+  app.saveUser({ email: 'caitlin@armortexroofs.com', name: 'Caitlin', role: 'viewonly' });
+  const bodies = {
+    A: `Hi {{first}},\n\nI'm Tanner with ArmorTex Roofs in Gladewater. When a listing has an older roof, buyers and insurers push back and the deal slows down.\n\nWe do a free photo roof report on any listing within 48 hours, so you know what you're dealing with before the inspector does.\n\nWant me to send over a sample report?\n\nTanner Fought\nArmorTex Roofs\n${ADDRESS}\n${OPT}`,
+    B: `Hi {{first}},\n\nI'm Tanner with ArmorTex Roofs. Insurers around Gregg County are balking at roofs over 15 years, and it's stalling closings.\n\nWe do a free photo roof report on any listing within 48 hours so you can get ahead of it.\n\nWant me to send over a sample report?\n\nTanner Fought\nArmorTex Roofs\n${ADDRESS}\n${OPT}`,
+    C: `Hi {{first}},\n\nI'm Tanner with ArmorTex Roofs. Our roof report is a short photo write-up with a grade and a plain recommendation. Realtors use it to settle roof questions before they cost a deal.\n\nIt's free on any listing, within 48 hours. Want me to send over a sample report?\n\nTanner Fought\nArmorTex Roofs\n${ADDRESS}\n${OPT}`,
+  };
+  ['A', 'B', 'C'].forEach(l => app.saveVersion(l, { angle: { A: 'speed', B: 'insurance', C: 'proof' }[l], subject: 'Free roof report on your listings, 48 hours', body: bodies[l], followUpBody: 'Hi {{first}}, just checking in. Still happy to send a sample roof report if useful?' }));
+  const names = ['Loretta Nelson', 'Marcus Reed', 'Dana Whitfield', 'Gerald Ortiz', 'Pam Ortiz', 'Tom Baker', 'Alicia Grant', 'Ray Delgado', 'Kim Tran', 'Scott Pierce', 'Nora Blake', 'Hank Morrow', 'Judy Lane', 'Omar Haddad', 'Faye Collins', 'Luis Mora', 'Erin Walsh', 'Doug Perry', 'Tess Monroe', 'Vic Santos'];
+  const cos = ['Keller Williams', 'RE/MAX Pros', 'Coldwell Banker', 'eXp Realty', 'Century 21 Premier'];
+  const cities = ['Longview', 'White Oak', 'Gladewater', 'Kilgore', 'Hallsville'];
+  const lines = ['Name,Email,Brokerage,Phone,City'];
+  for (let i = 0; i < 180; i++) {
+    const n = names[i % names.length] + (i >= names.length ? ' ' + (Math.floor(i / names.length) + 1) : '');
+    lines.push(`${n},${n.toLowerCase().replace(/[^a-z]+/g, '.').replace(/\.$/, '')}${i}@example.com,${cos[i % cos.length]},903555${String(1000 + i).slice(-4)},${cities[i % cities.length]}`);
+  }
+  app.importPartners(lines.join('\n'), { sourceList: 'realtors-gregg-nov-2026' });
+  let s = 11; const rng = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  app.assignVersions({ versions: ['A', 'B', 'C'], rng });
+  // a little history so Campaign and records have something to show
+  const ps = app.$rows('Partners');
+  const day = 86400000; const now = Date.now();
+  const emails = []; const events = [];
+  ps.slice(0, 60).forEach((p, i) => {
+    const sentAt = new Date(now - day * (7 - (i % 5)));
+    emails.push({ ID: 'E-' + (i + 1), 'Partner ID': p.ID, Version: p.Version, Step: 'first', 'Scheduled For': sentAt, 'Sent At': sentAt, 'Gmail Thread ID': 'thr' + i, 'Gmail Message ID': 'msg' + i, Status: i % 17 === 3 ? 'bounced' : 'sent', Subject: 'Free roof report on your listings, 48 hours', 'Sent By': 'tanner@armortexroofs.com' });
+    if (i % 6 === 1) events.push({ ID: 'EV-' + events.length, 'Partner ID': p.ID, 'Email ID': 'E-' + (i + 1), Kind: 'reply', At: new Date(sentAt.getTime() + day), Snippet: i % 12 === 1 ? 'Sure, can you look at 214 Bayhills Dr, Hideaway? Listing goes live Friday.' : 'Send the sample over, thanks.', By: 'trigger' });
+    if (i % 9 === 2) events.push({ ID: 'EV-' + events.length, 'Partner ID': p.ID, Kind: 'call', Outcome: 'talked', At: new Date(sentAt.getTime() + day * 2), Snippet: 'Wants the sample. Has two listings in Fairway Oaks.', By: 'tanner@armortexroofs.com' });
+  });
+  app._appendRows_('Emails', emails);
+  app._appendRows_('Events', events);
+  app.savePartner(ps[1].ID, { response: 'Sent an address', nextStep: 'Drive by 214 Bayhills Dr Thu' });
+  app._appendRows_('Referrals', [{ ID: 'R-1', Date: new Date(now - day * 3), Direction: 'in', 'Partner ID': ps[1].ID, 'Customer Or Address': '214 Bayhills Dr, Hideaway TX 75771', 'Request Type': 'listing_report', 'Listing Value': 415000, 'Roof Age Years': 14, 'Due At': new Date(now - day), 'Report Recipient': ps[1].Email, 'Report Sent At': new Date(now - day * 1.5), 'Report Link': 'https://example.com/report.pdf' }]);
+  app.recountPartnerStages();
+}
+
+const SHIM = `<script>
+  // google.script.run shim: POSTs to /api and resolves like Apps Script does.
+  window.google = { script: { run: (function () {
+    function make(ok, bad) {
+      return new Proxy({}, { get: function (_, name) {
+        if (name === 'withSuccessHandler') return function (fn) { return make(fn, bad); };
+        if (name === 'withFailureHandler') return function (fn) { return make(ok, fn); };
+        if (name === 'withUserObject') return function () { return make(ok, bad); };
+        return function () {
+          var args = Array.prototype.slice.call(arguments);
+          fetch('/api', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: name, args: args }) })
+            .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'error'); return j.result; }); })
+            .then(function (res) { if (ok) ok(res); })
+            .catch(function (e) { if (bad) bad(e); else console.error(e); });
+        };
+      } });
+    }
+    return make(null, null);
+  })() } };
+</script>`;
+
+const server = http.createServer((req, res) => {
+  const url = new URL(req.url, 'http://x');
+  if (req.method === 'POST' && url.pathname === '/api') {
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', () => {
+      try {
+        const { name, args } = JSON.parse(body || '{}');
+        if (typeof app[name] !== 'function' || /^_|_$/.test(name)) throw new Error('Script function not found: ' + name);
+        const result = app[name].apply(null, args || []);
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ result: result === undefined ? null : result }));
+      } catch (e) {
+        res.writeHead(500, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ message: e.message }));
+      }
+    });
+    return;
+  }
+  if (url.pathname !== '/') { res.writeHead(404); res.end('not found'); return; }
+  if (url.searchParams.get('as')) ctx.user = url.searchParams.get('as');
+  const parameter = {};
+  url.searchParams.forEach((v, k) => { parameter[k] = v; });
+  try {
+    let html = app.doGet({ parameter }).getContent();
+    html = html.replace('</head>', SHIM + '</head>');
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(html);
+  } catch (e) {
+    res.writeHead(500, { 'content-type': 'text/plain' });
+    res.end('Render error: ' + e.stack);
+  }
+});
+
+server.listen(PORT, '127.0.0.1', () => {
+  console.log('ArmorTex Outreach preview: http://127.0.0.1:' + PORT + '/?page=today   (user: ' + ctx.user + '; add &as=email to switch)');
+});

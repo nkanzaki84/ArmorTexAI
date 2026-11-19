@@ -1,103 +1,79 @@
 # Ideas Notebook
 
 Scratch space for anything we might build, decide, or deliberately not do.
-Add freely. Move items between sections as they get decided.
+Format: `- [ ] idea — why (who, date)`. Move items between sections as they
+get decided. The briefs in `docs/briefs/` are the spec; this is the overflow.
 
-Format: `- [ ] idea — why it matters (who raised it, date)`
+## Now (version 1 — send and match, by Dec 1)
 
-## Now (next few iterations)
+- [x] Sheet with all tabs, setup(), helpers, roles (2026-11-19)
+- [x] Partner import with header aliases, dedupe, do-not-contact skip
+- [x] Version assignment: shuffled within brokerage, dealt A/B/C/E, assigned once
+- [x] Today batch builder: cap, sending days, pause, even spread, follow-ups first
+- [x] Version validation: address + opt-out, plain text, no links, ends with a question
+- [x] Campaign stats recounted from Emails + Events, 8-step funnel, counts beside rates
+- [ ] `emails.gs`: sendBatch (DNC check at send time, random pause, save thread/message IDs, lock versions, quota check)
+- [ ] `emails.gs`: checkReplies trigger every 15 min (thread has a message from someone else → reply event, cancel follow-up, top of call list); bounce detection; opt-out wording flag
+- [ ] Follow-up queueing: 4 business days after first, same thread, never a third
+- [x] Today, Partners, Partner record, Campaign, Settings screens wired to the server (Send button waits on emails.gs)
+- [x] Local preview server with fake runtime (`npm run preview`)
+- [ ] Five-address test batch; confirm inbox placement before Dec 1
 
-- [ ] Rules-based parser for the standard email blurb (date, time, name, phone,
-      street, city, state, ZIP, homeowner, home age, type, insured, contract).
-      Free and instant; covers 95 % of pastes. (claude, 2026-11-06)
-- [ ] Customers in Firestore (`customers` collection), original blurb kept on
-      the record for auditability. See docs/DATA_MODEL.md.
-- [ ] Duplicate detection by phone number on save, offer "update existing".
-- [ ] Phone formatting `(719) 598-2885` + tel:/sms: links.
-- [ ] Contacts screen: search, filter chips, detail drawer (as mocked).
-- [ ] **Calendar screen** (week grid on desktop, agenda list on phone) drawn
-      from the contact book's appointment date/time. (nk, 2026-11-06)
-- [ ] **Push to Google Calendar**: CalendarApp event per appointment, event id
-      stored on the contact row so edits update rather than duplicate. Push
-      one from the drawer or all unsynced at once. Target calendar is a
-      setting; default to a dedicated "ArmorTex Appointments" calendar.
+## Next (version 2 — work the replies)
 
-## Next
+- [ ] Partner record: emails + replies inline, call notes, referrals both ways
+- [ ] Call list ordered by listing value desc, roofs over 12 years first (needs Listing Value / Roof Age on Referrals)
+- [ ] Address detector on replies → suggest "Sent an address", a person confirms
+- [ ] Link to the call script (Settings → call_script_url) from the Today call list
+- [ ] Monthly "reason to hear from us" nudge for Partners (finished job nearby)
 
-- [ ] **Gemini fallback** when rules aren't confident, or when the user picks
-      "AI" (Google AI Studio key in Script Properties). Prompt returns strict
-      JSON matching the sheet columns.
-- [ ] **Gmail auto-ingest**: time-driven trigger scans a label (e.g.
-      `Leads/New`), parses each blurb, writes rows, relabels to `Leads/Imported`.
-      Removes the paste step entirely.
-- [ ] Auto-push to Google Calendar on save (setting, off by default).
-- [ ] Read-only "busy" overlay of existing Google Calendar events on the
-      calendar screen to spot conflicts before booking.
-- [ ] Month view on the calendar screen.
-- [ ] Map link / drive-time from the office.
-- [ ] Rep assignment + "my appointments today" view.
-- [ ] Export CSV / "Open Sheet" button.
+## Version 3 — Homes (December)
 
-## Platform vision (nk, 2026-11-06) — see docs/PLATFORM_PLAN.md
+- [ ] Homes import from the parcel CSV (address already split, 1,074 rows, neighborhoods)
+- [ ] Roof-age review queue: reviewer marks original / replaced / unsure from past aerials; only `original` gets mailed
+- [ ] Neighborhood view with counts; pick neighborhood + postcard version → mailing file in the printer's column order; logs a postcard event per home
+- [ ] Knock list 5 days after mailing, street + house-number order, DNC removed, no-soliciting reminder, "posted, skipped" outcome
+- [ ] One-tap knock outcomes; "not interested" = permanent DNC
+- [ ] Postcard versions with QR code URL per version (retargeting lives outside the CRM)
+- [ ] Test neighborhoods first: Woodbine Place, Nottingham Estates, Hollow Creek, Willow Creek Ranch, Briarwood
+- [ ] Nearmap: could supply the past aerials for the roof-age review (nk, 2026-11-06)
 
-- [ ] Job pipeline board + activity timeline (CRM spine)
-- [ ] On-site roofing report with photos → PDF, shareable to customer
-- [ ] Customer portal: login, status, appointments, report, documents
-- [ ] Claims management: carrier/adjuster/claim #, steps, checklist, deadlines
-- [ ] Communication hub: templates, email/SMS from the file, all logged
-- [ ] Invoicing & payments (Stripe), warranty & closeout, prospecting tools
-- [ ] AI assists: parse adjuster letters, draft messages, tag damage photos
-- [ ] **QuickBooks Online** sync: customers + invoices out, payments in (nk)
-- [ ] **Nearmap**: aerial imagery on the customer file and in reports;
-      roof measurements if the plan allows (nk)
-- [ ] **Roofr**: measurement reports attached to the job; API if available (nk)
+## Version 4 — Referral network + hand-off
+
+- [ ] Referrals log on partner and home records; counts in/out per partner
+- [ ] Email versions for inspectors, insurance agents, property managers
+- [ ] Hand-off: one function, one package → Zapier catch hook → Roofr. Store Roofr ID; four status updates typed in by hand until the Job Manager exists
+- [ ] Partner-referred address that matches a Home → link them so Tanner sees age + value
+- [ ] Cost per job per campaign (needs a place to enter postcard/print costs) vs the $1,600 appointment setter
 
 ## Someday / maybe
 
-- [ ] Sync to **Google Contacts** (People API) so numbers show on the phone with
-      the customer's name.
-- [ ] Address validation / geocoding (Google Maps Platform) to fix typos and
-      enable a map view of leads.
-- [ ] Storm-date and roof-type fields; hail-swath lookup by ZIP.
-- [ ] Lead scoring: uninsured + no contract + old roof = call first.
-- [ ] SMS confirmations to the customer the morning of the appointment
-      (Twilio or Google Voice).
-- [ ] Multi-user with per-rep login; audit log of who edited what.
-- [ ] Swap AI Studio key for **Vertex AI** via the linked GCP project (no API
-      key to manage, enterprise billing).
-- [ ] Mobile home-screen install (PWA-ish manifest via HtmlService).
+- [ ] Move to the Firebase project (tag `firebase-foundation`) if the list grows past a few thousand contacts; Gmail API instead of GmailApp
+- [ ] Tyler / Smith County homes from another data source
+- [ ] Texas Roof Club membership: yearly report, grade history (job manager side)
+- [ ] Storm-season plan (spring 2027), parked
+- [ ] The original "paste a lead blurb → contact" intake idea belongs to the job manager's walk-in entry, not the CRM (nk, 2026-11-06)
+- [ ] Second email test: sample-report link vs "reply and I'll send it"
 
 ## Decided
 
-- 2026-11-06 — **Firebase** (Hosting, Auth, Firestore, Storage; Functions when
-  needed). Replaces the Apps Script + Sheets + clasp plan, which could not
-  carry the customer portal. Deploy loop: `git pull` + `firebase deploy`.
-- 2026-11-06 — Staff access is an allowlist (`staff/{email}`) with roles
-  owner / admin / pm, enforced in Firestore rules. Stripe for payments.
-  QuickBooks Online stays as the books.
-- 2026-11-06 — Rules first, AI second. The email format is fixed enough that
-  regex is cheaper and more predictable; AI handles the leftovers.
-- 2026-11-06 — The app is the source of truth for appointments; Google Calendar
-  is a one-way mirror (app → Google). Avoids two-way sync headaches.
-- 2026-11-06 — Mockup screens ship inside the real app (`public/index.html`,
-  badged "mock") so they can be reviewed at the real URL; frozen copies go in
-  `mockups/`.
+- 2026-11-19 — **Apps Script + Google Sheet + clasp** for the Outreach app, SFM conventions, deployed under Tanner's account. Firebase kept as the escape hatch. (Reverses the 2026-11-06 Firebase decision, which was for a different, larger app.)
+- 2026-11-19 — IDs are prefixed (`P-12`, `H-340`, `E-55`, `EV-7`, `R-3`) so a Sheet reader can tell them apart.
+- 2026-11-19 — A Users tab (8th tab) holds roles, mirroring SFM's Authorized Users, instead of stuffing roles into Settings.
+- 2026-11-19 — Roof-age review gets its own columns on Homes (review result, when, who); `Roof Check Result` is reserved for the real roof check.
+- 2026-11-18 (briefs) — Version D dropped; E waits on the pay-at-closing limit. No open-rate tracking. A person presses Send.
 
 ## Rejected
 
-- (none yet)
+- Timer-driven sending in v1 (brief: a person presses Send).
+- Any payment or gift field on Referrals (Texas real estate rules).
+- Uploading the homeowner list to ad platforms.
 
 ## Open questions
 
-- SMS provider (Twilio / Google Voice / none at first).
-- Customer login method for the portal: email link or SMS code.
-- Domain name for the app.
-
-- What does "Contract" mean in the blurb: contract *status* (none / pending /
-  signed) or a contract *type*? The mockup assumes status.
-- Does "Insured" mean the homeowner has insurance, or that the job is an
-  insurance claim?
-- Which fields are missing from the sample blurb that the setters sometimes
-  include (email, roof age, storm date, notes)?
-- Who else needs access to the app? (Determines `access` in `appsscript.json`:
-  currently `ANYONE` with the link, running as you.)
+- Whose mailbox sends? (Assumed Tanner's.)
+- Realtor list source and columns.
+- Pay-at-closing limit → unlocks version E. Until then assign only A/B/C?
+- Business street address for the footer.
+- Postcard wording, number of postcard versions, January neighborhood order.
+- Does Roofr export past jobs/contacts? Which measurement provider? (job manager)

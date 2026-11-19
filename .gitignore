@@ -1,11 +1,7 @@
-# firebase local state
-.firebase/
-firebase-debug.log*
-firestore-debug.log*
-ui-debug.log*
-*-debug.log
-.runtimeconfig.json
-serviceAccountKey*.json
+# clasp — local only (points at YOUR Apps Script project / credentials)
+.clasp.json
+.clasprc.json
+.clasp.json.bak
 
 # node
 node_modules/
@@ -16,3 +12,7 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+*.swp
+
+# Claude Code session artifacts
+.claude/

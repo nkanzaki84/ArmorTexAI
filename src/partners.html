@@ -1,0 +1,89 @@
+<div class="row" style="margin-bottom:12px">
+  <h1 style="margin:0">Partners</h1>
+  <div class="spacer"></div>
+  <button class="btn primary sm" id="addBtn" style="display:none">+ Add partner</button>
+</div>
+
+<div class="row" style="margin-bottom:12px">
+  <div class="search">🔍 <input id="q" placeholder="Search name, company, email, phone…"></div>
+</div>
+<div class="row" style="margin-bottom:12px">
+  <div class="chips" id="stageChips">
+    <button class="chip on" data-stage="">All</button>
+    <button class="chip" data-stage="Prospect">Prospect</button>
+    <button class="chip" data-stage="Contacted">Contacted</button>
+    <button class="chip" data-stage="Replied">Replied</button>
+    <button class="chip" data-stage="Partner">Partner</button>
+  </div>
+  <select id="typeSel" class="chip"><option value="">All types</option><option value="realtor">Realtors</option><option value="inspector">Inspectors</option><option value="insurance">Insurance</option><option value="property_manager">Property managers</option></select>
+  <select id="verSel" class="chip"><option value="">Any version</option><option>A</option><option>B</option><option>C</option><option>E</option></select>
+  <select id="respSel" class="chip"><option value="">Any response</option><option>Replied</option><option>Sent an address</option><option>Not interested</option><option>Bounced</option><option>Opted out</option></select>
+</div>
+
+<div class="card" id="addCard" style="display:none">
+  <div class="hd"><h2>Add a partner</h2></div>
+  <form class="bd" id="addForm">
+    <div class="grid2">
+      <div class="f"><label>Name</label><input name="name" required></div>
+      <div class="f"><label>Type</label><select name="type"><option value="realtor">Realtor</option><option value="inspector">Home inspector</option><option value="insurance">Insurance agent</option><option value="property_manager">Property manager</option></select></div>
+      <div class="f"><label>Company / brokerage</label><input name="company"></div>
+      <div class="f"><label>Area</label><input name="area" placeholder="Longview"></div>
+      <div class="f"><label>Email</label><input name="email" type="email"></div>
+      <div class="f"><label>Phone</label><input name="phone" type="tel"></div>
+      <div class="f" style="grid-column:1/-1"><label>Notes</label><input name="notes"></div>
+    </div>
+    <div class="row"><button class="btn primary" type="submit">Save partner</button><button class="btn ghost" type="button" id="addCancel">Cancel</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <ul class="list" id="rows"><li class="empty">Loading…</li></ul>
+  <div class="ft"><span class="sub" id="count"></span></div>
+</div>
+
+<script>
+  (function () {
+    var filters = { stage: '', type: '', version: '', response: '', q: '' };
+    var all = [];
+    if (canWrite) $('addBtn').style.display = '';
+    on($('addBtn'), 'click', function () { $('addCard').style.display = ''; $('addForm').name.focus(); });
+    on($('addCancel'), 'click', function () { $('addCard').style.display = 'none'; });
+    on($('addForm'), 'submit', function (e) {
+      e.preventDefault();
+      var f = e.target, payload = {};
+      ['name', 'type', 'company', 'area', 'email', 'phone', 'notes'].forEach(function (k) { payload[k] = f[k].value; });
+      var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Saving…');
+      api('addPartner', payload).then(function (id) { toast('Added'); go('partner', { id: id }); })
+        .catch(fail).finally(function () { busy(btn, false, 'Save partner'); });
+    });
+
+    function render() {
+      var q = filters.q.toLowerCase();
+      var rows = all.filter(function (p) {
+        if (filters.stage && p.Stage !== filters.stage) return false;
+        if (filters.type && p.Type !== filters.type) return false;
+        if (filters.version && p.Version !== filters.version) return false;
+        if (filters.response && p.Response !== filters.response) return false;
+        if (q && [p.Name, p.Company, p.Email, p.Phone, p.Area].join(' ').toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      });
+      $('rows').innerHTML = rows.length ? rows.map(function (p) {
+        return '<li class="link" data-id="' + esc(p.ID) + '">' + verBadge(p.Version) +
+          '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + (p.Phone ? ' · ' + fmtPhone(p.Phone) : '') + '</div></div>' +
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + stagePill(p.Stage) + responsePill(p.Response) + '</div></li>';
+      }).join('') : '<li class="empty">' + (all.length ? 'No partners match.' : 'No partners yet. Import the realtor list under Settings.') + '</li>';
+      $('count').textContent = rows.length + ' of ' + all.length;
+    }
+    on($('rows'), 'click', function (e) { var li = e.target.closest('li[data-id]'); if (li) go('partner', { id: li.dataset.id }); });
+    on($('q'), 'input', function (e) { filters.q = e.target.value; render(); });
+    on($('stageChips'), 'click', function (e) {
+      var c = e.target.closest('.chip'); if (!c) return;
+      $('stageChips').querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); }); c.classList.add('on');
+      filters.stage = c.dataset.stage; render();
+    });
+    ['typeSel', 'verSel', 'respSel'].forEach(function (id, i) {
+      on($(id), 'change', function (e) { filters[['type', 'version', 'response'][i]] = e.target.value; render(); });
+    });
+    api('listPartners', { includeDnc: true }).then(function (rows) { all = rows; render(); }).catch(function (e) { $('rows').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; });
+  })();
+</script>

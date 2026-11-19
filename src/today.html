@@ -1,0 +1,75 @@
+<h1 id="todayTitle">Today</h1>
+
+<div class="stats" id="todayStats"></div>
+
+<!-- Partners side: today's email batch -->
+<div class="card" id="batchCard">
+  <div class="hd">
+    <h2>Today's email batch</h2>
+    <span class="sub" id="batchSub">loading…</span>
+    <div class="spacer"></div>
+    <button class="btn primary" id="sendBtn" disabled title="Sending arrives with the next build">Send batch</button>
+  </div>
+  <div class="bd" id="batchProblems" style="display:none"></div>
+  <ul class="list" id="batchList"><li class="empty">Loading…</li></ul>
+  <div class="ft">
+    <span class="sub" id="batchFoot"></span>
+    <div class="spacer"></div>
+    <button class="btn sm ghost" id="batchRefresh">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hd"><h2>New replies</h2><span class="sub">call these first</span></div>
+  <ul class="list" id="replyList"><li class="empty">Replies appear here once the reply check is running (next build).</li></ul>
+</div>
+
+<div class="card">
+  <div class="hd"><h2>Calls</h2><span class="sub">highest listing value first</span><div class="spacer"></div><a class="btn sm" id="callScript" href="#" target="_blank" style="display:none">📄 Call script</a></div>
+  <ul class="list" id="callList"><li class="empty">Nobody to call yet.</li></ul>
+</div>
+
+<div class="card" id="knockCard" style="display:none">
+  <div class="hd"><h2>Today's knock list</h2><span class="sub">Homes side · version 3</span></div>
+  <div class="empty">The knock list arrives with the Homes build in December.</div>
+</div>
+
+<script>
+  (function () {
+    var s = O.session || {};
+    $('todayTitle').textContent = 'Today · ' + new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    if (O.side === 'homes') { $('knockCard').style.display = ''; }
+
+    function render(b) {
+      $('batchSub').textContent = b.sendingDay ? 'sending day · cap ' + b.cap : b.weekday + ' is not a sending day';
+      var all = (b.followUps || []).map(function (e) { return { kind: 'follow-up', p: e.partner, v: e.Version }; })
+        .concat((b.firsts || []).map(function (p) { return { kind: 'first', p: p, v: p.Version }; }));
+      $('batchList').innerHTML = all.length ? all.map(function (x) {
+        var p = x.p || {};
+        return '<li>' + verBadge(x.v) + '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Email ? ' · ' + esc(p.Email) : '') + '</div></div><span class="pill ' + (x.kind === 'follow-up' ? 'warn' : '') + '">' + x.kind + '</span></li>';
+      }).join('') : '<li class="empty">' + (b.cap ? 'No one to email today. Import partners and assign versions under Settings.' : 'Daily cap is 0.') + '</li>';
+      var probs = $('batchProblems');
+      if (b.problems && b.problems.length) {
+        probs.style.display = '';
+        probs.innerHTML = b.problems.map(function (p) { return '<div class="problem">' + esc(p) + '</div>'; }).join('');
+      } else { probs.style.display = 'none'; }
+      $('batchFoot').textContent = all.length + ' queued · ' + b.sentToday + ' sent today · room for ' + b.room;
+      $('todayStats').innerHTML =
+        '<div class="stat"><b>' + all.length + '</b><span>to send</span></div>' +
+        '<div class="stat"><b>' + b.sentToday + '</b><span>sent today</span></div>' +
+        '<div class="stat"><b>0</b><span>new replies</span></div>' +
+        '<div class="stat"><b>0</b><span>to call</span></div>';
+      // Send stays disabled until emails.gs lands; the button exists so the layout is final.
+      $('sendBtn').title = all.length ? 'Sending arrives with the next build' : 'Nothing to send';
+    }
+    function load() {
+      $('batchList').innerHTML = '<li class="empty">Loading…</li>';
+      api('buildTodayBatch', {}).then(render).catch(function (e) { $('batchList').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; fail(e); });
+    }
+    on($('batchRefresh'), 'click', load);
+    load();
+    api('getSettings').then(function (st) {
+      if (st.call_script_url) { $('callScript').href = st.call_script_url; $('callScript').style.display = ''; }
+    }).catch(function () {});
+  })();
+</script>

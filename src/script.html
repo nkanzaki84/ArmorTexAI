@@ -1,0 +1,52 @@
+<script>
+  // ---------- shared client helpers (included on every page) ----------
+  var O = window.OUTREACH;
+
+  /** Call a server function, get a Promise. api('listPartners', {q:'kw'}) */
+  function api(name) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (resolve, reject) {
+      var runner = google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(function (err) { reject(err instanceof Error ? err : new Error(err && err.message ? err.message : String(err))); });
+      runner[name].apply(runner, args);
+    });
+  }
+
+  function go(page, params) {
+    var url = O.appUrl + '?page=' + encodeURIComponent(page) + '&side=' + encodeURIComponent(O.side);
+    Object.keys(params || {}).forEach(function (k) { url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); });
+    window.top.location.href = url;
+  }
+
+  var _toastTimer = null;
+  function toast(msg, kind) {
+    var t = document.getElementById('toast');
+    if (!t) { alert(msg); return; }
+    t.textContent = msg; t.className = 'toast show' + (kind === 'bad' ? ' bad' : '');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function () { t.className = 'toast'; }, kind === 'bad' ? 6000 : 3000);
+  }
+  function fail(err) { console.error(err); toast(err && err.message ? err.message : String(err), 'bad'); }
+
+  function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fmtPhone(d) { d = String(d || '').replace(/\D/g, ''); return d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : (d || ''); }
+  function fmtDate(v) { if (!v) return ''; var d = new Date(v); if (isNaN(d)) return String(v); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  function fmtDateTime(v) { if (!v) return ''; var d = new Date(v); if (isNaN(d)) return String(v); return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+  function pct(n) { return (Math.round(n * 1000) / 10) + '%'; }
+  function verBadge(v) { return '<span class="ver ' + (v ? esc(v) : 'none') + '">' + (v ? esc(v) : '–') + '</span>'; }
+  function stagePill(s) {
+    var k = { Prospect: '', Contacted: 'navy', Replied: 'orange', Partner: 'ok', Target: '', Mailed: 'navy', Knocked: 'navy', Talked: 'orange', 'Roof check booked': 'ok' }[s] || '';
+    return '<span class="pill ' + k + '">' + esc(s || '—') + '</span>';
+  }
+  function responsePill(r) {
+    if (!r) return '';
+    var k = { Replied: 'orange', 'Sent an address': 'ok', 'Not interested': 'bad', Bounced: 'bad', 'Opted out': 'bad' }[r] || '';
+    return '<span class="pill ' + k + '">' + esc(r) + '</span>';
+  }
+  function $(id) { return document.getElementById(id); }
+  function on(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
+  function busy(btn, yes, label) { if (!btn) return; btn.disabled = !!yes; if (label !== undefined) btn.textContent = label; }
+  var canWrite = !!(O.session && O.session.canWrite);
+  var isAdmin = !!(O.session && O.session.isAdmin);
+</script>

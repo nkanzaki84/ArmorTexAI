@@ -1,0 +1,21 @@
+<div style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#f4f5f9">
+  <div class="card" style="max-width:460px;width:100%;text-align:center">
+    <div class="bd" style="padding:30px 24px">
+      <div style="width:52px;height:52px;border-radius:14px;background:#f28c28;display:grid;place-items:center;font-size:26px;color:#14213d;margin:0 auto 14px">⛨</div>
+      <h1 style="font-size:20px">ArmorTex Outreach</h1>
+      <? if (noAccess.kind === 'denied') { ?>
+        <? if (noAccess.reason === 'unauthenticated') { ?>
+          <p class="muted">Sign in with your ArmorTex Google account, then open the link again.</p>
+        <? } else if (noAccess.reason === 'deactivated') { ?>
+          <p class="muted">Your access was turned off. Message Brian if that's unexpected.</p>
+        <? } else { ?>
+          <p class="muted"><b><?= noAccess.email ?></b> isn't on the team list yet. Ask Brian to add you under Settings → Team, then reload.</p>
+        <? } ?>
+        <p class="small muted">Reason: <code><?= noAccess.reason ?></code> <?= noAccess.message ? '— ' + noAccess.message : '' ?></p>
+      <? } else { ?>
+        <p class="muted">Your role (<b><?= noAccess.roleLabel ?></b>) can't open <b><?= noAccess.requestedLabel ?></b>.</p>
+        <a class="btn primary" href="<?= appUrl ?>?page=<?= noAccess.landing ?>">← Back to Today</a>
+      <? } ?>
+    </div>
+  </div>
+</div>

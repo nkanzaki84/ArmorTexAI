@@ -1,96 +1,92 @@
-# Data Model (Firestore)
+# Data Model — the "ArmorTex Outreach" Sheet
 
-Top-level collections, flat on purpose: Firestore queries are per collection,
-and "all jobs in stage X" or "all appointments this week" are the questions we
-ask most. Links are by id fields.
+One Google Sheet, every table a tab, columns matched by header name. Every
+row has an ID; tabs link by ID, never by typed name. `setup()` adds missing
+columns to the right and never renames. `src/Config.gs → HEADERS` is the
+authority; this page explains the columns.
 
-Status: **phase 0** — only `staff` and `settings` are used. The rest are
-defined so the security rules and the code agree from the start.
+IDs: `P-12` partner, `H-340` home, `E-55` email, `EV-7` event, `R-3` referral.
+Versions are keyed by Letter. Settings by Name. Users by Email.
 
-## staff/{email}  (phase 0, live)
+## Partners — one person
 
-Allowlist of who can sign in. The document id is the Google account email.
-
-| field | type | notes |
-|---|---|---|
-| name | string | shown in the app |
-| role | `owner` \| `admin` \| `pm` | owner: everything; admin: everything but owner-only; pm: jobs, reports, calendar |
-| addedBy | string | email |
-| addedAt | timestamp | |
-
-## settings/{key}  (phase 0, live)
-
-One doc per setting group, e.g. `settings/calendar` → `{ calendarId }`.
-Staff read, admins write.
-
-## customers/{id}  (phase 1)
-
-| field | type |
+| Column | Notes |
 |---|---|
-| first, last | string |
-| phone | string, digits only (`7195982885`); formatted in UI |
-| email | string? |
-| preferredContact | `call` \| `text` \| `email` |
-| property | map: `{ street, city, state, zip, type, yearBuilt?, ageYears?, homeowner: bool, geo?: {lat,lng} }` |
-| source | string (`email-setter`, `door-knock`, `referral`, `web`) |
-| createdAt, createdBy, updatedAt | |
-| rawBlurb | string, the original paste |
-| portalUid | string?, set when the customer first logs in (phase 4) |
+| ID, Name, Type, Company, Phone, Email, Area | Type: realtor · inspector · insurance · property_manager. Phone digits only. Email lowercase, the duplicate key. |
+| Stage | Prospect → Contacted → Replied → Partner. **Derived** from Emails/Events/Referrals, cached by `recountPartnerStages()`. |
+| Version | A · B · C · E. Assigned once by `assignVersions()`, never changed. |
+| Response | '' · Replied · Sent an address · Not interested · Bounced · Opted out. Derived where it can be; "Sent an address" and "Not interested" are set by a person. |
+| Do Not Contact | Yes. Checked at the moment of every send. |
+| Last Contact, Next Step, Notes | Last Contact = last email either way or call. |
+| Source List, Added At, Added By | which import, when, who. |
 
-One property per customer for now. If a customer has two houses, that's two
-customer records. Revisit if it actually happens.
+## Homes — one house (v3)
 
-## jobs/{id}  (phase 2)
-
-| field | type |
+| Column | Notes |
 |---|---|
-| customerId | ref id |
-| stage | `lead` → `appointment` → `inspected` → `claim-filed` → `approved` → `build-scheduled` → `in-progress` → `complete` → `invoiced` → `paid` → `warranty` (plus `lost`) |
-| rep | staff email |
-| insured | bool |
-| contract | `none` \| `pending` \| `signed` |
-| stormDate | date? |
-| notes | string |
-| customerVisible | bool, default true |
-| createdAt, updatedAt | |
+| ID, House Number, Street, City, State, ZIP, Neighborhood | address split from day one, for the knock list's street order. |
+| Year Built, Market Value, Owner Name | from the parcel list (built 2006–2014, value ≥ $300k). |
+| Mailing Address/City/State/ZIP | owner-occupied when it matches the property. |
+| Roof Age Review, Roof Age Reviewed At/By | '' · original · replaced · unsure. A reviewer checks past aerials **before** a home is mailed. Only `original` gets a postcard. |
+| Roof Check Result | copied back from the job manager after a roof check. |
+| Stage | Target → Mailed → Knocked → Talked → Roof check booked. Derived from Events. |
+| Postcard Version | e.g. P1, P2. |
+| Phone, Phone Given By Owner | stored only when the owner gives it; the flag records that they did. |
+| Do Not Contact | Yes. "Not interested" at the door sets it, permanently. |
+| Notes, Added At | |
 
-## appointments/{id}  (phase 1)
+## Emails — one email sent (or queued)
 
-| field | type |
+| Column | Notes |
 |---|---|
-| customerId, jobId | ids |
-| start, end | timestamps |
-| type | `inspection` \| `adjuster` \| `build` \| `follow-up` |
-| rep | staff email |
-| googleEventId | string?, set after push |
-| googleCalendarId | string? |
-| syncedAt | timestamp? |
-| customerVisible | bool |
+| ID, Partner ID, Version, Step | Step: first · followup. |
+| Scheduled For | date it should go out (follow-ups: first email + 4 business days). |
+| Sent At, Sent By | |
+| Gmail Thread ID, Gmail Message ID | the reply-matching key. Gmail keeps replies in the thread. |
+| Status | queued · sent · replied · bounced · cancelled. |
+| Subject | as sent (versions may change later; this doesn't). |
 
-## activities/{id}  (phase 2)
+## Events — something that happened
 
-The timeline on the customer file. One doc per thing that happened.
-
-| field | type |
+| Column | Notes |
 |---|---|
-| customerId, jobId | ids |
-| at | timestamp |
-| by | staff email or `customer` or `system` |
-| channel | `note` \| `call` \| `text` \| `email` \| `app` \| `system` |
-| body | string |
-| customerVisible | bool, default false for notes |
+| ID, Partner ID *or* Home ID, Email ID | |
+| Kind | reply · bounce · opt-out · call · postcard · knock · note. |
+| Outcome | knock: no_answer · not_interested · talked · booked · posted_skipped. call: talked / voicemail / free text. |
+| At, Snippet, By | reply snippet or the note. By = email or `trigger`. |
+| Needs Review | Yes when an automation guessed (opt-out wording, address detected). A person clears it. |
 
-## Later collections (shape sketched in PLATFORM_PLAN.md)
+## Referrals — one lead passed, and every roof report request
 
-`reports` (phase 3), `claims` (phase 5), `messages` (phase 6), `invoices` and
-`payments` (phase 7), `warranties` (phase 8). Photos and PDFs live in Cloud
-Storage under `jobs/{jobId}/…` with the Firestore doc holding the path.
+| Column | Notes |
+|---|---|
+| ID, Date, Direction | in = partner sent us a lead; out = we sent them one. |
+| Partner ID, Customer Or Address, Home ID | Home ID set when the address matches the Homes tab. |
+| Request Type, Listing Value, Roof Age Years, Due At | listing_report (48 h) · roof_check. Value + age drive call order. |
+| Report Recipient, Owner Contact | who gets the report; owner contact and how it was obtained. |
+| Outcome, Job Value, Thanked | **No payment field, ever.** |
+| Job Manager ID | Roofr's / Job Manager's key for this request. |
+| Report Sent At, Report Link, Estimate Started At, Signed Or Lost, Contract Amount, Paid At, Paid Amount | the four status updates that come back. The CRM stores, never edits. |
+| Notes | |
 
-## Rules of thumb
+## Versions — one email or postcard wording
 
-- Every record that a customer might see carries `customerVisible` and
-  `customerId`. Portal rules (phase 4) are just: signed-in customer, record's
-  `customerId` matches theirs, `customerVisible == true`.
-- Timestamps are Firestore timestamps, never strings. Display formatting is the
-  UI's job, in `America/Chicago`.
-- Phone numbers are stored as digits only and are the duplicate-check key.
+Letter, Channel (email · postcard), Partner Type, Angle, Subject, Body, Follow
+Up Body, QR Code URL (postcards), Locked (Yes once sending starts), Updated At.
+
+## Settings — Name / Value
+
+daily_cap (50) · sending_days (Tue,Wed,Thu) · sending_hour (9) · pause_sending
+· follow_up_days (4) · knock_delay_days (5) · sender_signature ·
+business_address · opt_out_line · job_manager_webhook · printer_format ·
+call_script_url · do_not_contact (extra emails, one per line).
+
+## Users — Email / Name / Role / Active
+
+Roles: owner · sales · viewonly. `OWNER_EMAIL` is owner even if absent.
+
+## Derived, never stored as truth
+
+- Stage, Response, Last Contact on Partners/Homes (recount from Emails + Events).
+- Campaign stats (counts beside rates, per version / neighborhood / partner type).
+- Report turnaround = Report Sent At − Date, against the 48-hour promise.

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ArmorTex Outreach</title>
+  <?!= include('styles') ?>
+</head>
+<body>
+<script>
+  // Server-injected context. Every page reads from here; no extra round-trip.
+  window.OUTREACH = {
+    appUrl: '<?= appUrl ?>',
+    page: '<?= page ?>',
+    side: '<?= side ?>',
+    recordId: '<?= recordId ?>',
+    version: 'v<?= appVersion ?> · <?= appBuildDate ?>',
+    session: <?!= JSON.stringify(session || {}) ?>,
+    noAccess: <?!= JSON.stringify(noAccess || null) ?>
+  };
+</script>
+<?!= include('script') ?>
+
+<? if (noAccess) { ?>
+  <?!= include('noaccess', { noAccess: noAccess, appUrl: appUrl }) ?>
+<? } else { ?>
+
+<header class="top">
+  <a class="brand" href="<?= appUrl ?>?page=today"><span class="logo">⛨</span><span class="brand-text">ArmorTex <span class="sub-brand">Outreach</span></span></a>
+  <div class="side-switch" role="tablist" aria-label="Side">
+    <a role="tab" class="<?= side === 'partners' ? 'on' : '' ?>" href="<?= appUrl ?>?page=<?= page === 'homes' || page === 'home' ? 'partners' : page ?>&side=partners">Partners</a>
+    <a role="tab" class="<?= side === 'homes' ? 'on' : '' ?>" href="<?= appUrl ?>?page=<?= page === 'partners' || page === 'partner' ? 'homes' : page ?>&side=homes">Homes</a>
+  </div>
+  <div class="spacer"></div>
+  <div class="user" title="<?= session.email ?>">
+    <span class="who"><b><?= session.name ?></b><span><?= session.roleLabel ?></span></span>
+    <span class="avatar" id="userAvatar"></span>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="nav" id="nav">
+    <? var navSide = side; var listPage = (side === 'homes') ? 'homes' : 'partners'; var listLabel = (side === 'homes') ? 'Homes' : 'Partners'; ?>
+    <a href="<?= appUrl ?>?page=today&side=<?= side ?>" class="<?= page === 'today' ? 'active' : '' ?>"><i>☀️</i><span>Today</span></a>
+    <a href="<?= appUrl ?>?page=<?= listPage ?>&side=<?= side ?>" class="<?= (page === listPage || page === 'partner' || page === 'home') ? 'active' : '' ?>"><i><?= side === 'homes' ? '🏠' : '🤝' ?></i><span><?= listLabel ?></span></a>
+    <a href="<?= appUrl ?>?page=campaign&side=<?= side ?>" class="<?= page === 'campaign' ? 'active' : '' ?>"><i>📊</i><span>Campaign</span></a>
+    <? if (session.allowedPages.indexOf('settings') !== -1) { ?>
+    <a href="<?= appUrl ?>?page=settings&side=<?= side ?>" class="<?= page === 'settings' ? 'active' : '' ?>"><i>⚙️</i><span>Settings</span></a>
+    <? } ?>
+    <div class="nav-foot"><?= 'v' + appVersion ?> · <?= appBuildDate ?></div>
+  </nav>
+
+  <main class="content" id="content">
+    <? if (page === 'today') { ?><?!= include('today') ?>
+    <? } else if (page === 'partners') { ?><?!= include('partners') ?>
+    <? } else if (page === 'partner') { ?><?!= include('partner') ?>
+    <? } else if (page === 'homes' || page === 'home') { ?><?!= include('homes') ?>
+    <? } else if (page === 'campaign') { ?><?!= include('campaign') ?>
+    <? } else if (page === 'settings') { ?><?!= include('settings') ?>
+    <? } ?>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+  (function () {
+    var s = window.OUTREACH.session || {};
+    var el = document.getElementById('userAvatar');
+    if (el) el.textContent = (s.name || '?').split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+  })();
+</script>
+<? } ?>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<div class="row" style="margin-bottom:10px">
+  <button class="btn sm" onclick="go('partners')">← Partners</button>
+</div>
+<div id="rec"><div class="empty">Loading…</div></div>
+
+<script>
+  (function () {
+    var id = O.recordId;
+    var data = null;
+    if (!id) { $('rec').innerHTML = '<div class="empty">No partner selected.</div>'; return; }
+
+    function render() {
+      var p = data.partner, dnc = String(p['Do Not Contact']).toLowerCase() === 'yes';
+      var html = '';
+      html += '<div class="row" style="margin-bottom:12px"><h1 style="margin:0">' + esc(p.Name) + '</h1>' + verBadge(p.Version) + stagePill(p.Stage) + responsePill(p.Response) + (dnc ? '<span class="pill bad">Do not contact</span>' : '') + '</div>';
+      html += '<div class="actions">' +
+        (p.Phone ? '<a class="btn" href="tel:' + esc(p.Phone) + '">📞 Call</a>' : '<button class="btn" disabled>📞 No phone</button>') +
+        (p.Email ? '<a class="btn" href="mailto:' + esc(p.Email) + '">✉️ Email</a>' : '<button class="btn" disabled>✉️ No email</button>') +
+        (canWrite ? '<button class="btn" id="logCallBtn">📝 Log call</button>' : '<button class="btn" disabled>📝 Log call</button>') + '</div>';
+      html += '<div class="card"><div class="bd kv">' +
+        '<div>Type</div><div>' + esc(p.Type) + '</div>' +
+        '<div>Company</div><div>' + esc(p.Company || '—') + '</div>' +
+        '<div>Phone</div><div>' + (fmtPhone(p.Phone) || '—') + '</div>' +
+        '<div>Email</div><div>' + esc(p.Email || '—') + '</div>' +
+        '<div>Area</div><div>' + esc(p.Area || '—') + '</div>' +
+        '<div>Last contact</div><div>' + (fmtDateTime(p['Last Contact']) || '—') + '</div>' +
+        '<div>Next step</div><div id="nextStepView">' + esc(p['Next Step'] || '—') + '</div>' +
+        '<div>Notes</div><div>' + esc(p.Notes || '—') + '</div>' +
+        '</div>' +
+        (canWrite ? '<div class="ft"><form id="nsForm" class="row" style="flex:1"><input name="nextStep" placeholder="Next step, e.g. Call Tue" value="' + esc(p['Next Step'] || '') + '" style="flex:1;border:1px solid var(--line);border-radius:9px;padding:8px 10px">' +
+          '<select name="response" style="border:1px solid var(--line);border-radius:9px;padding:8px 10px"><option value="">Response…</option>' + ['Replied', 'Sent an address', 'Not interested'].map(function (r) { return '<option' + (p.Response === r ? ' selected' : '') + '>' + r + '</option>'; }).join('') + '</select>' +
+          '<button class="btn sm navy" type="submit">Save</button></form></div>' : '') + '</div>';
+
+      // log call form (hidden until pressed)
+      html += '<div class="card" id="callCard" style="display:none"><div class="hd"><h2>Log a call</h2></div><form class="bd" id="callForm">' +
+        '<div class="f"><label>Outcome</label><select name="outcome"><option value="talked">Talked</option><option value="voicemail">Left voicemail</option><option value="no_answer">No answer</option><option value="callback">Asked to call back</option><option value="not_interested">Not interested</option></select></div>' +
+        '<div class="f"><label>Notes</label><input name="note" placeholder="What they said"></div>' +
+        '<div class="row"><button class="btn primary" type="submit">Save call</button><button class="btn ghost" type="button" id="callCancel">Cancel</button></div></form></div>';
+
+      // emails
+      html += '<div class="card"><div class="hd"><h2>Emails</h2><span class="sub">' + data.emails.length + '</span></div>' +
+        (data.emails.length ? '<ul class="timeline" style="padding:6px 16px">' + data.emails.map(function (e) {
+          return '<li><span class="when">' + (fmtDate(e['Sent At']) || fmtDate(e['Scheduled For']) || '') + '</span><span>' + verBadge(e.Version) + ' ' + esc(e.Step) + ' · <span class="pill">' + esc(e.Status) + '</span> ' + esc(e.Subject || '') + '</span></li>';
+        }).join('') + '</ul>' : '<div class="empty">No emails yet.</div>') + '</div>';
+
+      // events
+      html += '<div class="card"><div class="hd"><h2>Activity</h2></div>' +
+        (data.events.length ? '<ul class="timeline" style="padding:6px 16px">' + data.events.slice().reverse().map(function (ev) {
+          return '<li><span class="when">' + fmtDateTime(ev.At) + '</span><span><b>' + esc(ev.Kind) + '</b>' + (ev.Outcome ? ' · ' + esc(ev.Outcome) : '') + (ev.Snippet ? '<div class="sub">' + esc(ev.Snippet) + '</div>' : '') + '</span></li>';
+        }).join('') + '</ul>' : '<div class="empty">Nothing logged yet.</div>') + '</div>';
+
+      // referrals
+      html += '<div class="card"><div class="hd"><h2>Referrals</h2><span class="sub">leads in and out · no fees, ever</span></div>' +
+        (data.referrals.length ? '<ul class="timeline" style="padding:6px 16px">' + data.referrals.map(function (r) {
+          return '<li><span class="when">' + fmtDate(r.Date) + '</span><span><span class="pill ' + (r.Direction === 'in' ? 'ok' : 'navy') + '">' + (r.Direction === 'in' ? 'they sent' : 'we sent') + '</span> ' + esc(r['Customer Or Address']) + (r.Outcome ? ' · ' + esc(r.Outcome) : '') + '</span></li>';
+        }).join('') + '</ul>' : '<div class="empty">No referrals yet. Logging referrals arrives in version 4.</div>') + '</div>';
+
+      if (canWrite) {
+        html += '<div class="row" style="justify-content:flex-end"><button class="btn sm ghost ' + (dnc ? '' : 'danger') + '" id="dncBtn">' + (dnc ? 'Allow contact again' : '🚫 Mark do-not-contact') + '</button></div>';
+      }
+      $('rec').innerHTML = html;
+
+      on($('logCallBtn'), 'click', function () { $('callCard').style.display = ''; });
+      on($('callCancel'), 'click', function () { $('callCard').style.display = 'none'; });
+      on($('callForm'), 'submit', function (e) {
+        e.preventDefault();
+        api('logPartnerEvent', id, 'call', e.target.outcome.value, e.target.note.value).then(function () { toast('Call logged'); load(); }).catch(fail);
+      });
+      on($('nsForm'), 'submit', function (e) {
+        e.preventDefault();
+        api('savePartner', id, { nextStep: e.target.nextStep.value, response: e.target.response.value }).then(function () { toast('Saved'); load(); }).catch(fail);
+      });
+      on($('dncBtn'), 'click', function () {
+        var msg = dnc ? 'Allow contacting ' + p.Name + ' again?' : 'Mark ' + p.Name + ' do-not-contact? Queued emails are cancelled and they are never emailed again.';
+        if (!confirm(msg)) return;
+        api('setPartnerDoNotContact', id, !dnc, 'from partner record').then(function () { toast(dnc ? 'Contact allowed' : 'Marked do-not-contact'); load(); }).catch(fail);
+      });
+    }
+    function load() { api('getPartner', id).then(function (d) { data = d; render(); }).catch(function (e) { $('rec').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }); }
+    load();
+  })();
+</script>
