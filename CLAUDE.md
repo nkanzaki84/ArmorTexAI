@@ -82,4 +82,4 @@ Build nothing from the next version until the one before it has been used for re
 - Don't rename or reorder a header without a migration plan; append instead.
 - Don't add a money/payment field for partners.
 - Don't put a timer on sending in v1.
-- Don't move this app to Firebase unless the list grows past a few thousand contacts. The earlier Firebase foundation is tagged `firebase-foundation` in git for that day.
+- Don't move this app to Firebase unless the list grows past a few thousand contacts. The earlier Firebase foundation is commit `0a7865b` (local tag `firebase-foundation`; also the tip of `main` on GitHub until main is updated) for that day.

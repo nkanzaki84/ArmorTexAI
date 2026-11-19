@@ -48,7 +48,7 @@ get decided. The briefs in `docs/briefs/` are the spec; this is the overflow.
 
 ## Someday / maybe
 
-- [ ] Move to the Firebase project (tag `firebase-foundation`) if the list grows past a few thousand contacts; Gmail API instead of GmailApp
+- [ ] Move to the Firebase project (commit `0a7865b`, tag `firebase-foundation`) if the list grows past a few thousand contacts; Gmail API instead of GmailApp
 - [ ] Tyler / Smith County homes from another data source
 - [ ] Texas Roof Club membership: yearly report, grade history (job manager side)
 - [ ] Storm-season plan (spring 2027), parked
