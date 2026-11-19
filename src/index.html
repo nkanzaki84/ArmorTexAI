@@ -15,6 +15,7 @@
     appDevUrl: '<?= appDevUrl ?>',
     isDev: <?= isDev ? 'true' : 'false' ?>,
     page: '<?= page ?>',
+    section: '<?= section ?>',
     side: '<?= side ?>',
     recordId: '<?= recordId ?>',
     version: 'v<?= appVersion ?> · <?= appBuildDate ?>',
@@ -47,7 +48,12 @@
   <nav class="nav" id="nav">
     <? var listPage = (side === 'homes') ? 'homes' : 'partners'; var listLabel = (side === 'homes') ? 'Homes' : 'Partners'; ?>
     <a href="<?= appUrl ?>?page=today&side=<?= side ?>" class="<?= page === 'today' ? 'active' : '' ?>"><i>☀️</i><span>Today</span></a>
-    <a href="<?= appUrl ?>?page=<?= listPage ?>&side=<?= side ?>" class="<?= (page === listPage || page === 'partner' || page === 'home') ? 'active' : '' ?>"><i><?= side === 'homes' ? '🏠' : '🤝' ?></i><span><?= listLabel ?></span></a>
+    <? if (side === 'homes') { ?>
+    <a href="<?= appUrl ?>?page=homes&side=homes" class="<?= (page === 'homes' || page === 'home') ? 'active' : '' ?>"><i>🏠</i><span>Homes</span></a>
+    <? } else { ?>
+    <a href="<?= appUrl ?>?page=marketing&side=partners" class="<?= (page === 'marketing' || (page === 'partner' && section === 'marketing')) ? 'active' : '' ?>"><i>📣</i><span>Marketing</span></a>
+    <a href="<?= appUrl ?>?page=partners&side=partners" class="<?= (page === 'partners' || (page === 'partner' && section === 'partners')) ? 'active' : '' ?>"><i>🤝</i><span>Partners</span></a>
+    <? } ?>
     <a href="<?= appUrl ?>?page=campaign&side=<?= side ?>" class="<?= page === 'campaign' ? 'active' : '' ?>"><i>📊</i><span>Campaign</span></a>
     <? if (session.allowedPages.indexOf('settings') !== -1) { ?>
     <a href="<?= appUrl ?>?page=settings&side=<?= side ?>" class="<?= page === 'settings' ? 'active' : '' ?>"><i>⚙️</i><span>Settings</span></a>
@@ -57,7 +63,8 @@
 
   <main class="content" id="content">
     <? if (page === 'today') { ?><?!= include('today') ?>
-    <? } else if (page === 'partners') { ?><?!= include('partners') ?>
+    <? } else if (page === 'partners') { ?><?!= include('partners', { section: 'partners' }) ?>
+    <? } else if (page === 'marketing') { ?><?!= include('partners', { section: 'marketing' }) ?>
     <? } else if (page === 'partner') { ?><?!= include('partner') ?>
     <? } else if (page === 'homes' || page === 'home') { ?><?!= include('homes') ?>
     <? } else if (page === 'campaign') { ?><?!= include('campaign') ?>

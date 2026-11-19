@@ -1,7 +1,16 @@
+<!-- Shared list for both Partners-side sections. `section` is a template variable:
+     'marketing' = the pipeline (Prospect → Contacted → Replied), with the marketing tools;
+     'partners'  = established relationships (Stage = Partner), with referrals, jobs and the touch clock. -->
+<? var isMarketing = (section === 'marketing'); ?>
 <div class="row" style="margin-bottom:12px">
-  <h1 style="margin:0">Partners</h1>
+  <h1 style="margin:0"><?= isMarketing ? 'Marketing' : 'Partners' ?></h1>
+  <span class="sub"><?= isMarketing ? 'people we are still courting' : 'established relationships' ?></span>
   <div class="spacer"></div>
-  <button class="btn primary sm" id="addBtn" style="display:none">+ Add partner</button>
+  <? if (isMarketing) { ?>
+  <a class="btn sm" href="<?= appUrl ?>?page=today&side=partners">☀️ Today's batch</a>
+  <a class="btn sm" href="<?= appUrl ?>?page=campaign&side=partners">✉️ Email versions</a>
+  <? } ?>
+  <button class="btn primary sm" id="addBtn" style="display:none">+ Add <?= isMarketing ? 'prospect' : 'partner' ?></button>
 </div>
 
 <div class="ptabs" id="typeTabs">
@@ -12,23 +21,36 @@
   <button data-type="property_manager">Property managers <span class="n" id="n_property_manager"></span></button>
 </div>
 
+<? if (isMarketing) { ?>
+<div class="funnel" id="funnel"></div>
+<? } else { ?>
+<div class="stats" id="bookStats"></div>
+<? } ?>
+
 <div class="row" style="margin-bottom:12px">
   <div class="search">🔍 <input id="q" placeholder="Search name, company, email, phone…"></div>
 </div>
 <div class="row" style="margin-bottom:12px">
+  <? if (isMarketing) { ?>
   <div class="chips" id="stageChips">
     <button class="chip on" data-stage="">All stages</button>
     <button class="chip" data-stage="Prospect">Prospect</button>
     <button class="chip" data-stage="Contacted">Contacted</button>
     <button class="chip" data-stage="Replied">Replied</button>
-    <button class="chip" data-stage="Partner">Partner</button>
   </div>
   <select id="verSel" class="chip"><option value="">Any version</option><option>A</option><option>B</option><option>C</option><option>E</option></select>
-  <select id="respSel" class="chip"><option value="">Any response</option><option>Replied</option><option>Sent an address</option><option>Not interested</option><option>Bounced</option><option>Opted out</option></select>
+  <select id="respSel" class="chip"><option value="">Any response</option><option>Replied</option><option>Not interested</option><option>Bounced</option><option>Opted out</option></select>
+  <? } else { ?>
+  <div class="chips" id="stageChips">
+    <button class="chip on" data-stage="">Everyone</button>
+    <button class="chip" data-stage="cold">🥶 Gone cold</button>
+    <button class="chip" data-stage="active">Sent work</button>
+  </div>
+  <? } ?>
 </div>
 
 <div class="card" id="addCard" style="display:none">
-  <div class="hd"><h2>Add a partner</h2></div>
+  <div class="hd"><h2>Add a <?= isMarketing ? 'prospect' : 'partner' ?></h2><span class="sub"><?= isMarketing ? 'starts in the pipeline at Prospect' : 'goes straight into the book as an established partner' ?></span></div>
   <form class="bd" id="addForm">
     <div class="grid2">
       <div class="f"><label>Name</label><input name="name" required></div>
@@ -39,7 +61,7 @@
       <div class="f"><label>Phone</label><input name="phone" type="tel"></div>
       <div class="f" style="grid-column:1/-1"><label>Notes</label><input name="notes"></div>
     </div>
-    <div class="row"><button class="btn primary" type="submit">Save partner</button><button class="btn ghost" type="button" id="addCancel">Cancel</button></div>
+    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn ghost" type="button" id="addCancel">Cancel</button></div>
   </form>
 </div>
 
@@ -50,18 +72,13 @@
 
 <script>
   (function () {
+    var SECTION = '<?= section ?>', MARKETING = SECTION === 'marketing';
     var filters = { stage: '', type: '', version: '', response: '', q: '' };
     var all = [];
     var TYPE_LABEL = { realtor: 'realtors', inspector: 'home inspectors', insurance: 'insurance agents', property_manager: 'property managers' };
-    try { filters.type = localStorage.getItem('atx_partner_tab') || ''; } catch (e) {}
-    function setTab(type) {
-      filters.type = type;
-      try { localStorage.setItem('atx_partner_tab', type); } catch (e) {}
-      $('typeTabs').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.type === type); });
-      if ($('addType') && type) $('addType').value = type;
-      render();
-    }
-    on($('typeTabs'), 'click', function (e) { var b = e.target.closest('button[data-type]'); if (b) setTab(b.dataset.type); });
+    var fmtMoney = function (n) { n = Number(n); return n ? '$' + n.toLocaleString() : ''; };
+    try { filters.type = localStorage.getItem('atx_' + SECTION + '_tab') || ''; } catch (e) {}
+
     if (canWrite) $('addBtn').style.display = '';
     on($('addBtn'), 'click', function () { $('addCard').style.display = ''; $('addForm').name.focus(); });
     on($('addCancel'), 'click', function () { $('addCard').style.display = 'none'; });
@@ -70,52 +87,106 @@
       var f = e.target, payload = {};
       ['name', 'type', 'company', 'area', 'email', 'phone', 'notes'].forEach(function (k) { payload[k] = f[k].value; });
       var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Saving…');
-      api('addPartner', payload).then(function (id) { toast('Added'); go('partner', { id: id }); })
-        .catch(fail).finally(function () { busy(btn, false, 'Save partner'); });
+      api('addPartner', payload)
+        .then(function (id) { return MARKETING ? id : api('markAsPartner', id).then(function () { return id; }); })
+        .then(function (id) { toast('Added'); go('partner', { id: id, from: SECTION }); })
+        .catch(fail).finally(function () { busy(btn, false, 'Save'); });
     });
+
+    function setTab(type) {
+      filters.type = type;
+      try { localStorage.setItem('atx_' + SECTION + '_tab', type); } catch (e) {}
+      $('typeTabs').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.type === type); });
+      if ($('addType') && type) $('addType').value = type;
+      render();
+    }
+    on($('typeTabs'), 'click', function (e) { var b = e.target.closest('button[data-type]'); if (b) setTab(b.dataset.type); });
+
+    function typeFacts(p) {
+      var prof = O.profiles[p.Type]; if (!prof) return '';
+      return prof.fields.map(function (f) {
+        var v = p[f.key]; if (v === '' || v === null || v === undefined) return '';
+        if (f.type === 'money') return fmtMoney(v) + ' avg';
+        if (f.type === 'number') return v + ' ' + f.key.toLowerCase().replace(/^(listings|inspections|doors)( per (year|month))?( managed)?$/, function (_, w, per, unit) { return w + (per ? '/' + (unit === 'year' ? 'yr' : 'mo') : ''); });
+        if (f.type === 'choice') return f.key.toLowerCase() + ': ' + String(v).toLowerCase();
+        return v;
+      }).filter(Boolean).join(' · ');
+    }
+    function inType(p) { return !filters.type || p.Type === filters.type; }
 
     function renderCounts() {
       var c = { '': all.length };
       all.forEach(function (p) { c[p.Type] = (c[p.Type] || 0) + 1; });
       ['', 'realtor', 'inspector', 'insurance', 'property_manager'].forEach(function (t) { var el = $('n_' + (t || 'all')); if (el) el.textContent = c[t] || 0; });
+      var mine = all.filter(inType);
+      if (MARKETING) {
+        var st = { Prospect: 0, Contacted: 0, Replied: 0 };
+        mine.forEach(function (p) { if (st[p.Stage] !== undefined) st[p.Stage]++; });
+        var steps = [['Prospect', 'on the list'], ['Contacted', 'emailed'], ['Replied', 'replied']];
+        $('funnel').innerHTML = steps.map(function (s, i) {
+          var rate = i === 0 || !st[steps[i - 1][0]] && !st[s[0]] ? '' : '';
+          return '<div class="fstep"><b>' + st[s[0]] + '</b><span>' + s[0] + '</span><i>' + s[1] + '</i></div>' + (i < steps.length - 1 ? '<div class="farrow">›</div>' : '');
+        }).join('') + '<div class="farrow">›</div><a class="fstep win" href="' + O.appUrl + '?page=partners&side=partners"><b>' + (window.__partnerCount || '…') + '</b><span>Partners</span><i>in the book</i></a>';
+      } else {
+        var refs = 0, jobs = 0, val = 0, cold = 0;
+        mine.forEach(function (p) { refs += p.metrics.referralsIn; jobs += p.metrics.jobsSigned; val += p.metrics.jobValue; if (p.cold) cold++; });
+        $('bookStats').innerHTML =
+          '<div class="stat"><b>' + mine.length + '</b><span>partners</span></div>' +
+          '<div class="stat"><b>' + refs + '</b><span>referrals in</span></div>' +
+          '<div class="stat"><b>' + jobs + '</b><span>jobs signed' + (val ? ' · ' + fmtMoney(val) : '') + '</span></div>' +
+          '<div class="stat"><b>' + cold + '</b><span>gone cold (30+ days)</span></div>';
+      }
     }
+
     function render() {
       renderCounts();
       var q = filters.q.toLowerCase();
       var rows = all.filter(function (p) {
-        if (filters.stage && p.Stage !== filters.stage) return false;
-        if (filters.type && p.Type !== filters.type) return false;
-        if (filters.version && p.Version !== filters.version) return false;
-        if (filters.response && p.Response !== filters.response) return false;
+        if (!inType(p)) return false;
+        if (MARKETING) {
+          if (filters.stage && p.Stage !== filters.stage) return false;
+          if (filters.version && p.Version !== filters.version) return false;
+          if (filters.response && p.Response !== filters.response) return false;
+        } else {
+          if (filters.stage === 'cold' && !p.cold) return false;
+          if (filters.stage === 'active' && !p.metrics.referralsIn) return false;
+        }
         if (q && [p.Name, p.Company, p.Email, p.Phone, p.Area].join(' ').toLowerCase().indexOf(q) === -1) return false;
         return true;
       });
+      if (!MARKETING) rows.sort(function (a, b) { return (b.cold - a.cold) || (b.metrics.referralsIn - a.metrics.referralsIn); });
       $('rows').innerHTML = rows.length ? rows.map(function (p) {
-        var prof = O.profiles[p.Type];
-        var facts = prof ? prof.fields.map(function (f) {
-          var v = p[f.key]; if (v === '' || v === null || v === undefined) return '';
-          if (f.type === 'money') return '$' + Number(v).toLocaleString() + ' avg';
-          if (f.type === 'number') return v + ' ' + f.key.toLowerCase().replace(/^(listings|inspections|doors)( per (year|month))?( managed)?$/, function (_, w, per, unit) { return w + (per ? '/' + (unit === 'year' ? 'yr' : 'mo') : ''); });
-          if (f.type === 'choice') return f.key.toLowerCase() + ': ' + String(v).toLowerCase();
-          return v;
-        }).filter(Boolean).join(' · ') : '';
-        return '<li class="link" data-id="' + esc(p.ID) + '">' + verBadge(p.Version) +
-          '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + (p.Phone ? ' · ' + fmtPhone(p.Phone) : '') + '</div>' + (facts ? '<div class="sub" style="color:var(--navy)">' + esc(facts) + '</div>' : '') + '</div>' +
-          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + stagePill(p.Stage) + responsePill(p.Response) + '</div>' +
-          (p.Phone ? '<a class="btn sm" href="tel:' + esc(p.Phone) + '" onclick="event.stopPropagation()" title="Call">📞</a>' : '') + '</li>';
-      }).join('') : '<li class="empty">' + (all.length ? (filters.type && !all.some(function (p) { return p.Type === filters.type; }) ? 'No ' + TYPE_LABEL[filters.type] + ' yet. Import a list under Settings or add one by hand.' : 'No partners match.') : 'No partners yet. Import the realtor list under Settings.') + '</li>';
+        var facts = typeFacts(p);
+        var right;
+        if (MARKETING) {
+          right = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + stagePill(p.Stage) + responsePill(p.Response) + (p['Next Step'] ? '<span class="sub">→ ' + esc(p['Next Step']) + '</span>' : '') + '</div>';
+        } else {
+          var m = p.metrics;
+          right = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' +
+            '<span class="sub">' + m.referralsIn + ' referral' + (m.referralsIn === 1 ? '' : 's') + (m.jobsSigned ? ' · ' + m.jobsSigned + ' job' + (m.jobsSigned === 1 ? '' : 's') + (m.jobValue ? ' · ' + fmtMoney(m.jobValue) : '') : '') + '</span>' +
+            (p.daysSinceContact === null ? '<span class="pill warn">never contacted</span>' : p.cold ? '<span class="pill bad">🥶 ' + p.daysSinceContact + ' days quiet</span>' : '<span class="pill ok">' + p.daysSinceContact + 'd ago</span>') + '</div>';
+        }
+        return '<li class="link" data-id="' + esc(p.ID) + '">' + (MARKETING ? verBadge(p.Version) : '<span class="ver" style="background:#e8f6ee;color:#17743d">🤝</span>') +
+          '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + ' <span class="sub">' + esc((O.profiles[p.Type] || {}).label || p.Type) + '</span></div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + (p.Phone ? ' · ' + fmtPhone(p.Phone) : '') + '</div>' + (facts ? '<div class="sub" style="color:var(--navy)">' + esc(facts) + '</div>' : '') + '</div>' +
+          right + (p.Phone ? '<a class="btn sm" href="tel:' + esc(p.Phone) + '" onclick="event.stopPropagation()" title="Call">📞</a>' : '') + '</li>';
+      }).join('') : '<li class="empty">' + emptyText() + '</li>';
       $('count').textContent = rows.length + ' of ' + all.length;
     }
-    on($('rows'), 'click', function (e) { var li = e.target.closest('li[data-id]'); if (li) go('partner', { id: li.dataset.id }); });
+    function emptyText() {
+      if (!all.length) return MARKETING ? 'No prospects yet. Import the realtor list under Settings.' : 'No established partners yet. They arrive here when a prospect sends work, or when you mark one as a partner.';
+      if (filters.type && !all.some(function (p) { return p.Type === filters.type; })) return 'No ' + TYPE_LABEL[filters.type] + ' here yet.';
+      return 'Nobody matches.';
+    }
+    on($('rows'), 'click', function (e) { var li = e.target.closest('li[data-id]'); if (li) go('partner', { id: li.dataset.id, from: SECTION }); });
     on($('q'), 'input', function (e) { filters.q = e.target.value; render(); });
     on($('stageChips'), 'click', function (e) {
       var c = e.target.closest('.chip'); if (!c) return;
       $('stageChips').querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); }); c.classList.add('on');
       filters.stage = c.dataset.stage; render();
     });
-    ['verSel', 'respSel'].forEach(function (id, i) {
-      on($(id), 'change', function (e) { filters[['version', 'response'][i]] = e.target.value; render(); });
-    });
-    api('listPartners', { includeDnc: true }).then(function (rows) { all = rows; setTab(filters.type); }).catch(function (e) { $('rows').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; });
+    ['verSel', 'respSel'].forEach(function (id, i) { on($(id), 'change', function (e) { filters[['version', 'response'][i]] = e.target.value; render(); }); });
+
+    api('listPartners', { section: SECTION, includeDnc: true }).then(function (rows) { all = rows; setTab(filters.type); }).catch(function (e) { $('rows').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; });
+    if (MARKETING) api('listPartners', { section: 'partners' }).then(function (rows) { window.__partnerCount = rows.length; renderCounts(); }).catch(function () {});
   })();
 </script>

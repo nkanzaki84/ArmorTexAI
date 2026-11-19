@@ -19,6 +19,7 @@ Versions are keyed by Letter. Settings by Name. Users by Email.
 | Do Not Contact | Yes. Checked at the moment of every send. |
 | Last Contact, Next Step, Notes | Last Contact = last email either way or call. |
 | Source List, Added At, Added By | which import, when, who. |
+| Partner Since | set the first time Stage becomes `Partner` (by a win, a referral in, or *Mark as partner*). Separates the **Marketing** pipeline (Prospect/Contacted/Replied) from the **Partners** book. |
 | **Type profile columns** (sparse): Areas Served · Listings Per Year, Avg Listing Value (realtor) · Inspections Per Month, Refers Roofers (inspector) · Carriers, Handles Claims (insurance) · Doors Managed, Property Types, Decision Maker (property manager) | Which apply is defined per type in `PARTNER_TYPE_PROFILES` (Config.gs), along with the company label, the win response and the email versions. |
 
 ## Homes — one house (v3)

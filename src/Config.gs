@@ -89,6 +89,7 @@ const HEADERS = {
     'Doors Managed',         // property manager
     'Property Types',        // property manager
     'Decision Maker',        // property manager: Yes | No
+    'Partner Since',         // set the first time Stage becomes Partner (established relationship)
   ],
   'Homes': [
     'ID',
@@ -236,6 +237,9 @@ const HOME_STAGES = ['Target', 'Mailed', 'Knocked', 'Talked', 'Roof check booked
 const RESPONSES = ['', 'Replied', 'Sent an address', 'Referred a job', 'Sent a claim', 'Sent a property', 'Not interested', 'Bounced', 'Opted out'];
 const WIN_RESPONSES = ['Sent an address', 'Referred a job', 'Sent a claim', 'Sent a property'];
 
+// Days since the last contact before an established partner shows as "gone cold".
+const PARTNER_TOUCH_DAYS = 30;
+
 // ===== Partner type profiles =====
 // One entry per partner type: what we call them, the company label, the extra
 // facts Tanner wants before a call (Partners columns), what counts as a win
@@ -339,17 +343,18 @@ const ROLES = [
 ];
 
 const PAGE_CATALOG = [
-  { key: 'today',    label: 'Today' },
-  { key: 'partners', label: 'Partners' },
+  { key: 'today',     label: 'Today' },
+  { key: 'marketing', label: 'Marketing' },   // the pipeline: prospects we are still courting
+  { key: 'partners',  label: 'Partners' },    // established relationships
   { key: 'homes',    label: 'Homes' },
   { key: 'campaign', label: 'Campaign' },
   { key: 'settings', label: 'Settings' },
 ];
 
 const DEFAULT_ROLE_ACCESS = {
-  owner:    ['today', 'partners', 'homes', 'campaign', 'settings'],
-  sales:    ['today', 'partners', 'homes', 'campaign'],
-  viewonly: ['today', 'partners', 'homes', 'campaign'],
+  owner:    ['today', 'marketing', 'partners', 'homes', 'campaign', 'settings'],
+  sales:    ['today', 'marketing', 'partners', 'homes', 'campaign'],
+  viewonly: ['today', 'marketing', 'partners', 'homes', 'campaign'],
 };
 
 const WRITE_ROLES = ['owner', 'sales'];   // who may change data

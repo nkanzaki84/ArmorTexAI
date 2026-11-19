@@ -57,7 +57,8 @@ Options for "really" calling from the app, pick by which number should show:
 - [ ] Call list ordered by listing value desc, roofs over 12 years first (needs Listing Value / Roof Age on Referrals)
 - [ ] Address detector on replies → suggest "Sent an address", a person confirms
 - [ ] Link to the call script (Settings → call_script_url) from the Today call list
-- [ ] Monthly "reason to hear from us" nudge for Partners (finished job nearby)
+- [x] Partners side split into Marketing (pipeline) and Partners (book) with a 30-day touch clock
+- [ ] Monthly "reason to hear from us" nudge for Partners (finished job nearby); the 🥶 gone-cold filter is the first step
 
 ## Version 3 — Homes (December)
 

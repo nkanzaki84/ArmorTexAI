@@ -46,6 +46,12 @@ Read this first. It holds what the next session needs without re-asking.
 - The homeowner list never leaves the app except as the printer's mailing file.
 - Open rates are not measured. Counts sit beside every rate; the Campaign table carries the "125 per version is too few" note.
 
+## Two sections on the Partners side (2026-11-19, Brian: "a marketing stage, then established relationships")
+
+- **Marketing** (`page=marketing`): the pipeline, Stage ≠ Partner. Type tabs, a Prospect → Contacted → Replied → Partners funnel strip, stage/version/response filters, links to Today's batch and Email versions. This is where the email test lives.
+- **Partners** (`page=partners`): the book, Stage = Partner. Type tabs, totals (partners, referrals in, jobs signed + $, gone cold), rows show referrals/jobs and a touch clock (`PARTNER_TOUCH_DAYS` = 30 → 🥶 gone cold), filters Everyone / Gone cold / Sent work.
+- Both render `partners.html` with a `section` template variable; `listPartners({section})` filters server-side and attaches `metrics` + `daysSinceContact`. A prospect becomes a partner by a win Response, a referral in, or **Mark as partner** on the record (`markAsPartner` / `unmarkPartner`); `Partner Since` is stamped once. The record's back button follows `?from=`.
+
 ## Partner types (2026-11-19, Brian: "different metrics and profiles per type")
 
 `PARTNER_TYPE_PROFILES` in Config.gs is the one place a type is defined: label, company label, profile fields (sparse Partners columns), the **win** Response (`Sent an address` / `Referred a job` / `Sent a claim` / `Sent a property`), the pitch line, and which email versions it uses. The Partners page has a tab per type with counts and type-specific facts on each row; the record page shows a metrics strip and an editable profile card from the same config. Adding a type = a Config entry + its columns in `HEADERS.Partners` + `setup()`. `WIN_RESPONSES` drives Stage `Partner` and the funnel's step 4.

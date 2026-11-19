@@ -150,14 +150,39 @@ function assignVersions(opts) {
 // List + record
 // ============================================================
 
+/** Per-partner relationship numbers from Referrals + Events, in one pass. */
+function _partnerMetricsMap_() {
+  const m = {};
+  const get = function (id) { return m[id] || (m[id] = { referralsIn: 0, reportsSent: 0, jobsSigned: 0, jobValue: 0, calls: 0, lastTouch: '' }); };
+  _readTab_(TAB.REFERRALS).forEach(function (r) {
+    if (r['Direction'] !== 'in') return;
+    const x = get(r['Partner ID']);
+    x.referralsIn++;
+    if (r['Report Sent At']) x.reportsSent++;
+    if (String(r['Signed Or Lost']).toLowerCase() === 'signed') { x.jobsSigned++; x.jobValue += Number(r['Contract Amount']) || Number(r['Job Value']) || 0; }
+  });
+  _readTab_(TAB.EVENTS).forEach(function (ev) {
+    if (ev['Kind'] !== 'call' && ev['Kind'] !== 'reply' && ev['Kind'] !== 'note') return;
+    const x = get(ev['Partner ID']);
+    if (ev['Kind'] === 'call') x.calls++;
+    if (String(ev['At']) > String(x.lastTouch)) x.lastTouch = String(ev['At']);
+  });
+  return m;
+}
+
 /**
- * @param {{type?:string, stage?:string, version?:string, response?:string, q?:string, includeDnc?:boolean}} filters
+ * @param {{section?:'marketing'|'partners', type?:string, stage?:string, version?:string, response?:string, q?:string, includeDnc?:boolean}} filters
+ *   section 'marketing' = not yet a Partner; 'partners' = Stage Partner. Rows carry `metrics` and `daysSinceContact`.
  */
 function listPartners(filters) {
   _requireRole_(ROLES.map(function (r) { return r.key; }));
   filters = filters || {};
   const q = String(filters.q || '').trim().toLowerCase();
+  const metrics = _partnerMetricsMap_();
+  const now = Date.now();
   return _readTab_(TAB.PARTNERS).filter(function (p) {
+    if (filters.section === 'marketing' && String(p['Stage']) === 'Partner') return false;
+    if (filters.section === 'partners' && String(p['Stage']) !== 'Partner') return false;
     if (filters.type && String(p['Type']) !== filters.type) return false;
     if (filters.stage && String(p['Stage']) !== filters.stage) return false;
     if (filters.version && String(p['Version']) !== filters.version) return false;
@@ -168,7 +193,31 @@ function listPartners(filters) {
       if (hay.indexOf(q) === -1) return false;
     }
     return true;
+  }).map(function (p) {
+    const m = metrics[p['ID']] || { referralsIn: 0, reportsSent: 0, jobsSigned: 0, jobValue: 0, calls: 0, lastTouch: '' };
+    const last = p['Last Contact'] || m.lastTouch;
+    const days = last ? Math.floor((now - new Date(last).getTime()) / 86400000) : null;
+    return Object.assign({}, p, { metrics: m, daysSinceContact: isNaN(days) ? null : days, cold: days !== null && !isNaN(days) && days >= PARTNER_TOUCH_DAYS });
   });
+}
+
+/** Move a prospect into the Partners book by hand (sets the type's win response). */
+function markAsPartner(id) {
+  _requireRole_(WRITE_ROLES);
+  const p = _byId_(TAB.PARTNERS, id);
+  if (!p) throw new Error('Partner not found: ' + id);
+  const prof = PARTNER_TYPE_PROFILES[String(p['Type'])];
+  _updateRow_(TAB.PARTNERS, p._row, { 'Response': prof ? prof.win : WIN_RESPONSES[0], 'Stage': 'Partner', 'Partner Since': p['Partner Since'] || new Date() });
+  return { ok: true };
+}
+
+/** Send an established partner back to the marketing pipeline (rare; e.g. marked by mistake). */
+function unmarkPartner(id) {
+  _requireRole_(WRITE_ROLES);
+  const p = _byId_(TAB.PARTNERS, id);
+  if (!p) throw new Error('Partner not found: ' + id);
+  _updateRow_(TAB.PARTNERS, p._row, { 'Response': p['Response'] && WIN_RESPONSES.indexOf(String(p['Response'])) !== -1 ? 'Replied' : p['Response'], 'Stage': 'Replied', 'Partner Since': '' });
+  return { ok: true };
 }
 
 function getPartner(id) {

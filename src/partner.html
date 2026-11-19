@@ -1,5 +1,7 @@
 <div class="row" style="margin-bottom:10px">
-  <button class="btn sm" onclick="go('partners')">← Partners</button>
+  <button class="btn sm" id="backBtn" onclick="go(O.section === 'marketing' ? 'marketing' : 'partners')">← <?= section === 'marketing' ? 'Marketing' : 'Partners' ?></button>
+  <div class="spacer"></div>
+  <span id="sectionPill"></span>
 </div>
 <div id="rec"><div class="empty">Loading…</div></div>
 
@@ -24,6 +26,8 @@
     function render() {
       var p = data.partner, m = data.metrics || {}, prof = data.profile || O.profiles[p.Type] || { label: p.Type, companyLabel: 'Company', fields: [], win: 'Sent an address', winVerb: 'won' };
       var dnc = String(p['Do Not Contact']).toLowerCase() === 'yes';
+      var isPartner = p.Stage === 'Partner';
+      $('sectionPill').innerHTML = isPartner ? '<span class="pill ok">🤝 Established partner' + (p['Partner Since'] ? ' since ' + fmtDate(p['Partner Since']) : '') + '</span>' : '<span class="pill orange">📣 In marketing</span>';
       var html = '';
       html += '<div class="row" style="margin-bottom:12px"><h1 style="margin:0">' + esc(p.Name) + '</h1><span class="pill">' + esc(prof.label) + '</span>' + verBadge(p.Version) + stagePill(p.Stage) + responsePill(p.Response) + (dnc ? '<span class="pill bad">Do not contact</span>' : '') + '</div>';
 
@@ -40,6 +44,9 @@
         (p.Phone ? '<a class="btn" href="tel:' + esc(p.Phone) + '">📞 Call</a>' : '<button class="btn" disabled>📞 No phone</button>') +
         (p.Email ? '<a class="btn" href="mailto:' + esc(p.Email) + '">✉️ Email</a>' : '<button class="btn" disabled>✉️ No email</button>') +
         (canWrite ? '<button class="btn" id="logCallBtn">📝 Log call</button>' : '<button class="btn" disabled>📝 Log call</button>') + '</div>';
+      if (canWrite) html += '<div class="row" style="margin:-4px 0 12px;justify-content:flex-end">' + (isPartner
+        ? '<button class="btn sm ghost" id="unmarkBtn">↩ Back to marketing</button>'
+        : '<button class="btn sm navy" id="markBtn">🤝 Mark as partner · they ' + esc(prof.winVerb) + '</button>') + '</div>';
 
       // contact + next step
       html += '<div class="card"><div class="hd"><h2>Contact</h2><span class="sub">' + esc(prof.pitch || '') + '</span></div><div class="bd kv">' +
@@ -97,6 +104,8 @@
         prof.fields.forEach(function (f) { var el = e.target.elements[f.key]; if (el) profile[f.key] = el.value; });
         api('savePartner', id, { profile: profile }).then(function () { toast('Profile saved'); load(); }).catch(fail);
       });
+      on($('markBtn'), 'click', function () { if (!confirm('Move ' + p.Name + ' into the Partners book?')) return; api('markAsPartner', id).then(function () { toast('Now a partner'); load(); }).catch(fail); });
+      on($('unmarkBtn'), 'click', function () { if (!confirm('Send ' + p.Name + ' back to the marketing pipeline?')) return; api('unmarkPartner', id).then(function () { toast('Back in marketing'); load(); }).catch(fail); });
       on($('dncBtn'), 'click', function () {
         var msg = dnc ? 'Allow contacting ' + p.Name + ' again?' : 'Mark ' + p.Name + ' do-not-contact? Queued emails are cancelled and they are never emailed again.';
         if (!confirm(msg)) return;

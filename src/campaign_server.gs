@@ -255,7 +255,8 @@ function recountPartnerStages() {
     else if (replied[id] && !response) response = 'Replied';
     const row = { 'Stage': stage, 'Response': response };
     if (lastContact[id]) row['Last Contact'] = lastContact[id];
-    if (row['Stage'] !== p['Stage'] || row['Response'] !== p['Response'] || (row['Last Contact'] && row['Last Contact'].toISOString() !== p['Last Contact'])) {
+    if (stage === 'Partner' && !p['Partner Since']) row['Partner Since'] = new Date();
+    if (row['Stage'] !== p['Stage'] || row['Response'] !== p['Response'] || row['Partner Since'] || (row['Last Contact'] && row['Last Contact'].toISOString() !== p['Last Contact'])) {
       updates.push({ rowIndex: p._row, row: row });
     }
   });
