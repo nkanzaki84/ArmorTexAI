@@ -141,8 +141,9 @@ function compileTemplate(src) {
 function renderTemplate(name, vars, ctx) {
   const file = path.join(SRC_DIR, name + '.html');
   const fn = compileTemplate(fs.readFileSync(file, 'utf8'));
+  // Like HtmlService: an included template sees ONLY the variables passed to include(), never the parent's.
   const scope = Object.assign({}, vars);
-  const include = (child, extra) => renderTemplate(child, Object.assign({}, scope, extra || {}), ctx);
+  const include = (child, extra) => renderTemplate(child, Object.assign({}, extra || {}), ctx);
   return fn(scope, escHtml, include);
 }
 

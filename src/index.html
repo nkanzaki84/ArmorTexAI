@@ -63,9 +63,9 @@
 
   <main class="content" id="content">
     <? if (page === 'today') { ?><?!= include('today') ?>
-    <? } else if (page === 'partners') { ?><?!= include('partners', { section: 'partners' }) ?>
-    <? } else if (page === 'marketing') { ?><?!= include('partners', { section: 'marketing' }) ?>
-    <? } else if (page === 'partner') { ?><?!= include('partner') ?>
+    <? } else if (page === 'partners') { ?><?!= include('partners', { section: 'partners', appUrl: appUrl }) ?>
+    <? } else if (page === 'marketing') { ?><?!= include('partners', { section: 'marketing', appUrl: appUrl }) ?>
+    <? } else if (page === 'partner') { ?><?!= include('partner', { section: section }) ?>
     <? } else if (page === 'homes' || page === 'home') { ?><?!= include('homes') ?>
     <? } else if (page === 'campaign') { ?><?!= include('campaign') ?>
     <? } else if (page === 'settings') { ?><?!= include('settings') ?>
