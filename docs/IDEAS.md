@@ -51,6 +51,15 @@ Options for "really" calling from the app, pick by which number should show:
 - [ ] Screenshot mark-up (draw on the picture before posting), SFM's Screenshot tool
 - [ ] Open comments to Tanner (`COMMENT_ROLES`) once he is using the app daily
 
+## WhatsApp as a channel (nk, 2026-11-19)
+
+- Rule first: WhatsApp forbids messaging people who have not opted in; marketing templates to a cold list get the number banned. Homeowners are out anyway (no cold texts). So WhatsApp is a **conversation channel for people who already replied or gave their number**, never a cold channel.
+- US reality: thin adoption; East Texas realtors mostly text/iMessage. Build it as an option, not the default.
+- [ ] `Preferred Channel` on Partners (call · text · email · WhatsApp), asked on the first call
+- [ ] "Message on WhatsApp" button on the record (`wa.me/<digits>` link), logged as a touch like a call, so the 30-day clock sees it
+- [ ] Free WhatsApp Business app on a business number (ties in with the calling question: one business number for calls + messages)
+- [ ] Later, if enough partners prefer it: Meta Cloud API for template follow-ups + replies into the app (~cents per conversation). Version 4 at the earliest.
+
 ## Next (version 2 — work the replies)
 
 - [ ] Partner record: emails + replies inline, call notes, referrals both ways
