@@ -4,18 +4,25 @@
   <button class="btn primary sm" id="addBtn" style="display:none">+ Add partner</button>
 </div>
 
+<div class="ptabs" id="typeTabs">
+  <button class="on" data-type="">All <span class="n" id="n_all"></span></button>
+  <button data-type="realtor">Realtors <span class="n" id="n_realtor"></span></button>
+  <button data-type="inspector">Home inspectors <span class="n" id="n_inspector"></span></button>
+  <button data-type="insurance">Insurance agents <span class="n" id="n_insurance"></span></button>
+  <button data-type="property_manager">Property managers <span class="n" id="n_property_manager"></span></button>
+</div>
+
 <div class="row" style="margin-bottom:12px">
   <div class="search">🔍 <input id="q" placeholder="Search name, company, email, phone…"></div>
 </div>
 <div class="row" style="margin-bottom:12px">
   <div class="chips" id="stageChips">
-    <button class="chip on" data-stage="">All</button>
+    <button class="chip on" data-stage="">All stages</button>
     <button class="chip" data-stage="Prospect">Prospect</button>
     <button class="chip" data-stage="Contacted">Contacted</button>
     <button class="chip" data-stage="Replied">Replied</button>
     <button class="chip" data-stage="Partner">Partner</button>
   </div>
-  <select id="typeSel" class="chip"><option value="">All types</option><option value="realtor">Realtors</option><option value="inspector">Inspectors</option><option value="insurance">Insurance</option><option value="property_manager">Property managers</option></select>
   <select id="verSel" class="chip"><option value="">Any version</option><option>A</option><option>B</option><option>C</option><option>E</option></select>
   <select id="respSel" class="chip"><option value="">Any response</option><option>Replied</option><option>Sent an address</option><option>Not interested</option><option>Bounced</option><option>Opted out</option></select>
 </div>
@@ -25,7 +32,7 @@
   <form class="bd" id="addForm">
     <div class="grid2">
       <div class="f"><label>Name</label><input name="name" required></div>
-      <div class="f"><label>Type</label><select name="type"><option value="realtor">Realtor</option><option value="inspector">Home inspector</option><option value="insurance">Insurance agent</option><option value="property_manager">Property manager</option></select></div>
+      <div class="f"><label>Type</label><select name="type" id="addType"><option value="realtor">Realtor</option><option value="inspector">Home inspector</option><option value="insurance">Insurance agent</option><option value="property_manager">Property manager</option></select></div>
       <div class="f"><label>Company / brokerage</label><input name="company"></div>
       <div class="f"><label>Area</label><input name="area" placeholder="Longview"></div>
       <div class="f"><label>Email</label><input name="email" type="email"></div>
@@ -45,6 +52,16 @@
   (function () {
     var filters = { stage: '', type: '', version: '', response: '', q: '' };
     var all = [];
+    var TYPE_LABEL = { realtor: 'realtors', inspector: 'home inspectors', insurance: 'insurance agents', property_manager: 'property managers' };
+    try { filters.type = localStorage.getItem('atx_partner_tab') || ''; } catch (e) {}
+    function setTab(type) {
+      filters.type = type;
+      try { localStorage.setItem('atx_partner_tab', type); } catch (e) {}
+      $('typeTabs').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.type === type); });
+      if ($('addType') && type) $('addType').value = type;
+      render();
+    }
+    on($('typeTabs'), 'click', function (e) { var b = e.target.closest('button[data-type]'); if (b) setTab(b.dataset.type); });
     if (canWrite) $('addBtn').style.display = '';
     on($('addBtn'), 'click', function () { $('addCard').style.display = ''; $('addForm').name.focus(); });
     on($('addCancel'), 'click', function () { $('addCard').style.display = 'none'; });
@@ -57,7 +74,13 @@
         .catch(fail).finally(function () { busy(btn, false, 'Save partner'); });
     });
 
+    function renderCounts() {
+      var c = { '': all.length };
+      all.forEach(function (p) { c[p.Type] = (c[p.Type] || 0) + 1; });
+      ['', 'realtor', 'inspector', 'insurance', 'property_manager'].forEach(function (t) { var el = $('n_' + (t || 'all')); if (el) el.textContent = c[t] || 0; });
+    }
     function render() {
+      renderCounts();
       var q = filters.q.toLowerCase();
       var rows = all.filter(function (p) {
         if (filters.stage && p.Stage !== filters.stage) return false;
@@ -72,7 +95,7 @@
           '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + (p.Phone ? ' · ' + fmtPhone(p.Phone) : '') + '</div></div>' +
           '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + stagePill(p.Stage) + responsePill(p.Response) + '</div>' +
           (p.Phone ? '<a class="btn sm" href="tel:' + esc(p.Phone) + '" onclick="event.stopPropagation()" title="Call">📞</a>' : '') + '</li>';
-      }).join('') : '<li class="empty">' + (all.length ? 'No partners match.' : 'No partners yet. Import the realtor list under Settings.') + '</li>';
+      }).join('') : '<li class="empty">' + (all.length ? (filters.type && !all.some(function (p) { return p.Type === filters.type; }) ? 'No ' + TYPE_LABEL[filters.type] + ' yet. Import a list under Settings or add one by hand.' : 'No partners match.') : 'No partners yet. Import the realtor list under Settings.') + '</li>';
       $('count').textContent = rows.length + ' of ' + all.length;
     }
     on($('rows'), 'click', function (e) { var li = e.target.closest('li[data-id]'); if (li) go('partner', { id: li.dataset.id }); });
@@ -82,9 +105,9 @@
       $('stageChips').querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); }); c.classList.add('on');
       filters.stage = c.dataset.stage; render();
     });
-    ['typeSel', 'verSel', 'respSel'].forEach(function (id, i) {
-      on($(id), 'change', function (e) { filters[['type', 'version', 'response'][i]] = e.target.value; render(); });
+    ['verSel', 'respSel'].forEach(function (id, i) {
+      on($(id), 'change', function (e) { filters[['version', 'response'][i]] = e.target.value; render(); });
     });
-    api('listPartners', { includeDnc: true }).then(function (rows) { all = rows; render(); }).catch(function (e) { $('rows').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; });
+    api('listPartners', { includeDnc: true }).then(function (rows) { all = rows; setTab(filters.type); }).catch(function (e) { $('rows').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; });
   })();
 </script>
