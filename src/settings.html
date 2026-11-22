@@ -129,9 +129,7 @@
 
 <script>
   (function () {
-    if (!isAdmin) { $('content').innerHTML = '<h1>Settings</h1>
-<!-- SheetJS: reads .xlsx/.xls in the browser so imports can take the workbook as-is (first sheet → CSV → importPartners). -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" onerror="window.__xlsxFailed=true"></script><div class="empty">Owner only.</div>'; return; }
+    if (!isAdmin) { $('content').innerHTML = '<h1>Settings</h1><div class="empty">Owner only.</div>'; return; }
     var f = $('sendForm');
     api('getSettings').then(function (s) {
       Array.prototype.forEach.call(f.elements, function (el) { if (el.name && s[el.name] !== undefined) el.value = s[el.name]; });
@@ -144,26 +142,33 @@
       api('saveSettings', map).then(function () { toast('Settings saved', 'success'); }).catch(fail).finally(function () { busy(btn, false, 'Save settings'); });
     });
 
+    function importProblem(msg) { $('importResult').innerHTML = '<div class="problem bad">' + esc(msg) + '</div>'; toast(msg, 'error'); busy($('importBtn'), false, 'Import'); }
     on($('importBtn'), 'click', function () {
       var file = $('csvFile').files[0];
-      if (!file) return toast('Pick a CSV or Excel file first', 'error');
+      if (!file) return importProblem('Pick a CSV or Excel file first.');
       var isExcel = /\.xlsx?$/i.test(file.name);
-      if (isExcel && !window.XLSX) return toast(window.__xlsxFailed ? 'The Excel reader could not load. Save the sheet as CSV and import that.' : 'The Excel reader is still loading; try again in a moment.', 'error');
+      if (isExcel && !window.XLSX) return importProblem(window.__xlsxFailed ? 'The Excel reader could not load in this browser. Save the sheet as CSV (File → Download → CSV) and import that.' : 'The Excel reader is still loading; try again in a few seconds.');
+      $('importResult').innerHTML = '<div class="sub">Reading ' + esc(file.name) + '…</div>';
+      busy($('importBtn'), true, 'Reading…');
       var reader = new FileReader();
+      reader.onerror = function () { importProblem('Could not read the file: ' + (reader.error && reader.error.message || 'unknown error')); };
       reader.onload = function () {
         var csvText;
-        if (isExcel) {
-          try {
+        try {
+          if (isExcel) {
             var wb = XLSX.read(new Uint8Array(reader.result), { type: 'array' });
             var ws = wb.Sheets[wb.SheetNames[0]];
             csvText = XLSX.utils.sheet_to_csv(ws, { blankrows: false });
-          } catch (e) { return fail(new Error('Could not read that workbook: ' + (e.message || e))); }
-        } else csvText = reader.result;
+          } else csvText = reader.result;
+        } catch (e) { return importProblem('Could not read that workbook: ' + (e.message || e)); }
+        if (!csvText || !csvText.trim()) return importProblem('The file looks empty.');
+        var lines = csvText.split(/\r?\n/).filter(function (l) { return l.trim(); });
+        $('importResult').innerHTML = '<div class="sub">' + (lines.length - 1) + ' rows found. Headers: ' + esc(lines[0].slice(0, 160)) + '. Importing…</div>';
         busy($('importBtn'), true, 'Importing…');
         api('importPartners', csvText, { type: $('csvType').value, sourceList: $('csvSource').value || file.name.replace(/\.(xlsx?|csv)$/i, ''), established: $('csvEstablished').checked, rep: $('csvRep').value, handSentToCalls: $('csvHandSent').checked })
           .then(function (r) {
             $('importResult').innerHTML = '<div class="ok-box">Added <b>' + r.added + '</b>' + ($('csvEstablished').checked ? ' to the Partners book' : ' to Marketing') + '. Skipped: ' + r.skipped.duplicate + ' duplicate, ' + r.skipped.noEmail + ' with no email or phone, ' + r.skipped.doNotContact + ' do-not-contact.' + (r.skipped.phoneOnly ? ' ' + r.skipped.phoneOnly + ' have a phone but no email (call only).' : '') + (r.queuedForCalls ? ' <b>' + r.queuedForCalls + '</b> were already emailed by hand → call list, not the email test.' : '') + (r.rep ? ' Assigned to ' + esc(r.rep) + '.' : '') + '<br><span class="sub">Columns used: ' + esc(r.columns.join(', ')) + '</span></div>';
-          }).catch(function (e) { $('importResult').innerHTML = '<div class="problem bad">' + esc(e.message) + '</div>'; })
+          }).catch(function (e) { importProblem('Import failed: ' + (e.message || e)); })
           .finally(function () { busy($('importBtn'), false, 'Import'); });
       };
       if (isExcel) reader.readAsArrayBuffer(file); else reader.readAsText(file);
