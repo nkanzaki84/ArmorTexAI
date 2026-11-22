@@ -26,9 +26,12 @@ const PARTNER_IMPORT_ALIASES = {
  * do-not-contact list. New rows start at stage Prospect with no version.
  *
  * @param {string} csvText
- * @param {{type?: string, sourceList?: string, established?: boolean}} opts  default type 'realtor';
- *        established = these are existing relationships: they go straight into the Partners book
- *        (Stage Partner, Partner Since = now) and never get the email test.
+ * @param {{type?: string, sourceList?: string, established?: boolean, rep?: string, handSentToCalls?: boolean}} opts
+ *        type: default 'realtor'
+ *        established: existing relationships → Partners book (Stage Partner, Partner Since = now), never the email test
+ *        rep: staff email to own every imported row
+ *        handSentToCalls (default true for prospects): rows whose Notes say "sent …" were already emailed by hand →
+ *        Stage Contacted, Last Contact = that date, Skip Email Test, Call Queue
  * @return {{added:number, skipped:{noEmail:number, duplicate:number, doNotContact:number}, columns:string[]}}
  */
 function importPartners(csvText, opts) {
@@ -54,6 +57,10 @@ function importPartners(csvText, opts) {
   const rows = [];
   const now = new Date();
   const established = !!opts.established;
+  const rep = _normEmail_(opts.rep || '');
+  if (rep && !_isStaffEmail_(rep)) throw new Error('Not on the team: ' + rep);
+  const handSent = opts.handSentToCalls === undefined ? !established : !!opts.handSentToCalls;
+  let queued = 0;
   parsed.rows.forEach(function (r) {
     const email = _normEmail_(r.Email);
     const phone = _digits_(r.Phone);
@@ -65,18 +72,23 @@ function importPartners(csvText, opts) {
     if (hasEmail) seen[email] = true;
     if (phone) seenPhone[phone] = true;
     if (!hasEmail) skipped.phoneOnly = (skipped.phoneOnly || 0) + 1;    // kept, but the email test will skip them
+    const hs = handSent ? _handSentDate_(r.Notes, now) : null;
+    if (hs) queued++;
     rows.push({
+      'Rep': rep,
+      'Skip Email Test': hs ? 'Yes' : '',
+      'Call Queue': hs ? 'Yes' : '',
       'Name': r.Name || (hasEmail ? email.split('@')[0] : phone),
       'Type': (r.Type && PARTNER_TYPES.indexOf(String(r.Type).toLowerCase()) !== -1) ? String(r.Type).toLowerCase() : type,
       'Company': r.Company || '',
       'Phone': _digits_(r.Phone),
       'Email': hasEmail ? email : '',
       'Area': r.Area || '',
-      'Stage': established ? 'Partner' : 'Prospect',
+      'Stage': established ? 'Partner' : (hs ? 'Contacted' : 'Prospect'),
       'Version': '',
       'Response': '',
       'Do Not Contact': '',
-      'Last Contact': '',
+      'Last Contact': hs ? hs : '',
       'Next Step': '',
       'Notes': r.Notes || '',
       'Source List': opts.sourceList || ('import ' + _dateKey_(now)),
@@ -88,7 +100,74 @@ function importPartners(csvText, opts) {
   const ids = _nextId_(TAB.PARTNERS, rows.length);
   rows.forEach(function (row, i) { row['ID'] = ids[i]; });
   _appendRows_(TAB.PARTNERS, rows);
-  return { added: rows.length, skipped: skipped, columns: parsed.columns };
+  return { added: rows.length, skipped: skipped, columns: parsed.columns, queuedForCalls: queued, rep: rep };
+}
+
+/** "sent 11/3" → a Date (this year, or last year if that would be in the future); "sent" alone → `now`. null if not hand-sent. */
+function _handSentDate_(notes, now) {
+  const m = HAND_SENT_RE.exec(String(notes || ''));
+  if (!m) return null;
+  if (!m[1]) return new Date(now.getTime());
+  let y = m[3] ? Number(m[3]) : now.getFullYear();
+  if (y < 100) y += 2000;
+  let d = new Date(y, Number(m[1]) - 1, Number(m[2]));
+  if (!m[3] && d.getTime() > now.getTime() + 86400000) d = new Date(y - 1, Number(m[1]) - 1, Number(m[2]));
+  return isNaN(d.getTime()) ? new Date(now.getTime()) : d;
+}
+
+function _isStaffEmail_(email) {
+  email = _normEmail_(email);
+  if (!email) return false;
+  if (email === _normEmail_(OWNER_EMAIL)) return true;
+  return _readTab_(TAB.USERS).some(function (u) { return _normEmail_(u['Email']) === email && String(u['Active'] || 'Yes').toLowerCase() !== 'no'; });
+}
+
+/** Distinct import lists, newest first, with counts. */
+function listSourceLists() {
+  _requireRole_(ROLES.map(function (r) { return r.key; }));
+  const c = {};
+  _readTab_(TAB.PARTNERS).forEach(function (p) { const k = String(p['Source List'] || '').trim() || '(none)'; c[k] = (c[k] || 0) + 1; });
+  return Object.keys(c).map(function (k) { return { sourceList: k, count: c[k] }; }).sort(function (a, b) { return b.count - a.count; });
+}
+
+/** Give every partner in an import list to a rep (blank = unassign). Owner only. */
+function assignRepToList(sourceList, rep) {
+  _requireRole_(ADMIN_ROLES);
+  rep = _normEmail_(rep || '');
+  if (rep && !_isStaffEmail_(rep)) throw new Error('Not on the team: ' + rep);
+  const updates = _readTab_(TAB.PARTNERS)
+    .filter(function (p) { return String(p['Source List'] || '').trim() === String(sourceList).trim(); })
+    .map(function (p) { return { rowIndex: p._row, row: { 'Rep': rep } }; });
+  _updateRows_(TAB.PARTNERS, updates);
+  return { updated: updates.length };
+}
+
+/** Retrofit the hand-sent rule on an already-imported list. Owner only. */
+function applyHandSentRule(sourceList) {
+  _requireRole_(ADMIN_ROLES);
+  const now = new Date();
+  const updates = [];
+  _readTab_(TAB.PARTNERS).forEach(function (p) {
+    if (String(p['Source List'] || '').trim() !== String(sourceList).trim()) return;
+    if (String(p['Stage']) === 'Partner' || p['Partner Since']) return;
+    const d = _handSentDate_(p['Notes'], now);
+    if (!d) return;
+    updates.push({ rowIndex: p._row, row: { 'Skip Email Test': 'Yes', 'Call Queue': 'Yes', 'Stage': p['Stage'] === 'Prospect' ? 'Contacted' : p['Stage'], 'Last Contact': p['Last Contact'] || d } });
+  });
+  _updateRows_(TAB.PARTNERS, updates);
+  // anything queued must leave the email test, even if a version was already dealt
+  const cancelled = updates.map(function (u) { return _readTab_(TAB.PARTNERS).filter(function (p) { return p._row === u.rowIndex; })[0]; })
+    .filter(Boolean).reduce(function (n, p) { return n + _cancelQueuedEmails_(p['ID']); }, 0);
+  return { updated: updates.length, cancelledEmails: cancelled };
+}
+
+/** Put a partner on (or take them off) the call list by hand. */
+function setCallQueue(id, on) {
+  _requireRole_(WRITE_ROLES);
+  const p = _byId_(TAB.PARTNERS, id);
+  if (!p) throw new Error('Partner not found: ' + id);
+  _updateRow_(TAB.PARTNERS, p._row, { 'Call Queue': on ? 'Yes' : '' });
+  return { ok: true };
 }
 
 /** CSV → { columns:[mapped names], rows:[{Name, Email, …}] } */
@@ -138,7 +217,8 @@ function assignVersions(opts) {
   const partners = _readTab_(TAB.PARTNERS);
   const todo = partners.filter(function (p) {
     return String(p['Type']).toLowerCase() === type && !String(p['Version'] || '').trim() && !_yes_(p['Do Not Contact'])
-      && String(p['Stage']) !== 'Partner' && !p['Partner Since'];   // established partners are never in the email test
+      && String(p['Stage']) !== 'Partner' && !p['Partner Since']    // established partners are never in the email test
+      && !_yes_(p['Skip Email Test']);                              // nor anyone already emailed by hand
   });
   // group by company (blank company = each on their own)
   const groups = {};
@@ -191,18 +271,21 @@ function _partnerMetricsMap_() {
 }
 
 /**
- * @param {{section?:'marketing'|'partners', type?:string, stage?:string, version?:string, response?:string, q?:string, includeDnc?:boolean}} filters
- *   section 'marketing' = not yet a Partner; 'partners' = Stage Partner. Rows carry `metrics` and `daysSinceContact`.
+ * @param {{section?:'marketing'|'partners', type?:string, stage?:string, version?:string, response?:string, q?:string, includeDnc?:boolean, rep?:string}} filters
+ *   section 'marketing' = not yet a Partner; 'partners' = Stage Partner. rep 'mine' = the signed-in user's or unassigned.
+ *   Rows carry `metrics` and `daysSinceContact`.
  */
 function listPartners(filters) {
-  _requireRole_(ROLES.map(function (r) { return r.key; }));
+  const session = _requireRole_(ROLES.map(function (r) { return r.key; }));
   filters = filters || {};
+  const repFilter = filters.rep === 'mine' ? session.email : _normEmail_(filters.rep || '');
   const q = String(filters.q || '').trim().toLowerCase();
   const metrics = _partnerMetricsMap_();
   const now = Date.now();
   return _readTab_(TAB.PARTNERS).filter(function (p) {
     if (filters.section === 'marketing' && String(p['Stage']) === 'Partner') return false;
     if (filters.section === 'partners' && String(p['Stage']) !== 'Partner') return false;
+    if (repFilter) { const r = _normEmail_(p['Rep']); if (r !== repFilter && !(filters.rep === 'mine' && !r)) return false; }
     if (filters.type && String(p['Type']) !== filters.type) return false;
     if (filters.stage && String(p['Stage']) !== filters.stage) return false;
     if (filters.version && String(p['Version']) !== filters.version) return false;
@@ -285,7 +368,9 @@ function addPartner(payload) {
     'Last Contact': '', 'Next Step': String(payload.nextStep || '').trim(),
     'Notes': String(payload.notes || '').trim(),
     'Source List': 'manual', 'Added At': new Date(), 'Added By': me.email,
+    'Rep': payload.rep !== undefined ? _normEmail_(payload.rep) : (me.role === 'sales' ? me.email : ''),
   };
+  if (row['Rep'] && !_isStaffEmail_(row['Rep'])) throw new Error('Not on the team: ' + row['Rep']);
   if (!row['Name']) throw new Error('Name is required.');
   _appendRows_(TAB.PARTNERS, [row]);
   return row['ID'];
@@ -308,16 +393,18 @@ function savePartner(id, payload) {
   payload = payload || {};
   const idx = _findRowIndex_(TAB.PARTNERS, function (p) { return String(p['ID']) === String(id); });
   if (idx === -1) throw new Error('Partner not found: ' + id);
-  const allowed = { name: 'Name', company: 'Company', phone: 'Phone', email: 'Email', area: 'Area', nextStep: 'Next Step', notes: 'Notes', response: 'Response' };
+  const allowed = { name: 'Name', company: 'Company', phone: 'Phone', email: 'Email', area: 'Area', nextStep: 'Next Step', notes: 'Notes', response: 'Response', rep: 'Rep' };
   const row = {};
   Object.keys(allowed).forEach(function (k) {
     if (payload[k] === undefined) return;
     let v = String(payload[k]).trim();
     if (k === 'phone') v = _digits_(v);
     if (k === 'email') v = _normEmail_(v);
+    if (k === 'rep') { v = _normEmail_(v); if (v && !_isStaffEmail_(v)) throw new Error('Not on the team: ' + v); }
     if (k === 'response' && RESPONSES.indexOf(v) === -1) throw new Error('Unknown response: ' + v);
     row[allowed[k]] = v;
   });
+  if (payload.callQueue !== undefined) row['Call Queue'] = payload.callQueue ? 'Yes' : '';
   if (payload.profile) {
     const cols = _profileColumns_();
     Object.keys(payload.profile).forEach(function (h) {

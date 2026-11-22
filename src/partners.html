@@ -29,6 +29,7 @@
 
 <div class="row" style="margin-bottom:12px">
   <div class="search">🔍 <input id="q" placeholder="Search name, company, email, phone…"></div>
+  <span class="chips" id="repChips"><button class="chip on" data-rep="">Everyone</button><button class="chip" data-rep="mine">Mine</button><button class="chip" data-rep="none">Unassigned</button></span>
 </div>
 <div class="row" style="margin-bottom:12px">
   <? if (isMarketing) { ?>
@@ -73,7 +74,12 @@
 <script>
   (function () {
     var SECTION = '<?= section ?>', MARKETING = SECTION === 'marketing';
-    var filters = { stage: '', type: '', version: '', response: '', q: '' };
+    var filters = { stage: '', type: '', version: '', response: '', q: '', rep: (O.session.role === 'sales') ? 'mine' : '' };
+    var ME = String(O.session.email || '').toLowerCase();
+    $('repChips').querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('on', c.dataset.rep === filters.rep); });
+    on($('repChips'), 'click', function (e) { var c = e.target.closest('.chip'); if (!c) return; $('repChips').querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); }); c.classList.add('on'); filters.rep = c.dataset.rep; render(); });
+    function repOk(p) { var r = String(p.Rep || '').toLowerCase(); if (filters.rep === 'mine') return !r || r === ME; if (filters.rep === 'none') return !r; return true; }
+    function repChip(p) { return p.Rep ? '<span class="pill" title="' + esc(p.Rep) + '">👤 ' + esc(String(p.Rep).split('@')[0]) + '</span>' : ''; }
     var all = [];
     var TYPE_LABEL = { realtor: 'realtors', inspector: 'home inspectors', insurance: 'insurance agents', property_manager: 'property managers' };
     try { filters.type = localStorage.getItem('atx_' + SECTION + '_tab') || ''; } catch (e) {}
@@ -141,7 +147,7 @@
       renderCounts();
       var q = filters.q.toLowerCase();
       var rows = all.filter(function (p) {
-        if (!inType(p)) return false;
+        if (!inType(p) || !repOk(p)) return false;
         if (MARKETING) {
           if (filters.stage && p.Stage !== filters.stage) return false;
           if (filters.version && p.Version !== filters.version) return false;
@@ -158,10 +164,10 @@
         var facts = typeFacts(p);
         var right;
         if (MARKETING) {
-          right = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + stagePill(p.Stage) + responsePill(p.Response) + (p['Next Step'] ? '<span class="sub">→ ' + esc(p['Next Step']) + '</span>' : '') + '</div>';
+          right = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span>' + repChip(p) + ' ' + stagePill(p.Stage) + '</span>' + responsePill(p.Response) + (p['Call Queue'] === 'Yes' ? '<span class="pill warn">📞 on call list</span>' : '') + (p['Next Step'] ? '<span class="sub">→ ' + esc(p['Next Step']) + '</span>' : '') + '</div>';
         } else {
           var m = p.metrics;
-          right = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' +
+          right = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + repChip(p) +
             '<span class="sub">' + m.referralsIn + ' referral' + (m.referralsIn === 1 ? '' : 's') + (m.jobsSigned ? ' · ' + m.jobsSigned + ' job' + (m.jobsSigned === 1 ? '' : 's') + (m.jobValue ? ' · ' + fmtMoney(m.jobValue) : '') : '') + '</span>' +
             (p.daysSinceContact === null ? '<span class="pill warn">never contacted</span>' : p.cold ? '<span class="pill bad">🥶 ' + p.daysSinceContact + ' days quiet</span>' : '<span class="pill ok">' + p.daysSinceContact + 'd ago</span>') + '</div>';
         }

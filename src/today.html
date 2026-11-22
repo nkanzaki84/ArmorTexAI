@@ -13,7 +13,7 @@
 </div>
 
 <div class="card">
-  <div class="hd"><h2>Calls</h2><span class="sub">replied, not yet called · highest listing value first</span><div class="spacer"></div><a class="btn sm" id="callScript" href="#" target="_blank" style="display:none">📄 Call script</a></div>
+  <div class="hd"><h2>Calls</h2><span class="sub">replied or queued, not yet called · highest listing value first</span><div class="spacer"></div><span class="chips" id="scopeChips" style="display:none"><button class="chip on" data-scope="all">Everyone</button><button class="chip" data-scope="mine">Mine</button></span><a class="btn sm" id="callScript" href="#" target="_blank" style="display:none">📄 Call script</a></div>
   <ul class="list" id="callList"><li class="empty">Loading…</li></ul>
 </div>
 
@@ -45,7 +45,10 @@
   (function () {
     $('todayTitle').textContent = 'Today · ' + new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
     if (O.side === 'homes') $('knockCard').style.display = '';
-    var batch = null, work = { replies: [], calls: [], needsReview: [] };
+    var batch = null, work = { replies: [], calls: [], needsReview: [] }, scope = (O.session.role === 'sales') ? 'mine' : 'all';
+    if (O.session.role !== 'sales') { $('scopeChips').style.display = ''; }
+    on($('scopeChips'), 'click', function (e) { var c = e.target.closest('.chip'); if (!c) return; $('scopeChips').querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); }); c.classList.add('on'); scope = c.dataset.scope; loadWork(); });
+    function repChip(p) { var r = p.Rep; if (!r || scope === 'mine') return ''; var n = r.split('@')[0]; return '<span class="pill" title="' + esc(r) + '">' + esc(n) + '</span>'; }
 
     function partnerLine(p, right) {
       return '<li class="link" data-id="' + esc(p.ID) + '">' + verBadge(p.Version) +
@@ -93,7 +96,7 @@
           .replace('</div></div>', '</div><div class="sub" style="white-space:pre-wrap;margin-top:4px">' + esc((ev.Snippet || '').slice(0, 160)) + '</div></div>');
       }).join('') : '<li class="empty">No new replies this week.</li>';
       $('callList').innerHTML = w.calls.length ? w.calls.map(function (p) {
-        return partnerLine(p, '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + (p.listingValue ? '<span class="pill navy">$' + Number(p.listingValue).toLocaleString() + '</span>' : '') + callBtn(p) + '</div>');
+        return partnerLine(p, '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span>' + (p.why === 'replied' ? '<span class="pill warn">replied</span>' : '<span class="pill">emailed by hand' + (p['Last Contact'] ? ' ' + fmtDate(p['Last Contact']) : '') + '</span>') + ' ' + repChip(p) + (p.listingValue ? ' <span class="pill navy">' + fmt$(p.listingValue) + '</span>' : '') + '</span>' + callBtn(p) + '</div>');
       }).join('') : '<li class="empty">Nobody to call right now.</li>';
       var rv = w.needsReview || [];
       $('reviewCard').style.display = rv.length ? '' : 'none';
@@ -109,7 +112,7 @@
     }
 
     function loadBatch() { api('buildTodayBatch', {}).then(renderBatch).catch(function (e) { $('batchList').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; fail(e); }); }
-    function loadWork() { api('getTodayWork').then(renderWork).catch(function (e) { $('replyList').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; }); }
+    function loadWork() { api('getTodayWork', { rep: scope }).then(renderWork).catch(function (e) { $('replyList').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; }); }
 
     function send(force) {
       var n = (batch.followUps || []).length + (batch.firsts || []).length;

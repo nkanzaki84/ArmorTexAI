@@ -69,9 +69,12 @@ The SFM suite look: `src/ui_base.html` (Brian's portable base: palette, inputs, 
 - Not ported: SFM's "View as" impersonation and the screenshot mark-up modal (listed in IDEAS).
 - Preview server serves both doors: `/exec` and `/dev`.
 
-## Parked: per-salesperson ownership and commissions (2026-11-22, Brian)
+## Reps, the call queue, and hand-emailed prospects (2026-11-22)
 
-Brian sees each salesperson with their own profile: their own leads, their own realtor / property-manager relationships, and lead-to-commission tracking through the sales cycle. Not built yet. Sketch: a `Rep` column on Partners (and Homes) holding a staff email, "Mine" filters on Marketing/Partners/Today, Today scoped to the signed-in rep, a per-rep funnel on Campaign; commission itself belongs to the **job manager** (it is a property of a signed job), and the CRM's part is attribution: which rep sourced the partner/home that led to the job. Design sketch in `docs/IDEAS.md`. Hard rule unchanged: no payments to partners; commissions are staff compensation and live with jobs.
+- `Rep` on Partners = staff email (validated against Users). Set on import ("Assign to"), on Add (sales default to themselves), on the record (picker), or for a whole list on Settings → Lists already imported. `listPartners({rep:'mine'})` = mine **or unassigned**; sales users default to Mine, the owner to Everyone. Today is scoped the same way (`getTodayWork({rep})`), with an Everyone/Mine toggle for the owner.
+- `Skip Email Test` = Yes keeps someone out of version assignment and every batch (used for people already emailed by hand). `Call Queue` = Yes puts them on Today's call list until a call is logged after `Last Contact`; `setCallQueue` toggles it from the record.
+- **Hand-sent rule** (`HAND_SENT_RE`, `_handSentDate_`): on import, a Notes cell like "sent 11/3" → Stage Contacted, Last Contact = that date, Skip Email Test, Call Queue. Default on for prospect imports; `applyHandSentRule(sourceList)` retrofits an already-imported list and cancels queued emails.
+- Still parked: a rep profile page, per-rep funnel on Campaign, commissions (job manager; CRM supplies attribution via the hand-off), per-rep sending mailboxes. See `docs/IDEAS.md`.
 
 ## Parked: referral tracking by product (2026-11-19)
 

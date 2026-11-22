@@ -53,9 +53,30 @@
       <div class="f"><label>Partner type</label><select id="csvType"><option value="realtor">Realtors</option><option value="inspector">Home inspectors</option><option value="insurance">Insurance agents</option><option value="property_manager">Property managers</option></select></div>
     </div>
     <div class="f"><label>List name</label><input id="csvSource" type="text" placeholder="e.g. realtors-gregg-nov-2026"></div>
-    <label class="row" style="margin-bottom:12px;font-weight:500"><input type="checkbox" id="csvEstablished" style="width:auto;margin:0"> These are established partners: straight into the Partners book, no emails ever</label>
+    <div class="grid2">
+      <div class="f"><label>Assign to</label><select id="csvRep"><option value="">— unassigned —</option></select><span class="hint">every row in this file gets this rep</span></div>
+      <div class="f"><label>&nbsp;</label>
+        <label class="row" style="font-weight:500;margin:0;flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" id="csvEstablished" style="width:auto;margin:3px 0 0"><span style="flex:1">Established partners: straight into the book, no emails ever</span></label>
+        <label class="row" style="font-weight:500;margin:6px 0 0;flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" id="csvHandSent" checked style="width:auto;margin:3px 0 0"><span style="flex:1">Rows whose Notes say "sent …" were already emailed by hand: mark Contacted and put them on the call list instead of the email test</span></label>
+      </div>
+    </div>
     <div class="row"><button class="btn primary" id="importBtn">Import</button><span class="sub">Columns recognized: name or first/last, email, phone, company/brokerage, city/area.</span></div>
     <div id="importResult" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hd"><h2>Lists already imported</h2><span class="sub">fix up a list after the fact</span></div>
+  <div class="bd">
+    <div class="grid2">
+      <div class="f"><label>List</label><select id="listSel"></select></div>
+      <div class="f"><label>Rep</label><select id="listRep"><option value="">— unassigned —</option></select></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="listAssignBtn">👤 Assign this rep to the whole list</button>
+      <button class="btn" id="listHandSentBtn" title="Rows whose Notes say 'sent …' → Contacted, call list, out of the email test">✉️ Apply the hand-sent rule</button>
+    </div>
+    <div id="listResult" style="margin-top:10px"></div>
   </div>
 </div>
 
@@ -125,9 +146,9 @@
       var reader = new FileReader();
       reader.onload = function () {
         busy($('importBtn'), true, 'Importing…');
-        api('importPartners', reader.result, { type: $('csvType').value, sourceList: $('csvSource').value || file.name, established: $('csvEstablished').checked })
+        api('importPartners', reader.result, { type: $('csvType').value, sourceList: $('csvSource').value || file.name, established: $('csvEstablished').checked, rep: $('csvRep').value, handSentToCalls: $('csvHandSent').checked })
           .then(function (r) {
-            $('importResult').innerHTML = '<div class="ok-box">Added <b>' + r.added + '</b>' + ($('csvEstablished').checked ? ' to the Partners book' : ' to Marketing') + '. Skipped: ' + r.skipped.duplicate + ' duplicate, ' + r.skipped.noEmail + ' with no email or phone, ' + r.skipped.doNotContact + ' do-not-contact.' + (r.skipped.phoneOnly ? ' ' + r.skipped.phoneOnly + ' have a phone but no email (call only).' : '') + '<br><span class="sub">Columns used: ' + esc(r.columns.join(', ')) + '</span></div>';
+            $('importResult').innerHTML = '<div class="ok-box">Added <b>' + r.added + '</b>' + ($('csvEstablished').checked ? ' to the Partners book' : ' to Marketing') + '. Skipped: ' + r.skipped.duplicate + ' duplicate, ' + r.skipped.noEmail + ' with no email or phone, ' + r.skipped.doNotContact + ' do-not-contact.' + (r.skipped.phoneOnly ? ' ' + r.skipped.phoneOnly + ' have a phone but no email (call only).' : '') + (r.queuedForCalls ? ' <b>' + r.queuedForCalls + '</b> were already emailed by hand → call list, not the email test.' : '') + (r.rep ? ' Assigned to ' + esc(r.rep) + '.' : '') + '<br><span class="sub">Columns used: ' + esc(r.columns.join(', ')) + '</span></div>';
           }).catch(function (e) { $('importResult').innerHTML = '<div class="problem bad">' + esc(e.message) + '</div>'; })
           .finally(function () { busy($('importBtn'), false, 'Import'); });
       };
@@ -148,8 +169,29 @@
       }).catch(fail).finally(function () { busy($('assignBtn'), false, 'Assign now'); });
     });
 
+    function fillReps(rows) {
+      var opts = '<option value="">— unassigned —</option>' + rows.filter(function (u) { return String(u.Active || 'Yes').toLowerCase() !== 'no'; }).map(function (u) { return '<option value="' + esc(u.Email) + '">' + esc(u.Name || u.Email) + '</option>'; }).join('');
+      ['csvRep', 'listRep'].forEach(function (id) { if ($(id)) $(id).innerHTML = opts; });
+    }
+    function loadLists() {
+      api('listSourceLists').then(function (ls) {
+        $('listSel').innerHTML = ls.map(function (l) { return '<option value="' + esc(l.sourceList) + '">' + esc(l.sourceList) + ' (' + l.count + ')</option>'; }).join('') || '<option value="">no lists yet</option>';
+      }).catch(fail);
+    }
+    on($('listAssignBtn'), 'click', function () {
+      var list = $('listSel').value, rep = $('listRep').value;
+      if (!list) return toast('No list selected', 'error');
+      if (!confirm('Assign ' + (rep || 'nobody') + ' to everyone in "' + list + '"?')) return;
+      api('assignRepToList', list, rep).then(function (r) { $('listResult').innerHTML = '<div class="ok-box">' + r.updated + ' partners now belong to ' + esc(rep || 'nobody') + '.</div>'; }).catch(fail);
+    });
+    on($('listHandSentBtn'), 'click', function () {
+      var list = $('listSel').value; if (!list) return toast('No list selected', 'error');
+      api('applyHandSentRule', list).then(function (r) { $('listResult').innerHTML = '<div class="ok-box">' + r.updated + ' hand-emailed partners moved to the call list' + (r.cancelledEmails ? ', ' + r.cancelledEmails + ' queued emails cancelled' : '') + '.</div>'; }).catch(fail);
+    });
+    loadLists();
     function loadTeam() {
       api('listUsers').then(function (rows) {
+        fillReps(rows);
         $('teamRows').innerHTML = rows.map(function (u) {
           var self = u.Email === O.session.email;
           return '<tr><td><div class="name">' + esc(u.Name) + (self ? ' <span class="sub">(you)</span>' : '') + '</div><div class="sub">' + esc(u.Email) + '</div></td><td><span class="pill ' + (u.Role === 'owner' ? 'orange' : u.Role === 'sales' ? 'ok' : '') + '">' + esc(u.Role) + '</span></td><td style="text-align:right">' + (self ? '' : '<button class="btn sm ghost danger" data-remove="' + esc(u.Email) + '">Remove</button>') + '</td></tr>';

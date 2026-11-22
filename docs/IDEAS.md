@@ -101,8 +101,9 @@ Options for "really" calling from the app, pick by which number should show:
 
 Each salesperson works their own leads and keeps their own realtor / inspector / property-manager relationships; leads are tracked through the sales cycle to commission.
 
-- [ ] `Rep` column on Partners and Homes (staff email). Set on import (who loads the list / which rep gets the neighborhood), on "Add partner", or by hand. Reassignable by the owner.
-- [ ] "Mine" filter on Marketing, Partners, Today; Today's call list scoped to the signed-in rep; owner sees everyone with a rep chip on each row.
+- [x] `Rep` column on Partners (staff email): set on import, on Add, on the record, or per list (2026-11-22). Homes later.
+- [x] "Mine" filter on Marketing and Partners; Today scoped to the signed-in rep (unassigned counts as mine); owner sees everyone with a rep chip and an Everyone/Mine toggle.
+- [x] Call queue: hand-emailed prospects (Notes "sent 11/3") skip the email test and sit on the call list; manual add/remove on the record.
 - [ ] Rep profile page: their pipeline funnel, partners, referrals in, jobs and $ sourced, touch discipline (gone-cold count). Campaign stats split by rep.
 - [ ] Commission: a property of a **signed job** (rate, basis, paid date) → job manager. The CRM supplies attribution: the rep on the partner/home that produced the referral travels on the hand-off package (`Source` gets a rep field) and the four status updates come back per referral, so "jobs and $ by rep" is computable here without storing commission math.
 - [ ] Email sending stays from the business mailbox (Brian's) in v1; per-rep sending mailboxes is a later question (each rep's Workspace account + the same code deployed per rep, or the Gmail API with delegated send).

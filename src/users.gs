@@ -99,6 +99,21 @@ function deleteUser(email) {
   return { ok: true };
 }
 
+/** Active people on the team, for rep pickers. Any signed-in role. */
+function listTeamContacts() {
+  _requireRole_(ROLES.map(function (r) { return r.key; }));
+  const out = [];
+  const seen = {};
+  const owner = _normEmail_(OWNER_EMAIL);
+  _readTab_(TAB.USERS).forEach(function (u) {
+    if (String(u['Active'] || 'Yes').toLowerCase() === 'no') return;
+    const e = _normEmail_(u['Email']); if (!e || seen[e]) return; seen[e] = true;
+    out.push({ email: e, name: String(u['Name'] || '').trim(), role: String(u['Role'] || '') });
+  });
+  if (!seen[owner]) out.unshift({ email: owner, name: 'Brian', role: 'owner' });
+  return out;
+}
+
 /** Called by setup(): make sure the owner appears on the Users tab. */
 function _seedUsers_() {
   const idx = _findRowIndex_(TAB.USERS, function (r) { return _normEmail_(r['Email']) === _normEmail_(OWNER_EMAIL); });

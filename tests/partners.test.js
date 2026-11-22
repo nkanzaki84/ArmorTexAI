@@ -41,7 +41,7 @@ test('import skips no-email, duplicates (in file and existing) and do-not-contac
   app.setup();
   app.saveSettings({ do_not_contact: 'blocked@example.com\nOther@Example.com' });
   const first = app.importPartners('Name,Email\nA,a@example.com\nB,b@example.com\nNoMail,\nDup,a@example.com\nBlocked,blocked@example.com');
-  deq(first, { added: 2, skipped: { noEmail: 1, duplicate: 1, doNotContact: 1, phoneOnly: 0 }, columns: ['Name', 'Email'] });
+  deq({ added: first.added, skipped: first.skipped, columns: first.columns }, { added: 2, skipped: { noEmail: 1, duplicate: 1, doNotContact: 1, phoneOnly: 0 }, columns: ['Name', 'Email'] });
   // mark B do-not-contact, then re-import the same file
   const b = app.$rows('Partners').find(p => p.Name === 'B');
   app.setPartnerDoNotContact(b.ID, true, 'asked');

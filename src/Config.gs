@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.3.1';
+const APP_VERSION    = '0.4.0';
 const APP_BUILD_DATE = '2026-11-22';
 
 // ===== Script Property keys =====
@@ -90,6 +90,9 @@ const HEADERS = {
     'Property Types',        // property manager
     'Decision Maker',        // property manager: Yes | No
     'Partner Since',         // set the first time Stage becomes Partner (established relationship)
+    'Rep',                   // staff email who owns this relationship (blank = unassigned)
+    'Skip Email Test',       // Yes = never gets a version or a batch slot (e.g. already emailed by hand)
+    'Call Queue',            // Yes = on the call list until a call is logged after Last Contact
   ],
   'Homes': [
     'ID',
@@ -236,6 +239,9 @@ const PARTNER_STAGES = ['Prospect', 'Contacted', 'Replied', 'Partner'];
 const HOME_STAGES = ['Target', 'Mailed', 'Knocked', 'Talked', 'Roof check booked'];
 const RESPONSES = ['', 'Replied', 'Sent an address', 'Referred a job', 'Sent a claim', 'Sent a property', 'Not interested', 'Bounced', 'Opted out'];
 const WIN_RESPONSES = ['Sent an address', 'Referred a job', 'Sent a claim', 'Sent a property'];
+
+// "Sent", "sent 11/3", "Bilingual | sent" in an imported Notes column = already emailed by hand.
+const HAND_SENT_RE = /\bsent\b(?:\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?)?/i;
 
 // Days since the last contact before an established partner shows as "gone cold".
 const PARTNER_TOUCH_DAYS = 30;

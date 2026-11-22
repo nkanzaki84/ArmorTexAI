@@ -120,7 +120,7 @@ function buildTodayBatch(opts) {
   const emailed = {};
   emails.forEach(function (e) { if (e['Status'] !== 'cancelled') emailed[e['Partner ID']] = true; });
   const candidates = partners.filter(function (p) {
-    if (String(p['Stage']) === 'Partner' || p['Partner Since']) return false;   // the book is never in the email test
+    if (String(p['Stage']) === 'Partner' || p['Partner Since'] || _yes_(p['Skip Email Test'])) return false;   // the book and hand-emailed people are never in the email test
     return String(p['Version'] || '').trim() && !emailed[p['ID']] && !_yes_(p['Do Not Contact']) && !dnc[_normEmail_(p['Email'])] && _normEmail_(p['Email']);
   });
   // Round-robin across versions so each day's batch is balanced.
@@ -247,7 +247,7 @@ function recountPartnerStages() {
   partners.forEach(function (p) {
     const id = p['ID'];
     let stage = 'Prospect';
-    if (sent[id]) stage = 'Contacted';
+    if (sent[id] || (_yes_(p['Skip Email Test']) && p['Last Contact'])) stage = 'Contacted';
     if (replied[id]) stage = 'Replied';
     if (partnerOf[id] || WIN_RESPONSES.indexOf(String(p['Response'])) !== -1 || p['Partner Since']) stage = 'Partner';
     let response = String(p['Response'] || '');

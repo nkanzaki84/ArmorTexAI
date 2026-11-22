@@ -309,14 +309,19 @@ function runReplyCheckNow() {
 // ============================================================
 
 /**
- * @return {{replies:Object[], calls:Object[], needsReview:Object[]}}
+ * @param {{rep?: string}} opts  rep 'mine' (default for sales users) = the signed-in rep's partners + unassigned; 'all' = everyone
+ * @return {{replies:Object[], calls:Object[], needsReview:Object[], scope:string}}
  *   replies: reply events from the last 7 days, newest first, with partner
- *   calls: partners who replied (or sent an address) and have no call logged since, highest listing value first
+ *   calls: partners who replied and have no call logged since, plus the Call Queue (e.g. emailed by hand) with no call since
+ *          Last Contact; highest listing value first
  */
-function getTodayWork() {
-  _requireRole_(ROLES.map(function (r) { return r.key; }));
+function getTodayWork(opts) {
+  const session = _requireRole_(ROLES.map(function (r) { return r.key; }));
+  opts = opts || {};
+  const scope = opts.rep || (session.role === 'sales' ? 'mine' : 'all');
+  const mine = function (p) { if (scope === 'all') return true; const r = _normEmail_(p['Rep']); return !r || r === (scope === 'mine' ? session.email : _normEmail_(scope)); };
   const partners = {};
-  _readTab_(TAB.PARTNERS).forEach(function (p) { partners[p['ID']] = p; });
+  _readTab_(TAB.PARTNERS).forEach(function (p) { if (mine(p)) partners[p['ID']] = p; });
   const events = _readTab_(TAB.EVENTS);
   const weekAgo = Date.now() - 7 * 86400000;
   const lastReply = {}, lastCall = {};
@@ -332,14 +337,23 @@ function getTodayWork() {
     .sort(function (a, b) { return new Date(b['At']) - new Date(a['At']); })
     .map(function (ev) { return { event: ev, partner: partners[ev['Partner ID']] }; });
 
-  const calls = Object.keys(lastReply).filter(function (id) {
+  const callIds = {};
+  Object.keys(lastReply).forEach(function (id) {
     const p = partners[id];
-    return p && !_yes_(p['Do Not Contact']) && p['Response'] !== 'Not interested' && !(lastCall[id] && lastCall[id] >= lastReply[id]);
-  }).map(function (id) { return Object.assign({ listingValue: listingValue[id] || 0 }, partners[id]); })
-    .sort(function (a, b) { return (b.listingValue - a.listingValue) || (lastReply[b['ID']] - lastReply[a['ID']]); });
+    if (p && !_yes_(p['Do Not Contact']) && p['Response'] !== 'Not interested' && !(lastCall[id] && lastCall[id] >= lastReply[id])) callIds[id] = 'replied';
+  });
+  Object.keys(partners).forEach(function (id) {
+    const p = partners[id];
+    if (!_yes_(p['Call Queue']) || _yes_(p['Do Not Contact']) || p['Response'] === 'Not interested') return;
+    const since = p['Last Contact'] ? new Date(p['Last Contact']).getTime() : 0;
+    if (lastCall[id] && lastCall[id] >= since) return;
+    if (!callIds[id]) callIds[id] = 'queued';
+  });
+  const calls = Object.keys(callIds).map(function (id) { return Object.assign({ listingValue: listingValue[id] || 0, why: callIds[id] }, partners[id]); })
+    .sort(function (a, b) { return (a.why === 'replied' ? 0 : 1) - (b.why === 'replied' ? 0 : 1) || (b.listingValue - a.listingValue) || ((lastReply[b['ID']] || 0) - (lastReply[a['ID']] || 0)); });
 
-  const needsReview = events.filter(function (ev) { return _yes_(ev['Needs Review']); }).map(function (ev) { return { event: ev, partner: partners[ev['Partner ID']] }; });
-  return { replies: replies, calls: calls, needsReview: needsReview };
+  const needsReview = events.filter(function (ev) { return _yes_(ev['Needs Review']) && partners[ev['Partner ID']]; }).map(function (ev) { return { event: ev, partner: partners[ev['Partner ID']] }; });
+  return { replies: replies, calls: calls, needsReview: needsReview, scope: scope };
 }
 
 /** A person confirms or dismisses an automation's guess. */

@@ -116,14 +116,6 @@ function listCommentThreads(opts) {
   return threads.slice(0, Number(opts.limit) || 200);
 }
 
-/** Teammates to address a comment to: active Users. */
-function listTeamContacts() {
-  _cmUser_();
-  return _readTab_(TAB.USERS)
-    .filter(function (u) { return String(u['Active'] || 'Yes').toLowerCase() !== 'no'; })
-    .map(function (u) { return { email: _normEmail_(u['Email']), name: String(u['Name'] || '').trim() }; });
-}
-
 function _cmShotFolder_() {
   const root = DriveApp.getRootFolder();
   const it = root.getFoldersByName(COMMENT_SHOTS_FOLDER);

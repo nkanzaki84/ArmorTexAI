@@ -73,6 +73,8 @@ function seed(app) {
   app.savePartner(ps[1].ID, { response: 'Sent an address', nextStep: 'Drive by 214 Bayhills Dr Thu', profile: { 'Listings Per Year': 24, 'Avg Listing Value': 385000, 'Areas Served': 'White Oak, Longview' } });
   app.savePartner(ps[0].ID, { profile: { 'Listings Per Year': 9, 'Avg Listing Value': 410000 } });
   app._appendRows_('Referrals', [{ ID: 'R-1', Date: new Date(now - day * 3), Direction: 'in', 'Partner ID': ps[1].ID, 'Customer Or Address': '214 Bayhills Dr, Hideaway TX 75771', 'Request Type': 'listing_report', 'Listing Value': 415000, 'Roof Age Years': 14, 'Due At': new Date(now - day), 'Report Recipient': ps[1].Email, 'Report Sent At': new Date(now - day * 1.5), 'Report Link': 'https://example.com/report.pdf' }]);
+  app.assignRepToList('realtors-gregg-nov-2026', 'tanner@armortexroofs.com');
+  app.setCallQueue(ps[4].ID, true);
   app.recountPartnerStages();
 }
 
