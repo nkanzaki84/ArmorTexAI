@@ -23,7 +23,7 @@ app.setup();
 if (process.argv.indexOf('--empty') === -1) seed(app);
 
 function seed(app) {
-  const ADDRESS = '1200 Judson Rd, Longview, TX 75601';
+  const ADDRESS = '3310 South Broadway Ave, Ste 225A, Tyler, TX 75701';
   const OPT = "Reply 'no thanks' and I won't email again.";
   app.saveSettings({ business_address: ADDRESS, opt_out_line: OPT, call_script_url: 'https://docs.google.com/document/d/example', dev_url: 'http://127.0.0.1:' + PORT + '/dev' });
   app.saveUser({ email: 'tanner@armortexroofs.com', name: 'Tanner Fought', role: 'sales' });

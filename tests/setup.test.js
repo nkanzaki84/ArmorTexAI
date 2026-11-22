@@ -75,3 +75,13 @@ test('settings: daily cap cannot exceed the mailbox quota', () => {
   assert.equal(app.getSettings().daily_cap, '45');
   assert.throws(() => app.saveSettings({ bogus: '1' }), /Unknown setting/);
 });
+
+test('setup() fills a blank setting with a newer non-empty default, never overwrites a value', () => {
+  const app = loadApp({ user: OWNER });
+  app.setup();
+  app.saveSettings({ business_address: '', daily_cap: '20' });
+  app.setup();
+  const s = app.getSettings();
+  assert.match(s.business_address, /Tyler, TX 75701/);
+  assert.equal(s.daily_cap, '20');
+});

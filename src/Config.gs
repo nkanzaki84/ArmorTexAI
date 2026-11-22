@@ -324,7 +324,7 @@ const SETTING_DEFAULTS = {
   knock_delay_days:     '5',
   sender_name:          'Brian Kanzaki',
   sender_signature:     'Brian Kanzaki\nArmorTex Roofs',
-  business_address:     '',
+  business_address:     '3310 South Broadway Ave, Ste 225A, Tyler, TX 75701',
   opt_out_line:         "Reply 'no thanks' and I won't email again.",
   job_manager_webhook:  '',
   printer_format:       'Owner Name,Mailing Address,Mailing City,Mailing State,Mailing ZIP',

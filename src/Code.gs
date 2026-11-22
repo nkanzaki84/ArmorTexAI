@@ -136,11 +136,17 @@ function setup() {
 
 function _seedSettings_() {
   const have = {};
-  _readTab_(TAB.SETTINGS).forEach(function (r) { have[String(r['Name']).trim()] = true; });
+  const blankRows = [];
+  _readTab_(TAB.SETTINGS).forEach(function (r) {
+    const k = String(r['Name']).trim();
+    have[k] = true;
+    if (String(r['Value'] === undefined || r['Value'] === null ? '' : r['Value']).trim() === '' && SETTING_DEFAULTS[k]) blankRows.push({ rowIndex: r._row, row: { Value: SETTING_DEFAULTS[k] } });
+  });
   const rows = Object.keys(SETTING_DEFAULTS)
     .filter(function (k) { return !have[k]; })
     .map(function (k) { return { Name: k, Value: SETTING_DEFAULTS[k] }; });
   _appendRows_(TAB.SETTINGS, rows);
+  _updateRows_(TAB.SETTINGS, blankRows);   // a setting left blank picks up a newer default (e.g. the business address)
 }
 
 function _seedVersions_() {
