@@ -169,6 +169,7 @@ Sketch so nothing built now gets in the way:
 ## Rejected
 
 - WhatsApp as a marketing channel (nk, 2026-11-19): opt-in only by policy, thin US adoption, homeowners excluded by the no-cold-texts rule. Not worth building. Reconsider only if partners ask for it.
+- WooSender (nk looked at it 2026-11-22): AI texting/calling that chases inbound leads at volume. Built for online sales funnels, not for courting 265 realtors by email and a personal call. Texting homeowners is barred by the brief anyway. Not pursuing; the calling question stays Google Voice vs Twilio (see "Calling from the app").
 - Timer-driven sending in v1 (brief: a person presses Send).
 - Any payment or gift field on Referrals (Texas real estate rules).
 - Uploading the homeowner list to ad platforms.
