@@ -77,7 +77,27 @@
     toast(msg, 'error'); console.error(err);
   }
   var esc = escapeHtml;
-  /** Gmail compose in a new tab, in the signed-in Workspace account (not the Mac's default mail app). */
+  /**
+ * Call and text links. With "call through the Quo app" on, phones open Quo
+ * (openphone://dial … &action=call, caller ID = our Quo number); otherwise a
+ * plain tel: link, which the phone's dialer handles (and on a Mac, whatever
+ * FaceTime's "Default for calls" says, which can also be Quo).
+ */
+function callHref(phone) {
+  var d = String(phone || '').replace(/\D/g, '');
+  if (!d) return '';
+  var q = (window.OUTREACH && OUTREACH.quo) || {};
+  if (q.viaApp) return 'openphone://dial?number=' + encodeURIComponent(d.length === 10 ? '+1' + d : '+' + d) + (q.from ? '&from=' + encodeURIComponent(q.from) : '') + '&action=call';
+  return 'tel:' + d;
+}
+function textHref(phone) {
+  var d = String(phone || '').replace(/\D/g, '');
+  if (!d) return '';
+  var q = (window.OUTREACH && OUTREACH.quo) || {};
+  if (q.viaApp) return 'openphone://message?number=' + encodeURIComponent(d.length === 10 ? '+1' + d : '+' + d) + (q.from ? '&from=' + encodeURIComponent(q.from) : '');
+  return 'sms:' + d;
+}
+/** Gmail compose in a new tab, in the signed-in Workspace account (not the Mac's default mail app). */
 function gmailComposeUrl(to, subject) {
   var me = (window.OUTREACH && OUTREACH.session && OUTREACH.session.email) || '';
   return 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(to || '') +

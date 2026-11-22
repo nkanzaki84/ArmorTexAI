@@ -44,6 +44,7 @@ function quoStatus() {
     events: QUO_HOOK_EVENTS,
     lastHook: lastHook,
     lastError: String(props.getProperty(PROP_QUO_LAST_ERROR) || ''),
+    callLinks: String(_setting_(SETTING.QUO_CALL_LINKS) || '') === 'Yes',
     appUrl: ScriptApp.getService().getUrl(),
   };
 }
@@ -315,6 +316,28 @@ function _quoBumpLastContact_(partnerId, at, outcome, direction) {
   const t = new Date(at);
   if (p && p['Last Contact'] && new Date(p['Last Contact']).getTime() >= t.getTime()) return;
   _updateRow_(TAB.PARTNERS, idx, { 'Last Contact': t });
+}
+
+/** Turn "call through the Quo app" on or off. */
+function saveQuoCallLinks(on) {
+  _requireRole_(ADMIN_ROLES);
+  _setSetting_(SETTING.QUO_CALL_LINKS, on ? 'Yes' : '');
+  return quoStatus();
+}
+
+/**
+ * What the pages need to build Call / Text links: whether to open the Quo app,
+ * and which Quo number to call from (the first watched number). Safe for every
+ * role; nothing secret in it.
+ */
+function _quoLinkConfig_() {
+  try {
+    const on = String(_setting_(SETTING.QUO_CALL_LINKS) || '') === 'Yes';
+    const watch = _quoJsonSetting_(SETTING.QUO_WATCH, []);
+    const numbers = _quoJsonSetting_(SETTING.QUO_NUMBERS, []);
+    const first = numbers.filter(function (n) { return watch.indexOf(n.id) !== -1; })[0] || numbers[0] || null;
+    return { viaApp: on && !!first, from: first ? String(first.number || '') : '' };
+  } catch (err) { return { viaApp: false, from: '' }; }
 }
 
 // ============================================================

@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.5.0';
+const APP_VERSION    = '0.5.1';
 const APP_BUILD_DATE = '2026-11-22';
 
 // ===== Script Property keys =====
@@ -335,6 +335,7 @@ const SETTING = {
   QUO_HOOK_URL:     'quo_hook_url',       // this web app's /exec URL, pasted by the owner
   QUO_WEBHOOK_ID:   'quo_webhook_id',     // the webhook Quo gave us
   QUO_WEBHOOK_URL:  'quo_webhook_url',    // what Quo posts to (hook URL + src + token)
+  QUO_CALL_LINKS:   'quo_call_links',     // Yes = Call/Text buttons open the Quo app (openphone://) instead of the phone's dialer
 };
 
 // ===== Quo (phone system) =====

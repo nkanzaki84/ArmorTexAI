@@ -55,7 +55,7 @@
         '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + '</div></div>' + (right || '') + '</li>';
     }
     function callBtn(p) {
-      return p.Phone ? '<a class="btn sm navy" href="tel:' + esc(p.Phone) + '" data-call="' + esc(p.ID) + '" onclick="event.stopPropagation()">📞 Call</a>' : '<span class="pill">no phone</span>';
+      return p.Phone ? '<a class="btn sm navy" href="' + esc(callHref(p.Phone)) + '" data-call="' + esc(p.ID) + '" onclick="event.stopPropagation()">📞 Call</a>' : '<span class="pill">no phone</span>';
     }
 
     function renderStats() {
@@ -104,7 +104,7 @@
         var p = r.partner || {}, ev = r.event, isOpt = ev.Kind === 'opt-out';
         if (!r.partner) {   // a call or text from a number nobody has: say who it might be, let a person dismiss it
           return '<li><div style="flex:1;min-width:0"><div class="name">' + esc(fmtPhone(ev.Phone) || 'Unknown number') + ' <span class="pill">' + esc(ev.Kind === 'text' ? '💬 text' : ev.Direction === 'in' ? '📲 call in' : '📞 call') + (ev.Outcome ? ' · ' + esc(ev.Outcome) : '') + '</span></div><div class="sub" style="white-space:pre-wrap">' + esc(String(ev.Snippet || '').replace(/^Unknown number [^·]*(· )?/, '').slice(0, 200)) + '</div><div class="sub">' + fmtDateTime(ev.At) + ' · nobody has this number; add it to a partner record and the next call will match</div></div>' +
-            (canWrite ? '<div style="display:flex;flex-direction:column;gap:4px">' + (ev.Phone ? '<a class="btn sm navy" href="tel:' + esc(ev.Phone) + '">📞 Call back</a>' : '') + '<button class="btn sm ghost" data-review="' + esc(ev.ID) + '" data-decision="dismiss">Dismiss</button></div>' : '') + '</li>';
+            (canWrite ? '<div style="display:flex;flex-direction:column;gap:4px">' + (ev.Phone ? '<a class="btn sm navy" href="' + esc(callHref(ev.Phone)) + '">📞 Call back</a>' : '') + '<button class="btn sm ghost" data-review="' + esc(ev.ID) + '" data-decision="dismiss">Dismiss</button></div>' : '') + '</li>';
         }
         return '<li data-id="' + esc(p.ID) + '" class="link"><div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + ' <span class="pill ' + (isOpt ? 'bad' : 'ok') + '">' + (isOpt ? 'opt-out?' : 'address?') + '</span></div><div class="sub" style="white-space:pre-wrap">' + esc((ev.Snippet || '').slice(0, 200)) + '</div></div>' +
           (canWrite ? '<div style="display:flex;flex-direction:column;gap:4px">' +

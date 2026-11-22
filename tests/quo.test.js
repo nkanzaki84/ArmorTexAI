@@ -235,3 +235,17 @@ test('test event + delivery log: the receiver records a sample without storing i
   assert.equal(d.deliveries[0].status, 'success');
   assert.equal(d.status.lastHook, null, 'sending a test clears the last-hook marker so the UI waits for the new one');
 });
+
+test('call-through-Quo switch: pages get the Quo number to dial from, nothing secret', () => {
+  const { app } = connectedApp();
+  assert.deepEqual(app._quoLinkConfig_(), { viaApp: false, from: '+19035550100' });
+  app.saveQuoCallLinks(true);
+  assert.deepEqual(app._quoLinkConfig_(), { viaApp: true, from: '+19035550100' });
+  assert.equal(app.quoStatus().callLinks, true);
+  app.saveQuoWatch(['PN2']);
+  assert.equal(app._quoLinkConfig_().from, '+19035550199', 'dials from the watched number');
+  // the page shell carries it for every role
+  const html = app.doGet({ parameter: { page: 'today' } }).getContent();
+  assert.ok(html.indexOf('"viaApp":true') !== -1 && html.indexOf('+19035550199') !== -1);
+  assert.ok(html.indexOf('key-123') === -1, 'the API key never reaches the browser');
+});

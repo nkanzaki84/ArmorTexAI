@@ -45,7 +45,7 @@
         '</div>';
 
       html += '<div class="actions">' +
-        (p.Phone ? '<a class="btn" href="tel:' + esc(p.Phone) + '">📞 Call</a>' : '<button class="btn" disabled>📞 No phone</button>') +
+        (p.Phone ? '<a class="btn" href="' + esc(callHref(p.Phone)) + '">📞 Call</a><a class="btn" href="' + esc(textHref(p.Phone)) + '">💬 Text</a>' : '<button class="btn" disabled>📞 No phone</button>') +
         (p.Email ? '<a class="btn" href="' + esc(gmailComposeUrl(p.Email)) + '" target="_blank" rel="noopener" title="Opens Gmail in a new tab">✉️ Email</a>' : '<button class="btn" disabled>✉️ No email</button>') +
         (canWrite ? '<button class="btn" id="logCallBtn">📝 Log call</button>' : '<button class="btn" disabled>📝 Log call</button>') + '</div>';
       if (canWrite) html += '<div class="row" style="margin:-4px 0 12px;justify-content:flex-end"><button class="btn sm ' + (p['Call Queue'] === 'Yes' ? 'ghost' : '') + '" id="queueBtn">' + (p['Call Queue'] === 'Yes' ? '✓ On the call list · remove' : '📞 Add to call list') + '</button>' + (isPartner
