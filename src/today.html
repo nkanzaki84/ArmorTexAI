@@ -120,7 +120,7 @@
         if (r.problems && r.problems.length) box.innerHTML = r.problems.map(function (p) { return '<div class="problem bad">' + esc(p) + '</div>'; }).join('');
         else box.innerHTML = '<div class="ok-box">Sent <b>' + r.sent + '</b> first emails and <b>' + r.followUps + '</b> follow-ups.' + (r.skipped.dnc ? ' Skipped ' + r.skipped.dnc + ' do-not-contact.' : '') + (r.skipped.quota ? ' Stopped ' + r.skipped.quota + ' short: Gmail quota reached.' : '') + '</div>' +
           (r.errors.length ? '<div class="problem bad">' + r.errors.map(esc).join('<br>') + '</div>' : '');
-        toast('Sent ' + (r.sent + r.followUps));
+        toast('Sent ' + (r.sent + r.followUps) + ' emails', 'success');
         loadBatch();
       }).catch(fail).finally(function () { busy($('sendBtn'), false, 'Send batch'); });
     }
@@ -132,13 +132,13 @@
         var rb = e.target.closest('[data-review]');
         if (rb) {
           e.stopPropagation();
-          api('resolveReview', rb.dataset.review, rb.dataset.decision).then(function () { toast('Thanks'); loadWork(); }).catch(fail);
+          api('resolveReview', rb.dataset.review, rb.dataset.decision).then(function () { toast('Thanks', 'success'); loadWork(); }).catch(fail);
           return;
         }
         if (e.target.closest('[data-call]')) {
           // Let the dialer open, then offer to log the call.
           var pid = e.target.closest('[data-call]').dataset.call;
-          setTimeout(function () { if (confirm('Log this call? (you can add notes on the partner record)')) api('logPartnerEvent', pid, 'call', 'talked', '').then(function () { toast('Call logged'); loadWork(); }).catch(fail); }, 1500);
+          setTimeout(function () { if (confirm('Log this call? (you can add notes on the partner record)')) api('logPartnerEvent', pid, 'call', 'talked', '').then(function () { toast('Call logged', 'success'); loadWork(); }).catch(fail); }, 1500);
           return;
         }
         var li = e.target.closest('li[data-id]'); if (li && li.dataset.id) go('partner', { id: li.dataset.id });

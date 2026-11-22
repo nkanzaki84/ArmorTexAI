@@ -43,6 +43,14 @@ Options for "really" calling from the app, pick by which number should show:
 - Rule either way: no cold calls to homeowners. Call buttons on Homes appear
   only when `Phone Given By Owner` is Yes.
 
+## UI conventions (adopted 2026-11-22)
+
+- [x] `ui_base.html` included; SFM palette, 220px white sidebar with the blue active bar, 6px cards, one primary per card, underlined tabs, three-colour toasts bottom-right, "Nov 16, 2026" dates, monospace version, orange owner tools, purple owner-only Settings
+- [x] Record page: sticky title row with one Save that stamps the time; Enter saves
+- [ ] Rule 13: pickers that can grow offer "➕ Add new…" (partner type picker is fixed, fine; versions picker later)
+- [ ] Rule 24: deleting something with history asks you to type its name (nothing deletes yet beyond team members)
+- [ ] Rule 51: What's new tags (SFM has it; port when the team is using the app daily)
+
 ## Developer tools (ported from SFM 2026-11-19)
 
 - [x] Pinned comments with screenshots + email, owner-only, inbox on Settings
@@ -80,6 +88,17 @@ Options for "really" calling from the app, pick by which number should show:
 - [ ] Hand-off: one function, one package → Zapier catch hook → Roofr. Store Roofr ID; four status updates typed in by hand until the Job Manager exists
 - [ ] Partner-referred address that matches a Home → link them so Tanner sees age + value
 - [ ] Cost per job per campaign (needs a place to enter postcard/print costs) vs the $1,600 appointment setter
+
+## Salesperson profiles, ownership and commissions (nk, 2026-11-22) — parked
+
+Each salesperson works their own leads and keeps their own realtor / inspector / property-manager relationships; leads are tracked through the sales cycle to commission.
+
+- [ ] `Rep` column on Partners and Homes (staff email). Set on import (who loads the list / which rep gets the neighborhood), on "Add partner", or by hand. Reassignable by the owner.
+- [ ] "Mine" filter on Marketing, Partners, Today; Today's call list scoped to the signed-in rep; owner sees everyone with a rep chip on each row.
+- [ ] Rep profile page: their pipeline funnel, partners, referrals in, jobs and $ sourced, touch discipline (gone-cold count). Campaign stats split by rep.
+- [ ] Commission: a property of a **signed job** (rate, basis, paid date) → job manager. The CRM supplies attribution: the rep on the partner/home that produced the referral travels on the hand-off package (`Source` gets a rep field) and the four status updates come back per referral, so "jobs and $ by rep" is computable here without storing commission math.
+- [ ] Email sending stays from the business mailbox (Brian's) in v1; per-rep sending mailboxes is a later question (each rep's Workspace account + the same code deployed per rep, or the Gmail API with delegated send).
+- Keep: no fees to partners; commissions are staff pay and live with jobs.
 
 ## Referral tracking by product (nk, 2026-11-19) — parked, not in effect yet
 

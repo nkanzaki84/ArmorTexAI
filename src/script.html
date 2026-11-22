@@ -1,5 +1,7 @@
 <script>
-  // ---------- shared client helpers (included on every page) ----------
+  // ---------- shared client helpers (included on every page, after ui_base.html) ----------
+  // ui_base.html supplies: toast(message, type) with '' | 'success' | 'error', showError(err),
+  // fmt$, fmtPct, fmtDate ("Nov 16, 2026"), fmtTime ("9:33 AM"), escapeHtml, number-field behaviours, Escape-closes-modal.
   var O = window.OUTREACH;
 
   // ===== /dev ↔ /exec link switcher (owner tool, from SFM) =====
@@ -25,7 +27,6 @@
     };
     window.APP_URL = useDevLinks() ? window.APP_DEV_URL : window.APP_EXEC_URL;
   })();
-  // Server-rendered links are written with the /exec base; swap them once the DOM is ready.
   document.addEventListener('DOMContentLoaded', function () {
     if (window.APP_URL === window.APP_EXEC_URL) return;
     Array.prototype.forEach.call(document.querySelectorAll('a[href]'), function (a) {
@@ -69,34 +70,32 @@
     window.top.location.href = url;
   }
 
-  var _toastTimer = null;
-  function toast(msg, kind) {
-    var t = document.getElementById('toast');
-    if (!t) { alert(msg); return; }
-    t.textContent = msg; t.className = 'toast show' + (kind === 'bad' ? ' bad' : '');
-    clearTimeout(_toastTimer);
-    _toastTimer = setTimeout(function () { t.className = 'toast'; }, kind === 'bad' ? 6000 : 3000);
+  // Errors say what to do next (21): server timeouts get a plain-English hint.
+  function fail(err) {
+    var msg = (err && err.message) ? err.message : String(err);
+    if (/timed? ?out|exceeded maximum execution time/i.test(msg)) msg = 'That took too long. It may have completed — refresh and check before trying again.';
+    toast(msg, 'error'); console.error(err);
   }
-  function fail(err) { console.error(err); toast(err && err.message ? err.message : String(err), 'bad'); }
-
-  function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  var esc = escapeHtml;
   function fmtPhone(d) { d = String(d || '').replace(/\D/g, ''); return d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : (d || ''); }
-  function fmtDate(v) { if (!v) return ''; var d = new Date(v); if (isNaN(d)) return String(v); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
-  function fmtDateTime(v) { if (!v) return ''; var d = new Date(v); if (isNaN(d)) return String(v); return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+  function fmtDateTime(v) { if (!v) return ''; var d = fmtDate(v), t = fmtTime(v); return t ? d + ', ' + t : d; }
   function pct(n) { return (Math.round(n * 1000) / 10) + '%'; }
+  function fmtMoney(n) { n = Number(n); return n ? fmt$(n) : ''; }
   function verBadge(v) { return '<span class="ver ' + (v ? esc(v) : 'none') + '">' + (v ? esc(v) : '–') + '</span>'; }
   function stagePill(s) {
-    var k = { Prospect: '', Contacted: 'navy', Replied: 'orange', Partner: 'ok', Target: '', Mailed: 'navy', Knocked: 'navy', Talked: 'orange', 'Roof check booked': 'ok' }[s] || '';
+    var k = { Prospect: '', Contacted: 'navy', Replied: 'warn', Partner: 'ok', Target: '', Mailed: 'navy', Knocked: 'navy', Talked: 'warn', 'Roof check booked': 'ok' }[s] || '';
     return '<span class="pill ' + k + '">' + esc(s || '—') + '</span>';
   }
   function responsePill(r) {
     if (!r) return '';
-    var k = { Replied: 'orange', 'Sent an address': 'ok', 'Not interested': 'bad', Bounced: 'bad', 'Opted out': 'bad' }[r] || '';
+    var k = { Replied: 'warn', 'Sent an address': 'ok', 'Referred a job': 'ok', 'Sent a claim': 'ok', 'Sent a property': 'ok', 'Not interested': 'bad', Bounced: 'bad', 'Opted out': 'bad' }[r] || '';
     return '<span class="pill ' + k + '">' + esc(r) + '</span>';
   }
   function $(id) { return document.getElementById(id); }
   function on(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
   function busy(btn, yes, label) { if (!btn) return; btn.disabled = !!yes; if (label !== undefined) btn.textContent = label; }
+  /** Stamp "Saved 9:34 AM" beside a save button (18). */
+  function stampSaved(el) { if (!el) return; el.textContent = 'Saved ' + fmtTime(new Date()); }
   var canWrite = !!(O.session && O.session.canWrite);
   var isAdmin = !!(O.session && O.session.isAdmin);
 </script>

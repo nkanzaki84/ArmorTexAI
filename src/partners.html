@@ -53,13 +53,13 @@
   <div class="hd"><h2>Add a <?= isMarketing ? 'prospect' : 'partner' ?></h2><span class="sub"><?= isMarketing ? 'starts in the pipeline at Prospect' : 'goes straight into the book as an established partner' ?></span></div>
   <form class="bd" id="addForm">
     <div class="grid2">
-      <div class="f"><label>Name</label><input name="name" required></div>
+      <div class="f"><label>Name<span class="req">*</span></label><input name="name" type="text" required placeholder="Loretta Nelson"></div>
       <div class="f"><label>Type</label><select name="type" id="addType"><option value="realtor">Realtor</option><option value="inspector">Home inspector</option><option value="insurance">Insurance agent</option><option value="property_manager">Property manager</option></select></div>
-      <div class="f"><label>Company / brokerage</label><input name="company"></div>
-      <div class="f"><label>Area</label><input name="area" placeholder="Longview"></div>
-      <div class="f"><label>Email</label><input name="email" type="email"></div>
-      <div class="f"><label>Phone</label><input name="phone" type="tel"></div>
-      <div class="f" style="grid-column:1/-1"><label>Notes</label><input name="notes"></div>
+      <div class="f"><label>Company / brokerage</label><input name="company" type="text" placeholder="Keller Williams"></div>
+      <div class="f"><label>Area</label><input name="area" type="text" placeholder="Longview"></div>
+      <div class="f"><label>Email</label><input name="email" type="email" placeholder="name@brokerage.com"></div>
+      <div class="f"><label>Phone</label><input name="phone" type="tel" placeholder="(903) 555-0100"></div>
+      <div class="f" style="grid-column:1/-1"><label>Notes</label><input name="notes" type="text" placeholder="How you met, what they said"></div>
     </div>
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn ghost" type="button" id="addCancel">Cancel</button></div>
   </form>
@@ -76,7 +76,6 @@
     var filters = { stage: '', type: '', version: '', response: '', q: '' };
     var all = [];
     var TYPE_LABEL = { realtor: 'realtors', inspector: 'home inspectors', insurance: 'insurance agents', property_manager: 'property managers' };
-    var fmtMoney = function (n) { n = Number(n); return n ? '$' + n.toLocaleString() : ''; };
     try { filters.type = localStorage.getItem('atx_' + SECTION + '_tab') || ''; } catch (e) {}
 
     if (canWrite) $('addBtn').style.display = '';
@@ -89,7 +88,7 @@
       var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Saving…');
       api('addPartner', payload)
         .then(function (id) { return MARKETING ? id : api('markAsPartner', id).then(function () { return id; }); })
-        .then(function (id) { toast('Added'); go('partner', { id: id, from: SECTION }); })
+        .then(function (id) { toast('Added', 'success'); go('partner', { id: id, from: SECTION }); })
         .catch(fail).finally(function () { busy(btn, false, 'Save'); });
     });
 

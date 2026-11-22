@@ -45,7 +45,7 @@
             .then(function (r) {
               var box = f.querySelector('.problems');
               box.innerHTML = r.problems.length ? r.problems.map(function (p) { return '<div class="problem">' + esc(p) + '</div>'; }).join('') : '<div class="ok-box">✓ Passes the footer and plain-text rules.</div>';
-              toast('Saved'); loadVersions();
+              toast('Saved', 'success'); loadVersions();
             }).catch(fail).finally(function () { busy(btn, false, 'Save version ' + f.dataset.letter); });
         });
       });

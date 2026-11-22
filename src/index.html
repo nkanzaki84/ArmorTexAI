@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>ArmorTex Outreach<?= isDev ? ' (dev)' : '' ?></title>
+  <?!= include('ui_base') ?>
   <?!= include('styles') ?>
 </head>
 <body class="<?= isDev ? 'dev-bench' : '' ?>">
@@ -30,35 +31,49 @@
 <? if (noAccess) { ?>
   <?!= include('noaccess', { noAccess: noAccess, appUrl: appUrl }) ?>
 <? } else { ?>
+<? var sideSwitch = '<div class="side-switch" role="tablist" aria-label="Side">'
+  + '<a role="tab" class="' + (side === 'partners' ? 'on' : '') + '" href="' + appUrl + '?page=' + ((page === 'homes' || page === 'home') ? 'marketing' : page) + '&side=partners">Partners</a>'
+  + '<a role="tab" class="' + (side === 'homes' ? 'on' : '') + '" href="' + appUrl + '?page=' + ((page === 'partners' || page === 'partner' || page === 'marketing') ? 'homes' : page) + '&side=homes">Homes</a>'
+  + '</div>'; ?>
 
+<!-- phone top bar (hidden on desktop) -->
 <header class="top">
-  <a class="brand" href="<?= appUrl ?>?page=today"><span class="logo">⛨</span><span class="brand-text">ArmorTex <span class="sub-brand">Outreach</span></span><? if (isDev) { ?><span class="dev-tag" title="This is the /dev test bench: the last clasp push, not the version Tanner uses">DEV</span><? } ?></a>
-  <div class="side-switch" role="tablist" aria-label="Side">
-    <a role="tab" class="<?= side === 'partners' ? 'on' : '' ?>" href="<?= appUrl ?>?page=<?= page === 'homes' || page === 'home' ? 'partners' : page ?>&side=partners">Partners</a>
-    <a role="tab" class="<?= side === 'homes' ? 'on' : '' ?>" href="<?= appUrl ?>?page=<?= page === 'partners' || page === 'partner' ? 'homes' : page ?>&side=homes">Homes</a>
-  </div>
+  <a class="brand" href="<?= appUrl ?>?page=today"><span class="logo">⛨</span>ArmorTex<? if (isDev) { ?><span class="dev-tag">DEV</span><? } ?></a>
+  <?!= sideSwitch ?>
   <div class="spacer"></div>
-  <div class="user" title="<?= session.email ?>">
-    <span class="who"><b><?= session.name ?></b><span><?= session.roleLabel ?></span></span>
-    <span class="avatar" id="userAvatar"></span>
-  </div>
+  <span class="avatar" id="userAvatarTop"></span>
 </header>
 
 <div class="layout">
   <nav class="nav" id="nav">
-    <? var listPage = (side === 'homes') ? 'homes' : 'partners'; var listLabel = (side === 'homes') ? 'Homes' : 'Partners'; ?>
-    <a href="<?= appUrl ?>?page=today&side=<?= side ?>" class="<?= page === 'today' ? 'active' : '' ?>"><i>☀️</i><span>Today</span></a>
-    <? if (side === 'homes') { ?>
-    <a href="<?= appUrl ?>?page=homes&side=homes" class="<?= (page === 'homes' || page === 'home') ? 'active' : '' ?>"><i>🏠</i><span>Homes</span></a>
-    <? } else { ?>
-    <a href="<?= appUrl ?>?page=marketing&side=partners" class="<?= (page === 'marketing' || (page === 'partner' && section === 'marketing')) ? 'active' : '' ?>"><i>📣</i><span>Marketing</span></a>
-    <a href="<?= appUrl ?>?page=partners&side=partners" class="<?= (page === 'partners' || (page === 'partner' && section === 'partners')) ? 'active' : '' ?>"><i>🤝</i><span>Partners</span></a>
+    <div class="brand"><span class="logo">⛨</span>ArmorTex Outreach<? if (isDev) { ?><span class="dev-tag" title="This is the /dev test bench: the last clasp push, not the version Tanner uses">DEV</span><? } ?></div>
+    <?!= sideSwitch ?>
+    <div class="links">
+      <a href="<?= appUrl ?>?page=today&side=<?= side ?>" class="<?= page === 'today' ? 'active' : '' ?>"><i>☀️</i><span>Today</span></a>
+      <? if (side === 'homes') { ?>
+      <a href="<?= appUrl ?>?page=homes&side=homes" class="<?= (page === 'homes' || page === 'home') ? 'active' : '' ?>"><i>🏠</i><span>Homes</span></a>
+      <? } else { ?>
+      <a href="<?= appUrl ?>?page=marketing&side=partners" class="<?= (page === 'marketing' || (page === 'partner' && section === 'marketing')) ? 'active' : '' ?>"><i>📣</i><span>Marketing</span></a>
+      <a href="<?= appUrl ?>?page=partners&side=partners" class="<?= (page === 'partners' || (page === 'partner' && section === 'partners')) ? 'active' : '' ?>"><i>🤝</i><span>Partners</span></a>
+      <? } ?>
+      <a href="<?= appUrl ?>?page=campaign&side=<?= side ?>" class="<?= page === 'campaign' ? 'active' : '' ?>"><i>📊</i><span>Campaign</span></a>
+      <? if (session.allowedPages.indexOf('settings') !== -1) { ?>
+      <a href="<?= appUrl ?>?page=settings&side=<?= side ?>" class="own <?= page === 'settings' ? 'active' : '' ?>" title="Owner only"><i>⚙️</i><span>Settings</span></a>
+      <? } ?>
+    </div>
+    <? if (session.role === 'owner') { ?><div class="own-legend">purple = only you see this</div><? } ?>
+    <div class="user">
+      <span class="avatar" id="userAvatar"></span>
+      <span><b><?= session.name ?></b><?= session.roleLabel ?></span>
+    </div>
+    <? if (session.role === 'owner') { ?>
+    <div class="nav-tools">
+      <? if (canComment) { ?><a href="#" onclick="if (window.openCommentMode) openCommentMode(); return false;" title="Pin a comment to anything on this page">💬 Comment<span class="cnt comment-count" style="display:none"></span></a><? } ?>
+      <a href="#" id="navDevMode" onclick="_toggleDevMode(); return false;">🔧 Dev Mode</a>
+      <a href="#" id="navDevLinks" onclick="_toggleDevLinks(); return false;" title="Which copy of the app the links point at. /dev = last clasp push (test bench). /exec = the deployed version Tanner uses.">🔗 Links: /exec</a>
+    </div>
     <? } ?>
-    <a href="<?= appUrl ?>?page=campaign&side=<?= side ?>" class="<?= page === 'campaign' ? 'active' : '' ?>"><i>📊</i><span>Campaign</span></a>
-    <? if (session.allowedPages.indexOf('settings') !== -1) { ?>
-    <a href="<?= appUrl ?>?page=settings&side=<?= side ?>" class="<?= page === 'settings' ? 'active' : '' ?>"><i>⚙️</i><span>Settings</span></a>
-    <? } ?>
-    <div class="nav-foot"><?= 'v' + appVersion ?> · <?= appBuildDate ?><?= isDev ? ' · DEV' : '' ?></div>
+    <div class="nav-foot">v<?= appVersion ?> · <?= appBuildDate ?><?= isDev ? ' · DEV' : '' ?></div>
   </nav>
 
   <main class="content" id="content">
@@ -74,24 +89,22 @@
 </div>
 
 <? if (session.role === 'owner') { ?>
-<!-- Owner tools (from SFM's sidebar footer): 💬 Comment · 🔧 Dev Mode · 🔗 Links: /dev|/exec -->
+<!-- Owner tools on phones (desktop has them in the sidebar footer) -->
 <div id="ownerTools" class="owner-tools">
   <div class="ot-panel" id="otPanel">
-    <? if (canComment) { ?><button type="button" onclick="if (window.openCommentMode) openCommentMode();">💬 Comment <span class="ot-count" id="commentCount" style="display:none"></span></button><? } ?>
+    <? if (canComment) { ?><button type="button" onclick="if (window.openCommentMode) openCommentMode();">💬 Comment <span class="ot-count comment-count" style="display:none"></span></button><? } ?>
     <button type="button" id="otDevMode" onclick="_toggleDevMode()">🔧 Dev Mode</button>
-    <button type="button" id="otDevLinks" onclick="_toggleDevLinks()" title="Which copy of the app the links point at. /dev = last clasp push (test bench). /exec = the deployed version Tanner uses.">🔗 Links: /exec</button>
+    <button type="button" id="otDevLinks" onclick="_toggleDevLinks()">🔗 Links: /exec</button>
     <div class="ot-foot">v<?= appVersion ?> · <?= isDev ? 'on /dev' : 'on /exec' ?></div>
   </div>
   <button type="button" class="ot-toggle" id="otToggle" title="Owner tools" onclick="toggleOwnerTools()">🛠</button>
 </div>
 <script>
-  window.toggleOwnerTools = function () { var p = document.getElementById('otPanel'); p.classList.toggle('show'); };
+  window.toggleOwnerTools = function () { document.getElementById('otPanel').classList.toggle('show'); };
   window.closeOwnerTools = function () { document.getElementById('otPanel').classList.remove('show'); };
   (function () {
-    var dm = document.getElementById('otDevMode');
-    if (dm && isDevMode()) { dm.textContent = '🔧 Dev Mode: ON'; dm.classList.add('on'); }
-    var dl = document.getElementById('otDevLinks');
-    if (dl && useDevLinks()) { dl.textContent = '🔗 Links: /dev'; dl.classList.add('on'); }
+    ['otDevMode', 'navDevMode'].forEach(function (id) { var el = document.getElementById(id); if (el && isDevMode()) { el.textContent = '🔧 Dev Mode: ON'; el.classList.add('on'); } });
+    ['otDevLinks', 'navDevLinks'].forEach(function (id) { var el = document.getElementById(id); if (el && useDevLinks()) { el.textContent = '🔗 Links: /dev'; el.classList.add('on'); } });
   })();
   window._toggleDevMode = function () {
     var cur = isDevMode();
@@ -108,12 +121,12 @@
 <? } ?>
 <? if (canComment) { ?><?!= include('comments') ?><? } ?>
 
-<div class="toast" id="toast"></div>
+<div id="toast"></div>
 <script>
   (function () {
     var s = window.OUTREACH.session || {};
-    var el = document.getElementById('userAvatar');
-    if (el) el.textContent = (s.name || '?').split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+    var ini = (s.name || '?').split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+    ['userAvatar', 'userAvatarTop'].forEach(function (id) { var el = document.getElementById(id); if (el) el.textContent = ini; });
   })();
 </script>
 <? } ?>

@@ -1,0 +1,123 @@
+<!--
+  ui_base.html — the SFM app feel in one include (see UI_CONVENTIONS.md).
+  Drop into any Apps Script HtmlService app: the base styles, the number-field
+  behaviours, Escape-closes-modal, the toast, and the number / date formatters.
+  Job Manager carries these in styles.html + script.html; this file is the
+  portable copy for the other apps in the suite.
+-->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1f2937; background: #f3f4f6; }
+  a { color: #2E75B6; text-decoration: none; } a:hover { text-decoration: underline; }
+  h1 { font-size: 22px; margin: 0 0 16px; color: #1c2433; } h2 { font-size: 16px; margin: 24px 0 8px; color: #1c2433; }
+
+  /* Palette (rule 44): ink #1c2433 · text #374151 · muted #6b7280 · faint #9ca3af · lines #e5e7eb · page #f3f4f6 · card #fff
+     brand #2E75B6 (hover #235d92) · success #047857 · warning #b45309 on #fef3c7 · danger #b91c1c · owner-only #4c1d95 · dev bench #c2410c on #fff7ed */
+
+  /* Cards and sub-headings (34) */
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .pd-sub { font-size: 15px; font-weight: 700; color: #1c2433; margin: 22px 0 10px; padding-top: 14px; border-top: 1px solid #e5e7eb; }
+  .empty { text-align: center; padding: 40px 20px; color: #6b7280; font-style: italic; }   /* (36) */
+
+  /* Inputs (1–12) */
+  label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 12px; }
+  label .req { color: #dc2626; margin-left: 2px; }
+  label .hint { display: block; font-size: 11px; color: #6b7280; font-weight: normal; margin-top: 2px; }
+  input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], select, textarea {
+    display: block; width: 100%; padding: 8px 10px; font-size: 14px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; margin-top: 4px; font-family: inherit;
+  }
+  input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }   /* (2) no spinners */
+  input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+  input.num, td.num, th.num { text-align: right; }   /* (4) */
+  textarea { resize: vertical; min-height: 60px; }
+  textarea.grow { resize: none; overflow: hidden; min-height: 0; line-height: 1.35; }   /* (8) one row, grows with its text */
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #2E75B6; box-shadow: 0 0 0 2px rgba(46,117,182,.15); }
+  input[disabled], select[disabled], textarea[disabled] { background: #f9fafb; color: #6b7280; }   /* (29) read-only stays visible */
+
+  /* Buttons (39–42) */
+  button, .btn { display: inline-block; padding: 8px 16px; font-size: 14px; border-radius: 4px; border: 1px solid #2E75B6; background: #2E75B6; color: #fff; cursor: pointer; font-family: inherit; }
+  button:hover, .btn:hover { background: #235d92; border-color: #235d92; text-decoration: none; }
+  button.secondary { background: #fff; color: #2E75B6; } button.secondary:hover { background: #f0f6fc; color: #235d92; }
+  button.ghost { background: transparent; border-color: #d1d5db; color: #374151; } button.ghost:hover { background: #f3f4f6; color: #1f2937; }
+  button.danger { background: #dc2626; border-color: #dc2626; } button.danger:hover { background: #b91c1c; border-color: #b91c1c; }
+  button[disabled] { opacity: .5; cursor: not-allowed; }
+  .actions { display: flex; gap: 8px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+
+  /* Tables (35) */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table th { text-align: left; padding: 10px 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 13px; color: #374151; }
+  table td { padding: 10px 12px; border-bottom: 1px solid #f0f1f3; vertical-align: middle; }
+  table tr:hover td { background: #fafbfc; }
+  table input, table select { padding: 6px 8px; font-size: 13px; }
+
+  /* Tabs (33) */
+  .view-tabs { display: flex; gap: 2px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+  .view-tab { background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 10px 18px; cursor: pointer; color: #6b7280; font-weight: 500; font-size: 14px; font-family: inherit; }
+  .view-tab:hover { background: #f3f4f6; color: #1c2433; }
+  .view-tab.active { color: #2E75B6; border-bottom-color: #2E75B6; font-weight: 600; }
+
+  /* Pills (45) */
+  .pill { display: inline-block; padding: 2px 10px; font-size: 12px; border-radius: 999px; font-weight: 500; }
+  .pill-complete { background: #d1fae5; color: #065f46; } .pill-inactive { background: #f3f4f6; color: #6b7280; } .pill-warn { background: #fef3c7; color: #b45309; } .pill-danger { background: #fee2e2; color: #b91c1c; }
+
+  /* Icon tiles in table cells (37) and drag handles (38) */
+  .ic { display: inline-flex; align-items: center; font-size: 17px; line-height: 1; padding: 6px 7px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; color: #6b7280; cursor: pointer; position: relative; }
+  .ic.on { color: #1c2433; border-color: #cfe1f0; background: #f3f8fd; }
+  .ic.on::after { content: ''; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: #2E75B6; }
+  .grip { display: inline-block; cursor: grab; color: #9ca3af; font-size: 15px; letter-spacing: -2px; padding: 0 8px 0 2px; user-select: none; }
+
+  /* Modals (15) and the toast (20) */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .modal-backdrop.show { display: flex; }
+  .modal { background: #fff; border-radius: 8px; padding: 24px; max-width: 560px; width: 90%; max-height: 90vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  #toast { position: fixed; bottom: 24px; right: 24px; max-width: 400px; padding: 12px 16px; background: #1f2937; color: #fff; border-radius: 6px; font-size: 14px; opacity: 0; transition: opacity .2s; z-index: 200; pointer-events: none; }
+  #toast.show { opacity: 1; } #toast.error { background: #b91c1c; } #toast.success { background: #047857; }
+</style>
+
+<script>
+  // (1) Numbers are typed, never scrolled: a wheel over a focused number box drops focus so the page scrolls and the value stays.
+  document.addEventListener('wheel', function (e) {
+    var el = document.activeElement;
+    if (el && el.tagName === 'INPUT' && el.type === 'number' && el.contains(e.target)) el.blur();
+  }, { passive: true });
+
+  // (3) Focus selects the whole value, so typing replaces it. Number boxes and short text boxes only (not textareas).
+  document.addEventListener('focusin', function (e) {
+    var el = e.target;
+    if (!el || el.tagName !== 'INPUT') return;
+    if (el.type === 'number' || (el.type === 'text' && el.value && el.value.length <= 24 && !el.readOnly)) {
+      setTimeout(function () { try { el.select(); } catch (err) {} }, 0);
+    }
+  });
+
+  // (8) textarea.grow: one row tall, grows with its text; Enter blurs instead of adding a line. Skips boxes that are hidden.
+  function growTextarea(t) { if (!t || !t.offsetParent) return; t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; }
+  function growAllTextareas() { Array.prototype.forEach.call(document.querySelectorAll('textarea.grow'), growTextarea); }
+  document.addEventListener('input', function (e) { if (e.target && e.target.matches && e.target.matches('textarea.grow')) growTextarea(e.target); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.matches && e.target.matches('textarea.grow')) { e.preventDefault(); e.target.blur(); } });
+  window.addEventListener('resize', growAllTextareas);
+  document.addEventListener('DOMContentLoaded', growAllTextareas);
+
+  // (15) Escape closes the topmost open modal.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var open = document.querySelectorAll('.modal-backdrop.show');
+    if (open.length) { open[open.length - 1].classList.remove('show'); e.preventDefault(); }
+  });
+
+  // (20–21) Toast: one line, plain English; dark for info, green for success, red for errors. showError names what went wrong.
+  function toast(message, type) {
+    var el = document.getElementById('toast');
+    if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
+    el.textContent = message; el.className = 'show ' + (type || '');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { el.className = ''; }, 3500);
+  }
+  function showError(err) { toast((err && err.message) ? err.message : String(err), 'error'); console.error(err); }
+
+  // (6, 47, 49) Formatters.
+  function fmt$(n) { return '$' + (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fmtPct(n) { return ((Number(n) || 0) * 100).toFixed(1) + '%'; }
+  function fmtDate(v) { if (!v) return ''; var d = v instanceof Date ? v : new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? String(v) + 'T00:00:00' : v); return isNaN(d) ? String(v) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+  function fmtTime(v) { var d = v instanceof Date ? v : new Date(v); return isNaN(d) ? '' : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+  function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+</script>

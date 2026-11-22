@@ -187,7 +187,7 @@
           c.save(); c.strokeStyle = '#f28c28'; c.lineWidth = Math.max(3, 4 * k); c.strokeRect((r.left + window.scrollX) * k - 4 * k, (r.top + window.scrollY) * k - 4 * k, r.width * k + 8 * k, r.height * k + 8 * k); c.restore();
         }
         shots[slot] = cv.toDataURL('image/png');
-      }).catch(function (e) { delete shots[slot]; toast('Could not take the picture: ' + (e && e.message || e), 'bad'); })
+      }).catch(function (e) { delete shots[slot]; toast('Could not take the picture: ' + (e && e.message || e), 'error'); })
         .then(function () { hide.forEach(function (el, i) { el.style.visibility = prev[i]; }); renderShot(slot); });
     }
     function shotPayload(slot) { var d = shots[slot]; if (!d) return {}; var m = /^data:(image\/[a-z]+);base64,(.+)$/i.exec(d); return m ? { screenshotMime: m[1], screenshotBase64: m[2] } : {}; }
@@ -203,7 +203,7 @@
         return api('addPageComment', Object.assign({ page: PAGE, side: SIDE, recordId: RID, selector: anchor.selector, quote: anchor.quote, label: anchor.label, text: text, to: to, url: appLink() }, shotPayload('cmPopShot')));
       }).then(function (r) {
         cmClosePop();
-        toast((r && r.emailed ? 'Comment pinned and sent to ' + r.notified.join(', ') : 'Comment pinned.') + (r && r.screenshotId ? ' Screenshot attached.' : ''));
+        toast((r && r.emailed ? 'Comment pinned and sent to ' + r.notified.join(', ') : 'Comment pinned.') + (r && r.screenshotId ? ' Screenshot attached.' : ''), 'success');
         return load();
       }).catch(fail).then(function () { btn.disabled = false; btn.textContent = 'Post'; });
     });
@@ -239,7 +239,7 @@
         pin.style.opacity = inView ? '1' : '0'; pin.style.pointerEvents = inView ? '' : 'none';
       });
     }
-    function renderBadge() { var b = $('commentCount'); if (b) { b.textContent = threads.length ? String(threads.length) : ''; b.style.display = threads.length ? '' : 'none'; } }
+    function renderBadge() { Array.prototype.forEach.call(document.querySelectorAll('.comment-count'), function (b) { b.textContent = threads.length ? String(threads.length) : ''; b.style.display = threads.length ? '' : 'none'; }); }
     window.addEventListener('scroll', position, true); window.addEventListener('resize', position);
     setInterval(position, 700);
 
@@ -271,13 +271,13 @@
       var text = $('cmThreadReply').value.trim(); if (!text || !openThread) return;
       var btn = $('cmThreadSend'); btn.disabled = true;
       api('addPageComment', Object.assign({ threadId: openThread.threadId, text: text, url: appLink() }, shotPayload('cmThreadShot')))
-        .then(function (r) { if (r && r.thread) { openThread = r.thread; renderThread(); } toast(r && r.emailed ? 'Reply sent to ' + r.notified.join(', ') : 'Reply posted.'); return load(); })
+        .then(function (r) { if (r && r.thread) { openThread = r.thread; renderThread(); } toast(r && r.emailed ? 'Reply sent to ' + r.notified.join(', ') : 'Reply posted.', 'success'); return load(); })
         .catch(fail).then(function () { btn.disabled = false; });
     });
     $('cmThreadResolve').addEventListener('click', function () {
       if (!openThread) return;
       var reopen = openThread.status === 'Resolved';
-      api('resolveCommentThread', openThread.threadId, reopen).then(function () { toast(reopen ? 'Reopened.' : 'Resolved. The pin is gone.'); cmCloseThread(); return load(); }).catch(fail);
+      api('resolveCommentThread', openThread.threadId, reopen).then(function () { toast(reopen ? 'Reopened.' : 'Resolved. The pin is gone.', 'success'); cmCloseThread(); return load(); }).catch(fail);
     });
 
     function start() { setTimeout(load, 1200); }

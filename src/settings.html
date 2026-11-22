@@ -74,12 +74,12 @@
 </div>
 
 <div class="card">
-  <div class="hd"><h2>Team</h2><span class="sub">who can sign in</span></div>
+  <div class="hd"><h2>Team</h2><span class="sub">who can sign in</span><div class="spacer"></div><span class="save-note">Changes save immediately.</span></div>
   <table><thead><tr><th>Person</th><th>Role</th><th></th></tr></thead><tbody id="teamRows"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody></table>
   <form class="ft" id="teamForm" style="gap:8px">
-    <input name="email" type="email" placeholder="name@armortexroofs.com" required style="flex:2;min-width:180px;border:1px solid var(--line);border-radius:9px;padding:8px 10px">
-    <input name="name" placeholder="Name" required style="flex:1;min-width:120px;border:1px solid var(--line);border-radius:9px;padding:8px 10px">
-    <select name="role" style="border:1px solid var(--line);border-radius:9px;padding:8px 10px"><option value="sales">Sales</option><option value="viewonly">View only</option><option value="owner">Owner</option></select>
+    <input name="email" type="email" placeholder="name@armortexroofs.com" title="Google account email (required)" required class="inline-input" style="flex:2;min-width:180px">
+    <input name="name" placeholder="Name" required class="inline-input" style="flex:1;min-width:120px">
+    <select name="role" class="inline-input"><option value="sales">Sales</option><option value="viewonly">View only</option><option value="owner">Owner</option></select>
     <button class="btn sm primary" type="submit">Add</button>
   </form>
 </div>
@@ -115,12 +115,12 @@
       var map = {};
       Array.prototype.forEach.call(f.elements, function (el) { if (el.name) map[el.name] = el.value; });
       var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Saving…');
-      api('saveSettings', map).then(function () { toast('Settings saved'); }).catch(fail).finally(function () { busy(btn, false, 'Save settings'); });
+      api('saveSettings', map).then(function () { toast('Settings saved', 'success'); }).catch(fail).finally(function () { busy(btn, false, 'Save settings'); });
     });
 
     on($('importBtn'), 'click', function () {
       var file = $('csvFile').files[0];
-      if (!file) return toast('Pick a CSV file first', 'bad');
+      if (!file) return toast('Pick a CSV file first', 'error');
       var reader = new FileReader();
       reader.onload = function () {
         busy($('importBtn'), true, 'Importing…');
@@ -139,7 +139,7 @@
     });
     on($('assignBtn'), 'click', function () {
       var versions = Array.prototype.map.call(document.querySelectorAll('.bd label.chip input:checked'), function (cb) { return cb.value; });
-      if (!versions.length) return toast('Pick at least one version', 'bad');
+      if (!versions.length) return toast('Pick at least one version', 'error');
       if (!confirm('Assign ' + versions.join('/') + ' to every unassigned realtor? This cannot be undone.')) return;
       busy($('assignBtn'), true, 'Assigning…');
       api('assignVersions', { type: 'realtor', versions: versions }).then(function (r) {
@@ -158,12 +158,12 @@
     on($('teamRows'), 'click', function (e) {
       var b = e.target.closest('[data-remove]'); if (!b) return;
       if (!confirm('Remove ' + b.dataset.remove + '? They lose access immediately.')) return;
-      api('deleteUser', b.dataset.remove).then(function () { toast('Removed'); loadTeam(); }).catch(fail);
+      api('deleteUser', b.dataset.remove).then(function () { toast('Removed', 'success'); loadTeam(); }).catch(fail);
     });
     on($('teamForm'), 'submit', function (e) {
       e.preventDefault();
       var t = e.target;
-      api('saveUser', { email: t.email.value, name: t.name.value, role: t.role.value }).then(function () { toast('Added'); t.reset(); loadTeam(); }).catch(fail);
+      api('saveUser', { email: t.email.value, name: t.name.value, role: t.role.value }).then(function () { toast('Added', 'success'); t.reset(); loadTeam(); }).catch(fail);
     });
     loadTeam();
 
@@ -178,7 +178,7 @@
 
     on($('devForm'), 'submit', function (e) {
       e.preventDefault();
-      api('saveSettings', { dev_url: e.target.dev_url.value.trim() }).then(function () { toast('Saved. Reload to use it.'); }).catch(fail);
+      api('saveSettings', { dev_url: e.target.dev_url.value.trim() }).then(function () { toast('Saved. Reload to use it.', 'success'); }).catch(fail);
     });
     api('getSettings').then(function (s) { if ($('devForm')) $('devForm').dev_url.value = s.dev_url || ''; }).catch(function () {});
     function loadInbox() {
@@ -191,7 +191,7 @@
     }
     on($('cmStatus'), 'change', loadInbox);
     loadInbox();
-    on($('installTrig'), 'click', function () { busy($('installTrig'), true, 'Installing…'); api('installTriggers').then(function (t) { showTrig(t); toast('Trigger installed'); }).catch(fail).finally(function () { busy($('installTrig'), false, 'Install / repair trigger'); }); });
+    on($('installTrig'), 'click', function () { busy($('installTrig'), true, 'Installing…'); api('installTriggers').then(function (t) { showTrig(t); toast('Trigger installed', 'success'); }).catch(fail).finally(function () { busy($('installTrig'), false, 'Install / repair trigger'); }); });
     on($('runCheck'), 'click', function () {
       busy($('runCheck'), true, 'Checking…');
       api('runReplyCheckNow').then(function (r) {
@@ -201,7 +201,7 @@
     });
     on($('testBtn'), 'click', function () {
       var emails = $('testEmails').value.split(/[\n,;]+/).map(function (e) { return e.trim(); }).filter(Boolean);
-      if (!emails.length) return toast('Add at least one address', 'bad');
+      if (!emails.length) return toast('Add at least one address', 'error');
       var csv = 'Name,Email,Company\n' + emails.map(function (e, i) { return 'Test ' + (i + 1) + ',' + e + ',TEST'; }).join('\n');
       busy($('testBtn'), true, 'Creating…');
       api('importPartners', csv, { type: 'realtor', sourceList: 'test' }).then(function (r) {
@@ -212,7 +212,7 @@
     });
     on($('recountBtn'), 'click', function () {
       busy($('recountBtn'), true, 'Recounting…');
-      api('recountPartnerStages').then(function (r) { toast('Updated ' + r.updated + ' partners'); }).catch(fail).finally(function () { busy($('recountBtn'), false, '↻ Recount stages'); });
+      api('recountPartnerStages').then(function (r) { toast('Updated ' + r.updated + ' partners', 'success'); }).catch(fail).finally(function () { busy($('recountBtn'), false, '↻ Recount stages'); });
     });
     try { google.script.run.withSuccessHandler(function (q) { if (typeof q === 'number') $('quotaNote').textContent = 'This mailbox can still send ' + q + ' today.'; }).getRemainingQuota(); } catch (e) {}
   })();

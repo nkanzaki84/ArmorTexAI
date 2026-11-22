@@ -1,7 +1,10 @@
-<div class="row" style="margin-bottom:10px">
-  <button class="btn sm" id="backBtn" onclick="go(O.section === 'marketing' ? 'marketing' : 'partners')">← <?= section === 'marketing' ? 'Marketing' : 'Partners' ?></button>
+<div class="title-row" id="titleRow">
+  <button class="btn sm ghost" id="backBtn" onclick="go(O.section === 'marketing' ? 'marketing' : 'partners')">← <?= section === 'marketing' ? 'Marketing' : 'Partners' ?></button>
+  <h1 id="titleName">…</h1>
+  <span id="titlePills"></span>
   <div class="spacer"></div>
-  <span id="sectionPill"></span>
+  <span class="saved-stamp" id="savedStamp"></span>
+  <button class="btn primary sm" id="saveAll" style="display:none" title="Saves next step, response and the profile (Enter in a box saves too)">💾 Save</button>
 </div>
 <div id="rec"><div class="empty">Loading…</div></div>
 
@@ -10,7 +13,6 @@
     var id = O.recordId;
     var data = null;
     if (!id) { $('rec').innerHTML = '<div class="empty">No partner selected.</div>'; return; }
-    var fmtMoney = function (n) { n = Number(n); return n ? '$' + n.toLocaleString() : ''; };
 
     function profileValue(f, v) {
       if (v === '' || v === null || v === undefined) return '<span class="muted">—</span>';
@@ -27,9 +29,11 @@
       var p = data.partner, m = data.metrics || {}, prof = data.profile || O.profiles[p.Type] || { label: p.Type, companyLabel: 'Company', fields: [], win: 'Sent an address', winVerb: 'won' };
       var dnc = String(p['Do Not Contact']).toLowerCase() === 'yes';
       var isPartner = p.Stage === 'Partner';
-      $('sectionPill').innerHTML = isPartner ? '<span class="pill ok">🤝 Established partner' + (p['Partner Since'] ? ' since ' + fmtDate(p['Partner Since']) : '') + '</span>' : '<span class="pill orange">📣 In marketing</span>';
+      $('titleName').textContent = p.Name;
+      $('titlePills').innerHTML = '<span class="pill">' + esc(prof.label) + '</span> ' + verBadge(p.Version) + ' ' + stagePill(p.Stage) + ' ' + responsePill(p.Response) + (dnc ? ' <span class="pill bad">Do not contact</span>' : '') +
+        (isPartner ? ' <span class="pill ok">🤝 partner' + (p['Partner Since'] ? ' since ' + fmtDate(p['Partner Since']) : '') + '</span>' : ' <span class="pill orange">📣 in marketing</span>');
+      $('saveAll').style.display = canWrite ? '' : 'none';
       var html = '';
-      html += '<div class="row" style="margin-bottom:12px"><h1 style="margin:0">' + esc(p.Name) + '</h1><span class="pill">' + esc(prof.label) + '</span>' + verBadge(p.Version) + stagePill(p.Stage) + responsePill(p.Response) + (dnc ? '<span class="pill bad">Do not contact</span>' : '') + '</div>';
 
       // metrics strip: the numbers that matter for this type
       html += '<div class="stats">' +
@@ -58,9 +62,9 @@
         '<div>Next step</div><div>' + esc(p['Next Step'] || '—') + '</div>' +
         '<div>Notes</div><div>' + esc(p.Notes || '—') + '</div>' +
         '</div>' +
-        (canWrite ? '<div class="ft"><form id="nsForm" class="row" style="flex:1"><input name="nextStep" placeholder="Next step, e.g. Call Tue" value="' + esc(p['Next Step'] || '') + '" style="flex:1;border:1px solid var(--line);border-radius:9px;padding:8px 10px">' +
-          '<select name="response" style="border:1px solid var(--line);border-radius:9px;padding:8px 10px"><option value="">Response…</option>' + ['Replied', prof.win, 'Not interested'].map(function (r) { return '<option' + (p.Response === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select>' +
-          '<button class="btn sm navy" type="submit">Save</button></form></div>' : '') + '</div>';
+        (canWrite ? '<div class="ft"><form id="nsForm" class="row" style="flex:1"><input name="nextStep" type="text" placeholder="Next step, e.g. Call Tue" value="' + esc(p['Next Step'] || '') + '" class="inline-input" style="flex:1" title="Enter saves">' +
+          '<select name="response" class="inline-input"><option value="">Response…</option>' + ['Replied', prof.win, 'Not interested'].map(function (r) { return '<option' + (p.Response === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select>' +
+          '</form></div>' : '') + '</div>';
 
       // type profile: the facts Tanner wants before a call
       html += '<div class="card"><div class="hd"><h2>' + esc(prof.label) + ' profile</h2><span class="sub">what to know before the call</span></div>' +
@@ -68,7 +72,7 @@
         prof.fields.map(function (f) {
           return '<div class="f"><label>' + esc(f.key) + '</label>' + (canWrite ? profileInput(f, p[f.key]) : '<div>' + profileValue(f, p[f.key]) + '</div>') + (f.hint && canWrite ? '<span class="sub">' + esc(f.hint) + '</span>' : '') + '</div>';
         }).join('') +
-        '</div>' + (canWrite ? '<div class="row"><button class="btn sm navy" type="submit">Save profile</button><span class="sub">A win for a ' + esc(prof.label.toLowerCase()) + ' is when they have <b>' + esc(prof.winVerb) + '</b>.</span></div>' : '') + '</form></div>';
+        '</div>' + '<span class="hint">A win for a ' + esc(prof.label.toLowerCase()) + ' is when they have <b>' + esc(prof.winVerb) + '</b>.' + (canWrite ? ' Save with the button in the title row, or Enter.' : '') + '</span></form></div>';
 
       // log call form (hidden until pressed)
       html += '<div class="card" id="callCard" style="display:none"><div class="hd"><h2>Log a call</h2></div><form class="bd" id="callForm">' +
@@ -96,20 +100,24 @@
 
       on($('logCallBtn'), 'click', function () { $('callCard').style.display = ''; });
       on($('callCancel'), 'click', function () { $('callCard').style.display = 'none'; });
-      on($('callForm'), 'submit', function (e) { e.preventDefault(); api('logPartnerEvent', id, 'call', e.target.outcome.value, e.target.note.value).then(function () { toast('Call logged'); load(); }).catch(fail); });
-      on($('nsForm'), 'submit', function (e) { e.preventDefault(); api('savePartner', id, { nextStep: e.target.nextStep.value, response: e.target.response.value }).then(function () { toast('Saved'); load(); }).catch(fail); });
-      on($('profForm'), 'submit', function (e) {
-        e.preventDefault();
-        var profile = {};
-        prof.fields.forEach(function (f) { var el = e.target.elements[f.key]; if (el) profile[f.key] = el.value; });
-        api('savePartner', id, { profile: profile }).then(function () { toast('Profile saved'); load(); }).catch(fail);
-      });
-      on($('markBtn'), 'click', function () { if (!confirm('Move ' + p.Name + ' into the Partners book?')) return; api('markAsPartner', id).then(function () { toast('Now a partner'); load(); }).catch(fail); });
-      on($('unmarkBtn'), 'click', function () { if (!confirm('Send ' + p.Name + ' back to the marketing pipeline?')) return; api('unmarkPartner', id).then(function () { toast('Back in marketing'); load(); }).catch(fail); });
+      on($('callForm'), 'submit', function (e) { e.preventDefault(); api('logPartnerEvent', id, 'call', e.target.outcome.value, e.target.note.value).then(function () { toast('Call logged', 'success'); load(); }).catch(fail); });
+      // One Save for the whole record (18): next step + response + profile. Enter in any box saves too (14).
+      function saveAll() {
+        var payload = {};
+        var ns = $('nsForm'); if (ns) { payload.nextStep = ns.nextStep.value; payload.response = ns.response.value; }
+        var pf = $('profForm'); if (pf) { payload.profile = {}; prof.fields.forEach(function (f) { var el = pf.elements[f.key]; if (el) payload.profile[f.key] = el.value; }); }
+        busy($('saveAll'), true, 'Saving…');
+        api('savePartner', id, payload).then(function () { toast('Saved ' + p.Name, 'success'); stampSaved($('savedStamp')); load(); }).catch(fail).finally(function () { busy($('saveAll'), false, '💾 Save'); });
+      }
+      on($('nsForm'), 'submit', function (e) { e.preventDefault(); saveAll(); });
+      on($('profForm'), 'submit', function (e) { e.preventDefault(); saveAll(); });
+      $('saveAll').onclick = saveAll;
+      on($('markBtn'), 'click', function () { if (!confirm('Move ' + p.Name + ' into the Partners book?')) return; api('markAsPartner', id).then(function () { toast('Now a partner', 'success'); load(); }).catch(fail); });
+      on($('unmarkBtn'), 'click', function () { if (!confirm('Send ' + p.Name + ' back to the marketing pipeline?')) return; api('unmarkPartner', id).then(function () { toast('Back in marketing', 'success'); load(); }).catch(fail); });
       on($('dncBtn'), 'click', function () {
         var msg = dnc ? 'Allow contacting ' + p.Name + ' again?' : 'Mark ' + p.Name + ' do-not-contact? Queued emails are cancelled and they are never emailed again.';
         if (!confirm(msg)) return;
-        api('setPartnerDoNotContact', id, !dnc, 'from partner record').then(function () { toast(dnc ? 'Contact allowed' : 'Marked do-not-contact'); load(); }).catch(fail);
+        api('setPartnerDoNotContact', id, !dnc, 'from partner record').then(function () { toast(dnc ? 'Contact allowed again' : 'Marked do-not-contact', 'success'); load(); }).catch(fail);
       });
     }
     function load() { api('getPartner', id).then(function (d) { data = d; render(); }).catch(function (e) { $('rec').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }); }

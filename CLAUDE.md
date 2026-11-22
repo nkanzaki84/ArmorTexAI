@@ -56,13 +56,22 @@ Read this first. It holds what the next session needs without re-asking.
 
 `PARTNER_TYPE_PROFILES` in Config.gs is the one place a type is defined: label, company label, profile fields (sparse Partners columns), the **win** Response (`Sent an address` / `Referred a job` / `Sent a claim` / `Sent a property`), the pitch line, and which email versions it uses. The Partners page has a tab per type with counts and type-specific facts on each row; the record page shows a metrics strip and an editable profile card from the same config. Adding a type = a Config entry + its columns in `HEADERS.Partners` + `setup()`. `WIN_RESPONSES` drives Stage `Partner` and the funnel's step 4.
 
+## UI conventions (adopted 2026-11-22 from Brian's `docs/UI_CONVENTIONS.md`)
+
+The SFM suite look: `src/ui_base.html` (Brian's portable base: palette, inputs, buttons, tables, tabs, pills, modal/toast, number-field behaviours, select-on-focus, Escape, formatters) is included first; `styles.html` layers the app on top and must not fight it. Rules that matter when adding a screen: one blue primary button per card, the rest secondary/ghost; `toast(msg, 'success'|'error')` bottom-right for every action; dates via `fmtDate` ("Nov 16, 2026"), times via `fmtTime`; money via `fmt$`; empty states italic grey; required fields get `<span class="req">*</span>`; small lists say "Changes save immediately."; a record page has a sticky `.title-row` with ONE Save that stamps "Saved 9:34 AM" (`stampSaved`); version in monospace in the sidebar footer; owner tools in orange at the bottom of the sidebar; `/dev` is amber; Settings is purple (owner-only). Phones get a top bar + bottom tabs, which the suite doesn't define; keep that.
+
 ## Developer tools (ported from SFM, 2026-11-19; source zip from Brian)
 
 - **Pinned comments**: 🛠 owner tools → 💬 Comment arms the page, next click drops a pin (CSS path + quoted text + card heading) and opens a composer with teammate chips and a best-effort html2canvas screenshot filed to Drive (`ArmorTex Comment Screenshots/<year>`). Threads, replies, Resolve/Reopen; emails the addressee with a `#comment=C-12` deep link. Tab `Comments`, `comments_server.gs`, `comments.html`. Visible to `COMMENT_ROLES` (owner only for now; add `'sales'` to open it to Tanner). Settings → Developer lists every open thread.
+- Owner links live in the **sidebar footer on desktop** (💬 Comment · 🔧 Dev Mode · 🔗 Links: /dev|/exec · version), in orange as in SFM; the floating 🛠 button is phone-only. The sidebar is sticky so the footer is always visible.
 - **/dev ↔ /exec switcher**: `window.APP_EXEC_URL` / `APP_DEV_URL` from doGet; `useDevLinks()` sticks in localStorage; `go()` and all server-rendered links follow it. The /dev URL comes from the `dev_url` setting (Settings → Developer), else `APP_DEV_URL_DEFAULT`, else `/exec` rewritten (wrong: serves the pinned version). On /dev the body gets `dev-bench` (amber bar, DEV tag).
 - **Dev Mode**: `isDevMode()` flag + yellow banner for preview UIs; nothing reads it yet.
 - Not ported: SFM's "View as" impersonation and the screenshot mark-up modal (listed in IDEAS).
 - Preview server serves both doors: `/exec` and `/dev`.
+
+## Parked: per-salesperson ownership and commissions (2026-11-22, Brian)
+
+Brian sees each salesperson with their own profile: their own leads, their own realtor / property-manager relationships, and lead-to-commission tracking through the sales cycle. Not built yet. Sketch: a `Rep` column on Partners (and Homes) holding a staff email, "Mine" filters on Marketing/Partners/Today, Today scoped to the signed-in rep, a per-rep funnel on Campaign; commission itself belongs to the **job manager** (it is a property of a signed job), and the CRM's part is attribution: which rep sourced the partner/home that led to the job. Design sketch in `docs/IDEAS.md`. Hard rule unchanged: no payments to partners; commissions are staff compensation and live with jobs.
 
 ## Parked: referral tracking by product (2026-11-19)
 
