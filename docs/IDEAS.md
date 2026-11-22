@@ -47,8 +47,10 @@ Options for "really" calling from the app, pick by which number should show:
   `doPost` deployment of ours → Events row matched by phone, unknown numbers
   to the review queue; ~2 days. Or **Twilio**, ~$40/mo at Tanner's volume but
   we build the texting inbox and need A2P 10DLC registration (weeks); ~1 week.
-  **Decided 2026-11-22 (nk): Quo.** Tanner already has it. Build the webhook
-  endpoint after the plan + API key are confirmed; mock the record page first.
+  **Decided 2026-11-22 (nk): Quo.** Tanner already has it. **Built the same
+  day (v0.5.0, quo.gs)**: Settings → Quo card, doPost receiver, Events rows,
+  record Activity, Today's call list + review queue. Not yet tried against
+  the real Quo: the open question is whether Quo accepts Apps Script's 302.
   What the docs say (read 2026-11-22, api.quo.com, header `Quo-Api-Version:
   2026-03-30`, auth `Authorization: <key>` no Bearer, 10 req/s):
   - Webhooks (`POST /webhooks`, events `call.completed`, `call.recording.completed`,

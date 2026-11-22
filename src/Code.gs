@@ -8,7 +8,8 @@
  *   users.gs     roles + permission checks
  *   partners_server.gs  partner import, version assignment, partner record
  *   campaign_server.gs  daily batch, versions, stats, do-not-contact
- *   (v1 next)    emails.gs — send batch, reply check trigger
+ *   emails.gs    send batch, reply check trigger, Today's work
+ *   quo.gs       the phone system: calls and texts logged as Events (doPost receiver)
  *   *.html       UI: index shell + one include per page
  */
 
@@ -56,6 +57,26 @@ function doGet(e) {
   return tpl.evaluate()
     .setTitle('ArmorTex Outreach')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+}
+
+/**
+ * Incoming posts. Only the phone system (Quo) posts to us today; the URL
+ * carries ?src=quo&token=… and nothing else is accepted. Apps Script cannot
+ * read request headers, so Quo's signature is not checked here; instead each
+ * delivery is treated as a nudge and the call or text is re-fetched from
+ * Quo's API with our key before anything is stored (see quo.gs).
+ * The web app must be deployed with access "Anyone" for this to reach us.
+ */
+function doPost(e) {
+  const out = function (o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); };
+  const params = (e && e.parameter) || {};
+  if (String(params.src || '') !== 'quo') return out({ ok: false, error: 'unknown source' });
+  try {
+    return out(_quoReceive_(params, e && e.postData ? e.postData.contents : '', new Date()));
+  } catch (err) {
+    _quoNoteError_('doPost: ' + err.message);
+    return out({ ok: false, error: 'not stored' });
+  }
 }
 
 /**

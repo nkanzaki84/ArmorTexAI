@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.4.4';
+const APP_VERSION    = '0.5.0';
 const APP_BUILD_DATE = '2026-11-22';
 
 // ===== Script Property keys =====
@@ -144,8 +144,16 @@ const HEADERS = {
     'At',
     'Snippet',           // reply snippet or note
     'By',
-    'Needs Review',      // Yes when an automation guessed (opt-out wording, address detected)
+    'Needs Review',      // Yes when an automation guessed (opt-out wording, address detected, unknown caller)
     'Gmail Message ID',  // reply/bounce: the Gmail message this event came from (dedupe key)
+    // Calls and texts that come in from the phone system (Quo). Appended 2026-11-22.
+    'Direction',         // in | out
+    'Duration',          // seconds (calls)
+    'Phone',             // the other party's number, digits only
+    'Recording URL',     // call recording or voicemail audio
+    'Transcript',        // call transcript or voicemail transcript (text)
+    'Source',            // quo | app | trigger
+    'Source ID',         // Quo call / message id (dedupe + later updates)
   ],
   'Referrals': [
     'ID',
@@ -299,7 +307,8 @@ const PARTNER_TYPE_PROFILES = {
 };
 const EMAIL_VERSIONS = ['A', 'B', 'C', 'E'];
 const EMAIL_STATUSES = ['queued', 'sent', 'replied', 'bounced', 'cancelled'];
-const EVENT_KINDS = ['reply', 'bounce', 'opt-out', 'call', 'postcard', 'knock', 'note'];
+const EVENT_KINDS = ['reply', 'bounce', 'opt-out', 'call', 'text', 'voicemail', 'postcard', 'knock', 'note'];
+const CALL_OUTCOMES = ['talked', 'voicemail', 'no_answer', 'missed'];   // Quo maps to these; a person may type anything
 const KNOCK_OUTCOMES = ['no_answer', 'not_interested', 'talked', 'booked', 'posted_skipped'];
 
 // ===== Settings keys + defaults (seeded by setup(), edited on Settings page) =====
@@ -319,7 +328,24 @@ const SETTING = {
   CALL_SCRIPT_URL:  'call_script_url',    // Tanner's written call script (Doc link)
   DO_NOT_CONTACT:   'do_not_contact',     // extra emails never to contact, one per line
   DEV_URL:          'dev_url',            // optional: the /dev URL of this web app (owner tool)
+  // Quo (the phone system). The API key itself lives in Script Properties, never in the Sheet.
+  QUO_NUMBERS:      'quo_numbers',        // JSON: Quo numbers in the workspace [{id, number, name, users:[email]}]
+  QUO_USERS:        'quo_users',          // JSON: Quo user id → email
+  QUO_WATCH:        'quo_watch',          // JSON: Quo number ids we log calls/texts for
+  QUO_HOOK_URL:     'quo_hook_url',       // this web app's /exec URL, pasted by the owner
+  QUO_WEBHOOK_ID:   'quo_webhook_id',     // the webhook Quo gave us
+  QUO_WEBHOOK_URL:  'quo_webhook_url',    // what Quo posts to (hook URL + src + token)
 };
+
+// ===== Quo (phone system) =====
+const QUO_API = 'https://api.quo.com';
+const QUO_API_VERSION = '2026-03-30';                      // webhooks are versioned by date; v1 endpoints are not
+const QUO_HOOK_EVENTS = ['call.completed', 'call.recording.completed', 'call.transcript.completed', 'call.summary.completed', 'call.voicemail.completed', 'message.received', 'message.delivered'];
+const PROP_QUO_API_KEY = 'QUO_API_KEY';
+const PROP_QUO_HOOK_TOKEN = 'QUO_HOOK_TOKEN';              // random token in the webhook URL; the only thing a poster must know
+const PROP_QUO_WEBHOOK_KEY = 'QUO_WEBHOOK_KEY';            // whsec_… Quo's signing key (kept for a relay; Apps Script can't read headers)
+const PROP_QUO_LAST_HOOK = 'QUO_LAST_HOOK';                // JSON: what the last delivery did
+const PROP_QUO_LAST_ERROR = 'QUO_LAST_ERROR';
 
 const SETTING_DEFAULTS = {
   daily_cap:            '50',

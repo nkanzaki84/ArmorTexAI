@@ -77,6 +77,16 @@ The SFM suite look: `src/ui_base.html` (Brian's portable base: palette, inputs, 
 - **Hand-sent rule** (`HAND_SENT_RE`, `_handSentDate_`): on import, a Notes cell like "sent 11/3" → Stage Contacted, Last Contact = that date, Skip Email Test, Call Queue. Default on for prospect imports; `applyHandSentRule(sourceList)` retrofits an already-imported list and cancels queued emails.
 - Still parked: a rep profile page, per-rep funnel on Campaign, commissions (job manager; CRM supplies attribution via the hand-off), per-rep sending mailboxes. See `docs/IDEAS.md`.
 
+## Quo, the phone system (built 2026-11-22, v0.5.0, untested against the real Quo)
+
+`src/quo.gs`. Tanner calls and texts from Quo; Quo posts every `call.completed`, recording, transcript, summary, voicemail, `message.received` and `message.delivered` to this web app; `doPost` (Code.gs) → `_quoReceive_` → `_quoHandleEvent_` writes or updates ONE Events row per call/message (`Source = quo`, `Source ID` = Quo's id), matched to a partner by the last 10 digits of the phone (then Homes), else `Needs Review = Yes` with a blank Partner ID (Today's review queue, owner scope only). Facts that shape it:
+- Apps Script `doPost` cannot read headers, so Quo's signature is not checked. The gate is a random token in the webhook URL (`?src=quo&token=…`, Script Property `QUO_HOOK_TOKEN`), and every delivery is only a nudge: the call/message is **re-fetched from Quo's API with our key** before anything is stored. No key, nothing stored.
+- Apps Script answers posts with a 302 first. Whether Quo accepts that is unproven; Settings → Quo → "Send a test event" shows Quo's delivery log (`success`/`failed`). If it fails, the fallback is a Zapier catch-hook relay.
+- Outside posts need the web app deployed with access **Anyone** (`appsscript.json` → `ANYONE_ANONYMOUS`, changed 2026-11-22; takes effect at the next `./deploy.sh`). Strangers get the no-access page; same-domain users are still identified. The webhook must point at **/exec**, never /dev.
+- The API key is pasted on Settings → Quo (owner), stored as Script Property `QUO_API_KEY`; `saveQuoApiKey` proves it by listing numbers + users (`/v1/phone-numbers`, `/v1/users`). Webhooks use `POST /webhooks` with header `Quo-Api-Version: 2026-03-30` filtered to the watched number ids. Transcripts and summaries exist only on Quo's Business/Scale plans.
+- Effects: a talked/voicemail/no-answer call we made, or any text, bumps `Last Contact` and counts as the call for the call list; a **missed incoming call** does not count as contact and puts the partner on Today's call list (`why: 'missed'`); an incoming text shows under Today's replies. The record's Activity shows direction, outcome pill, duration, ▶ recording link, summary, and a collapsible transcript.
+- Tests: `tests/quo.test.js` drives the receiver through `doPost` with a fake Quo API (`ctx.fetchHandler`). The preview seeds a connected-looking Quo card and sample call/text history.
+
 ## Agreed, not built: campaigns as records (2026-11-22)
 
 Brian wants Marketing = the courting list and Campaign = start a campaign, plan the sending, upload the content. The app runs one unnamed campaign today. Plan in `docs/IDEAS.md` ("Campaigns as records"): a Campaigns tab with who / versions / start date / days / cap / status, stats per campaign, Today drawing from every running campaign, a person still pressing Send. Build it only after the five-address test batch and the first real Tyler batch have gone out; mock up first.
@@ -94,7 +104,7 @@ One function, one package, destination swappable (Zapier → Roofr now; ArmorTex
 | Version | Scope | Status |
 |---|---|---|
 | 1. Send and match | Sheet + import + versions + Today batch + Send + reply check + stats | **code complete, untested against real Gmail**: `emails.gs` sends (createDraft().send()), queues the one follow-up (+4 business days, sent in-thread via the Gmail advanced service with In-Reply-To), `checkReplies` trigger (search `after:… -from:me`, dedupe by Gmail message id), bounce + opt-out + address detection with a review queue on Today. Done when the five-address test batch sends and replies match. |
-| 2. Work the replies | partner record, call list, follow-up, bounce/opt-out, address flag | not started |
+| 2. Work the replies | partner record, call list, follow-up, bounce/opt-out, address flag | partly: the Quo phone log (calls + texts on the record, missed calls on the call list) is built, untested against the real Quo |
 | 3. Homes | import, neighborhood view, roof-age review, mailing file, knock list, knock outcomes | not started |
 | 4. Referral network | referrals log, more partner types, hand-off via Zapier | not started |
 
@@ -103,7 +113,7 @@ Build nothing from the next version until the one before it has been used for re
 ## Open questions (ask Brian, don't guess)
 
 - ~~Whose mailbox sends?~~ Brian's (2026-11-19).
-- ~~Calling from the app~~ **Decided 2026-11-22: Quo (ex-OpenPhone)**, which Tanner already uses. Plan: Quo webhooks (calls, texts, recordings, transcripts) post to a public `doPost` deployment of ours, signature-checked, matched to a partner by phone, written as Events; unknown numbers to the review queue. Google Voice rejected (no feed), Twilio parked (build cost). Details in `docs/IDEAS.md`. Needs from Brian: Quo plan tier, API key, Tanner's Quo number. Never add cold-call tooling for homeowners; call buttons on Homes only when `Phone Given By Owner` is Yes.
+- ~~Calling from the app~~ **Decided 2026-11-22: Quo (ex-OpenPhone)**, which Tanner already uses. Built in v0.5.0, see "Quo" below. Google Voice rejected (no feed), Twilio parked (build cost). Never add cold-call tooling for homeowners; call buttons on Homes only when `Phone Given By Owner` is Yes.
 - ~~Realtor list source and columns~~ Brian's Tyler list (264 prospects, imported from `East_Texas_Realtor_Roofing_Leads`) + 8 established partners (2026-11-22). Gregg County is parked (Brian, 2026-11-22: Tyler first). A TREC roster of 500 Gregg County names with brand-resolved brokerages exists as a worksheet, no contact info; see IDEAS. Cloud sessions for these repos use the "ArmorTex apps" environment, which allows data.texas.gov and trec.texas.gov.
 - Pay-at-closing dollar limit, which unlocks version E. Until then assign only A/B/C? (`assignVersions({versions:['A','B','C']})` exists.)
 - ~~Business street address~~ Tyler office: 3310 South Broadway Ave, Ste 225A, Tyler, TX 75701 (2026-11-22; default in Config).

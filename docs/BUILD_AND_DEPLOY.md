@@ -96,6 +96,15 @@ URL from the deploy output for Tanner. Then on **Settings**:
 6. **Developer**: paste the /dev URL (editor → Deploy → Test deployments) so the
    🛠 owner tools can flip every link between /dev and /exec. On /dev the app
    turns amber with a DEV tag.
+7. **Quo phone system** (owner): in Quo, Workspace settings → API → *Generate
+   API key*; paste it in the Quo card and press *Connect*. Tick the number(s)
+   to log, paste the **/exec** URL, *Register webhook*, then *Send a test
+   event*. The card shows whether the post reached the app and what Quo's
+   delivery log says. This needs the web app deployed with access **Anyone**
+   (`appsscript.json` already says `ANYONE_ANONYMOUS`; it takes effect at the
+   next `./deploy.sh`). Anonymous visitors only ever see the no-access page.
+   Change the key or the numbers, and re-register; *Forget key* removes the
+   webhook at Quo too.
 
 ## 4. Every change
 
@@ -166,10 +175,11 @@ anything from the editor. Approve it.
 ```
 ArmorTexAI/
 ├── src/                  # pushed to Apps Script
-│   ├── appsscript.json   # manifest: tz, scopes, DOMAIN access, run as deployer
+│   ├── appsscript.json   # manifest: tz, scopes, ANYONE_ANONYMOUS access (Quo posts), run as deployer
 │   ├── Config.gs         # tabs, headers, enums, settings, roles
 │   ├── Code.gs           # doGet routing, include(), setup()
 │   ├── sheet.gs          # read/write helpers
+│   ├── quo.gs            # phone system: key, webhook, doPost receiver → Events
 │   ├── users.gs          # roles + permission checks
 │   ├── partners_server.gs       # import, version assignment, partner record
 │   ├── campaign_server.gs       # versions, daily batch, stats, settings

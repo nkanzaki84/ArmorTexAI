@@ -289,7 +289,19 @@ function makeGlobals(ctx) {
       },
       createHtmlOutput(html) { return { setTitle() { return this; }, addMetaTag() { return this; }, getContent: () => html }; },
     },
-    UrlFetchApp: { fetch(url, opts) { ctx.fetches = ctx.fetches || []; ctx.fetches.push({ url, opts }); return { getResponseCode: () => 200, getContentText: () => '{}' }; } },
+    UrlFetchApp: {
+      // ctx.fetchHandler(url, opts) → { code, text } lets a test play the far end (e.g. Quo's API).
+      fetch(url, opts) {
+        ctx.fetches = ctx.fetches || []; ctx.fetches.push({ url, opts });
+        const r = ctx.fetchHandler ? ctx.fetchHandler(url, opts) : null;
+        const code = r && r.code !== undefined ? r.code : 200, text = r && r.text !== undefined ? r.text : '{}';
+        return { getResponseCode: () => code, getContentText: () => text };
+      },
+    },
+    ContentService: {
+      MimeType: { JSON: 'json', TEXT: 'text' },
+      createTextOutput(text) { return { text, mime: null, setMimeType(m) { this.mime = m; return this; }, getContent: () => text }; },
+    },
   };
   g.globalThis = g;
   return g;

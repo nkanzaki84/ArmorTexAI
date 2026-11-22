@@ -39,7 +39,7 @@
       html += '<div class="stats">' +
         '<div class="stat"><b>' + m.emailsSent + '</b><span>emails sent</span></div>' +
         '<div class="stat"><b>' + m.replies + '</b><span>replies</span></div>' +
-        '<div class="stat"><b>' + m.talked + '/' + m.calls + '</b><span>talked / calls</span></div>' +
+        '<div class="stat"><b>' + m.talked + '/' + m.calls + '</b><span>talked / calls' + (m.texts ? ' · ' + m.texts + ' texts' : '') + '</span></div>' +
         '<div class="stat"><b>' + m.referralsIn + '</b><span>' + esc(prof.winNoun || 'referrals') + ' in</span></div>' +
         '<div class="stat"><b>' + m.jobsSigned + '</b><span>jobs signed' + (m.jobValue ? ' · ' + fmtMoney(m.jobValue) : '') + '</span></div>' +
         '</div>';
@@ -86,9 +86,24 @@
           return '<li><span class="when">' + (fmtDate(e['Sent At']) || fmtDate(e['Scheduled For']) || '') + '</span><span>' + verBadge(e.Version) + ' ' + esc(e.Step) + ' · <span class="pill">' + esc(e.Status) + '</span> ' + esc(e.Subject || '') + '</span></li>';
         }).join('') + '</ul>' : '<div class="empty">No emails yet.</div>') + '</div>';
 
+      function fmtDur(sec) { sec = Number(sec) || 0; return sec >= 60 ? Math.floor(sec / 60) + 'm ' + (sec % 60) + 's' : sec + 's'; }
+      function activityLine(ev) {
+        var who = ev.By && ev.By !== 'quo' && ev.By !== 'trigger' ? ' <span class="sub">· ' + esc(String(ev.By).split('@')[0]) + '</span>' : '';
+        if (ev.Kind === 'call' || ev.Kind === 'voicemail') {
+          var arrow = ev.Direction === 'in' ? '📲 call in' : '📞 call';
+          var oc = ev.Outcome || '';
+          var pill = oc ? ' <span class="pill ' + (oc === 'talked' ? 'ok' : oc === 'missed' ? 'bad' : '') + '">' + esc(oc.replace('_', ' ')) + '</span>' : '';
+          return '<b>' + arrow + '</b>' + pill + (ev.Duration ? ' <span class="sub">' + fmtDur(ev.Duration) + '</span>' : '') + who +
+            (ev['Recording URL'] ? ' · <a href="' + esc(ev['Recording URL']) + '" target="_blank" rel="noopener">▶ recording</a>' : '') +
+            (ev.Snippet ? '<div class="sub">' + esc(ev.Snippet) + '</div>' : '') +
+            (ev.Transcript ? '<details style="margin-top:4px"><summary class="sub" style="cursor:pointer">Transcript</summary><div class="sub" style="white-space:pre-wrap">' + esc(ev.Transcript) + '</div></details>' : '');
+        }
+        if (ev.Kind === 'text') return '<b>' + (ev.Direction === 'in' ? '💬 text in' : '💬 text') + '</b>' + who + (ev.Snippet ? '<div class="sub" style="white-space:pre-wrap">' + esc(ev.Snippet) + '</div>' : '');
+        return '<b>' + esc(ev.Kind) + '</b>' + (ev.Outcome ? ' · ' + esc(ev.Outcome) : '') + who + (ev.Snippet ? '<div class="sub">' + esc(ev.Snippet) + '</div>' : '');
+      }
       html += '<div class="card"><div class="hd"><h2>Activity</h2></div>' +
         (data.events.length ? '<ul class="timeline" style="padding:6px 16px">' + data.events.slice().reverse().map(function (ev) {
-          return '<li><span class="when">' + fmtDateTime(ev.At) + '</span><span><b>' + esc(ev.Kind) + '</b>' + (ev.Outcome ? ' · ' + esc(ev.Outcome) : '') + (ev.Snippet ? '<div class="sub">' + esc(ev.Snippet) + '</div>' : '') + '</span></li>';
+          return '<li><span class="when">' + fmtDateTime(ev.At) + '</span><span>' + activityLine(ev) + '</span></li>';
         }).join('') + '</ul>' : '<div class="empty">Nothing logged yet.</div>') + '</div>';
 
       html += '<div class="card"><div class="hd"><h2>Referrals</h2><span class="sub">leads in and out · no fees, ever</span></div>' +

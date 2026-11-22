@@ -68,8 +68,22 @@ function seed(app) {
     if (i % 6 === 1) events.push({ ID: 'EV-' + events.length, 'Partner ID': p.ID, 'Email ID': 'E-' + (i + 1), Kind: 'reply', At: new Date(sentAt.getTime() + day), Snippet: i % 12 === 1 ? 'Sure, can you look at 214 Bayhills Dr, Hideaway? Listing goes live Friday.' : 'Send the sample over, thanks.', By: 'trigger' });
     if (i % 9 === 2) events.push({ ID: 'EV-' + events.length, 'Partner ID': p.ID, Kind: 'call', Outcome: 'talked', At: new Date(sentAt.getTime() + day * 2), Snippet: 'Wants the sample. Has two listings in Fairway Oaks.', By: 'tanner@armortexroofs.com' });
   });
+  // calls and texts as Quo would have logged them (ps[2] = a realtor with a full phone history, ps[3] = a missed call, plus one unknown number)
+  const q = (n, extra) => Object.assign({ ID: 'EV-' + (events.length + n), 'Partner ID': ps[2].ID, Source: 'quo', By: 'tanner@armortexroofs.com' }, extra);
+  events.push(
+    q(0, { Kind: 'call', Outcome: 'no_answer', Direction: 'out', Duration: 0, Phone: ps[2].Phone, At: new Date(now - day * 4 - 3600000), 'Source ID': 'AC-seed-1' }),
+    q(1, { Kind: 'text', Outcome: 'sent', Direction: 'out', Phone: ps[2].Phone, At: new Date(now - day * 4 - 3500000), Snippet: 'Hi Dana, Tanner with ArmorTex Roofs. Tried you just now about the free roof report, call me when you have a minute.', 'Source ID': 'AM-seed-1' }),
+    q(2, { Kind: 'text', Outcome: 'received', Direction: 'in', Phone: ps[2].Phone, By: 'quo', At: new Date(now - day * 4 - 1800000), Snippet: 'Sure, can you look at 1402 Fairway Oaks Dr? Listing goes live Friday.', 'Source ID': 'AM-seed-2' }),
+    q(3, { Kind: 'call', Outcome: 'talked', Direction: 'out', Duration: 254, Phone: ps[2].Phone, At: new Date(now - day * 4), 'Recording URL': 'https://example.com/recordings/AC-seed-2.mp3', Snippet: 'Dana has two listings in Fairway Oaks with roofs from 2009. Wants the sample report first. Next: Email the sample today.', Transcript: 'Tanner Fought: Hi Dana, Tanner with ArmorTex, thanks for texting back.\n+19035551002: Of course. So this report, is it really free?\nTanner Fought: It is. Photos, a grade and a plain recommendation, within 48 hours.\n+19035551002: Send me a sample and I will send the Fairway Oaks address over.', 'Source ID': 'AC-seed-2' }),
+    q(4, { 'Partner ID': ps[3].ID, Kind: 'call', Outcome: 'missed', Direction: 'in', Duration: 0, Phone: ps[3].Phone, By: 'quo', At: new Date(now - 7200000), 'Source ID': 'AC-seed-3' }),
+    q(5, { 'Partner ID': '', Kind: 'call', Outcome: 'talked', Direction: 'in', Duration: 38, Phone: '9035559999', By: 'quo', At: new Date(now - 5400000), Snippet: 'Unknown number (903) 555-9999', 'Needs Review': 'Yes', 'Source ID': 'AC-seed-4' }),
+  );
   app._appendRows_('Emails', emails);
   app._appendRows_('Events', events);
+  // Quo looks connected in the preview: a key, two numbers, a webhook
+  app.PropertiesService.getScriptProperties().setProperty('QUO_API_KEY', 'preview-key-0000');
+  app.saveSettings({ quo_numbers: JSON.stringify([{ id: 'PN1', number: '+19035550100', name: 'Tanner', users: ['tanner@armortexroofs.com'] }, { id: 'PN2', number: '+19035550199', name: 'Office', users: ['brian@armortexroofs.com'] }]), quo_users: JSON.stringify({ US1: { email: 'tanner@armortexroofs.com', name: 'Tanner Fought' } }), quo_watch: JSON.stringify(['PN1']), quo_hook_url: 'https://script.google.com/a/macros/armortexroofs.com/s/EXAMPLE/exec', quo_webhook_id: '4181', quo_webhook_url: 'https://script.google.com/a/macros/armortexroofs.com/s/EXAMPLE/exec?src=quo&token=seed' });
+  app.PropertiesService.getScriptProperties().setProperty('QUO_LAST_HOOK', JSON.stringify({ at: new Date(now - 5400000).toISOString(), type: 'call.completed', eventId: 'EV1', result: { action: 'review', eventId: 'EV-5' } }));
   app.savePartner(ps[1].ID, { response: 'Sent an address', nextStep: 'Drive by 214 Bayhills Dr Thu', profile: { 'Listings Per Year': 24, 'Avg Listing Value': 385000, 'Areas Served': 'White Oak, Longview' } });
   app.savePartner(ps[0].ID, { profile: { 'Listings Per Year': 9, 'Avg Listing Value': 410000 } });
   app._appendRows_('Referrals', [{ ID: 'R-1', Date: new Date(now - day * 3), Direction: 'in', 'Partner ID': ps[1].ID, 'Customer Or Address': '214 Bayhills Dr, Hideaway TX 75771', 'Request Type': 'listing_report', 'Listing Value': 415000, 'Roof Age Years': 14, 'Due At': new Date(now - day), 'Report Recipient': ps[1].Email, 'Report Sent At': new Date(now - day * 1.5), 'Report Link': 'https://example.com/report.pdf' }]);

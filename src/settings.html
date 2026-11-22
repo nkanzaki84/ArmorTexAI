@@ -108,6 +108,23 @@
   </form>
 </div>
 
+<div class="card" id="quoCard">
+  <div class="hd"><h2>Quo phone system</h2><span class="sub">Tanner's calls and texts land on the realtor's record</span><div class="spacer"></div><span id="quoPill" class="pill">…</span></div>
+  <div class="bd">
+    <div class="grid2">
+      <div class="f"><label>API key</label><input id="quoKey" type="password" autocomplete="off" placeholder="paste the key from Quo → Workspace settings → API"><span class="sub" id="quoKeyNote">Owner or admin in Quo creates it. It has full access to the Quo account, so it lives only here (Script Properties), never in the Sheet.</span></div>
+      <div class="f"><label>&nbsp;</label><div class="row"><button class="btn navy" id="quoKeyBtn">Connect</button><button class="btn ghost" id="quoKeyClear" style="display:none">Forget key</button><button class="btn ghost" id="quoRefresh" style="display:none">↻ Re-read numbers</button></div></div>
+    </div>
+    <div id="quoNumbers" style="display:none">
+      <div class="f"><label>Numbers to log</label><div id="quoNumberList" class="row" style="gap:12px"></div><span class="sub">Calls and texts on these numbers are written to Events. Changing this re-registers the webhook.</span></div>
+      <div class="f"><label>Where Quo posts (this app's /exec URL)</label><input id="quoHookUrl" placeholder="https://script.google.com/a/macros/armortexroofs.com/s/…/exec"><span class="sub">Needs a deployment with access <b>Anyone</b>, otherwise Quo's posts bounce off Google's sign-in page. The /dev URL won't work for this.</span></div>
+      <div class="row"><button class="btn primary" id="quoHookBtn">Register webhook</button><button class="btn" id="quoTestBtn" style="display:none">Send a test event</button><button class="btn ghost" id="quoHookRemove" style="display:none">Remove webhook</button></div>
+      <div id="quoHookInfo" class="sub" style="margin-top:8px"></div>
+      <div id="quoResult" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
 <div class="card">
   <div class="hd"><h2>Developer</h2><span class="sub">owner tools</span></div>
   <form class="bd" id="devForm">
@@ -271,6 +288,62 @@
           $('testResult').innerHTML = '<div class="ok-box">Created ' + r.added + ' test partners (' + r.skipped.duplicate + ' already existed). Versions assigned to ' + a.assigned + ' unassigned realtors. Now open Today.</div>';
         });
       }).catch(fail).finally(function () { busy($('testBtn'), false, 'Create test partners'); });
+    });
+
+    // ---- Quo ----
+    var quo = null;
+    function quoRender(st) {
+      quo = st;
+      var pill = $('quoPill');
+      if (!st.keySet) { pill.textContent = 'not connected'; pill.className = 'pill'; }
+      else if (st.webhookId) { pill.textContent = 'logging ' + st.watch.length + ' number' + (st.watch.length === 1 ? '' : 's'); pill.className = 'pill ok'; }
+      else { pill.textContent = 'key saved · no webhook yet'; pill.className = 'pill warn'; }
+      $('quoKey').placeholder = st.keySet ? 'key saved · ends in ' + st.keyTail + ' · paste a new one to replace it' : 'paste the key from Quo → Workspace settings → API';
+      $('quoKeyClear').style.display = st.keySet ? '' : 'none';
+      $('quoRefresh').style.display = st.keySet ? '' : 'none';
+      $('quoNumbers').style.display = st.keySet ? '' : 'none';
+      $('quoNumberList').innerHTML = st.numbers.length ? st.numbers.map(function (n) {
+        var onIt = st.watch.indexOf(n.id) !== -1;
+        return '<label class="chip ' + (onIt ? 'on' : '') + '" data-id="' + esc(n.id) + '"><input type="checkbox" hidden ' + (onIt ? 'checked' : '') + '> ' + esc(fmtPhone(String(n.number || '').replace(/\D/g, '').replace(/^1(\d{10})$/, '$1')) || n.number) + (n.name ? ' · ' + esc(n.name) : '') + (n.users.length ? ' <span class="sub" style="color:inherit;opacity:.75">(' + esc(n.users.map(function (u) { return String(u).split('@')[0]; }).join(', ')) + ')</span>' : '') + '</label>';
+      }).join('') : '<span class="empty">No numbers in this Quo workspace.</span>';
+      if (!$('quoHookUrl').value) $('quoHookUrl').value = st.hookUrl || (String(st.appUrl || '').replace(/\/dev(\?.*)?$/, '/exec'));
+      $('quoTestBtn').style.display = st.webhookId ? '' : 'none';
+      $('quoHookRemove').style.display = st.webhookId ? '' : 'none';
+      $('quoHookBtn').textContent = st.webhookId ? 'Re-register webhook' : 'Register webhook';
+      var info = '';
+      if (st.webhookId) info += 'Webhook <b>#' + esc(st.webhookId) + '</b> registered for: ' + st.events.join(', ') + '.';
+      if (st.lastHook) info += (info ? '<br>' : '') + 'Last post from Quo ' + fmtDateTime(st.lastHook.at) + ': <b>' + esc(st.lastHook.type) + '</b> → ' + esc(st.lastHook.result && st.lastHook.result.action || '?') + (st.lastHook.result && st.lastHook.result.reason ? ' (' + esc(st.lastHook.result.reason) + ')' : '') + (st.lastHook.result && st.lastHook.result.partnerId ? ' · partner ' + esc(st.lastHook.result.partnerId) : '') + '.';
+      if (st.lastError) info += (info ? '<br>' : '') + '<span style="color:var(--bad)">Last problem: ' + esc(st.lastError) + '</span>';
+      $('quoHookInfo').innerHTML = info;
+    }
+    function quoLoad() { api('quoStatus').then(quoRender).catch(function (e) { $('quoPill').textContent = 'error'; $('quoPill').className = 'pill bad'; $('quoHookInfo').textContent = e.message; }); }
+    quoLoad();
+    on($('quoKeyBtn'), 'click', function () {
+      var k = $('quoKey').value.trim(); if (!k) return toast('Paste the API key first', 'error');
+      busy($('quoKeyBtn'), true, 'Checking…');
+      api('saveQuoApiKey', k).then(function (st) { $('quoKey').value = ''; quoRender(st); toast('Connected to Quo: ' + st.numbers.length + ' number(s)', 'success'); }).catch(fail).finally(function () { busy($('quoKeyBtn'), false, 'Connect'); });
+    });
+    on($('quoKeyClear'), 'click', function () { if (!confirm('Forget the Quo key and remove the webhook?')) return; api('clearQuoApiKey').then(function (st) { quoRender(st); toast('Quo disconnected', 'success'); }).catch(fail); });
+    on($('quoRefresh'), 'click', function () { busy($('quoRefresh'), true, '…'); api('quoRefreshNumbers').then(function (st) { quoRender(st); toast('Numbers refreshed', 'success'); }).catch(fail).finally(function () { busy($('quoRefresh'), false, '↻ Re-read numbers'); }); });
+    on($('quoNumberList'), 'click', function (e) {
+      var c = e.target.closest('.chip'); if (!c) return; e.preventDefault();
+      c.classList.toggle('on');
+      var ids = Array.prototype.map.call($('quoNumberList').querySelectorAll('.chip.on'), function (x) { return x.dataset.id; });
+      api('saveQuoWatch', ids).then(function (st) { quoRender(st); toast('Saved', 'success'); }).catch(function (err) { fail(err); quoLoad(); });
+    });
+    on($('quoHookBtn'), 'click', function () {
+      busy($('quoHookBtn'), true, 'Registering…');
+      api('quoRegisterWebhook', $('quoHookUrl').value.trim()).then(function (st) { quoRender(st); toast('Webhook registered with Quo', 'success'); }).catch(fail).finally(function () { busy($('quoHookBtn'), false, quo && quo.webhookId ? 'Re-register webhook' : 'Register webhook'); });
+    });
+    on($('quoHookRemove'), 'click', function () { if (!confirm('Remove the webhook? Calls and texts stop being logged.')) return; api('quoRemoveWebhook').then(function (st) { quoRender(st); toast('Webhook removed', 'success'); }).catch(fail); });
+    on($('quoTestBtn'), 'click', function () {
+      busy($('quoTestBtn'), true, 'Asking Quo…'); $('quoResult').innerHTML = '';
+      api('quoSendTestEvent', 'call.completed').then(function (r) {
+        quoRender(r.status);
+        var got = r.status.lastHook && (Date.now() - new Date(r.status.lastHook.at).getTime()) < 60000;
+        $('quoResult').innerHTML = '<div class="' + (got ? 'ok-box' : 'problem') + '">' + (got ? '✓ The test post reached this app' + (r.status.lastHook.result && r.status.lastHook.result.action === 'ignored' ? ' (stored nothing, as expected for a sample: ' + esc(r.status.lastHook.result.reason || '') + ')' : '') + '.' : 'Nothing arrived here yet. Quo retries for a day; check its delivery log below, and make sure the /exec deployment allows "Anyone".') + '</div>' +
+          (r.deliveries.length ? '<table><thead><tr><th>When</th><th>Event</th><th>Quo says</th></tr></thead><tbody>' + r.deliveries.map(function (d) { return '<tr><td>' + fmtDateTime(d.createdAt) + '</td><td>' + esc(d.eventType || '') + '</td><td><span class="pill ' + (d.status === 'success' ? 'ok' : d.status === 'failed' ? 'bad' : 'warn') + '">' + esc(d.status || '') + '</span>' + (d.nextAttemptAt ? ' <span class="sub">retry ' + fmtDateTime(d.nextAttemptAt) + '</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table>' : '');
+      }).catch(fail).finally(function () { busy($('quoTestBtn'), false, 'Send a test event'); });
     });
     on($('recountBtn'), 'click', function () {
       busy($('recountBtn'), true, 'Recounting…');

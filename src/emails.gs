@@ -324,16 +324,19 @@ function getTodayWork(opts) {
   _readTab_(TAB.PARTNERS).forEach(function (p) { if (mine(p)) partners[p['ID']] = p; });
   const events = _readTab_(TAB.EVENTS);
   const weekAgo = Date.now() - 7 * 86400000;
-  const lastReply = {}, lastCall = {};
+  const lastReply = {}, lastCall = {}, lastMissed = {};
   events.forEach(function (ev) {
     const t = new Date(ev['At']).getTime();
-    if (ev['Kind'] === 'reply' && (!lastReply[ev['Partner ID']] || lastReply[ev['Partner ID']] < t)) lastReply[ev['Partner ID']] = t;
-    if (ev['Kind'] === 'call' && (!lastCall[ev['Partner ID']] || lastCall[ev['Partner ID']] < t)) lastCall[ev['Partner ID']] = t;
+    const pid = ev['Partner ID'];
+    // a reply by email or a text they sent us both want a call back
+    if ((ev['Kind'] === 'reply' || (ev['Kind'] === 'text' && ev['Direction'] === 'in')) && (!lastReply[pid] || lastReply[pid] < t)) lastReply[pid] = t;
+    if (ev['Kind'] === 'call' && ev['Outcome'] === 'missed') { if (!lastMissed[pid] || lastMissed[pid] < t) lastMissed[pid] = t; return; }   // they called, we missed it: not a call we made
+    if ((ev['Kind'] === 'call' || ev['Kind'] === 'voicemail') && (!lastCall[pid] || lastCall[pid] < t)) lastCall[pid] = t;
   });
   const listingValue = {};
   _readTab_(TAB.REFERRALS).forEach(function (r) { const v = Number(r['Listing Value']) || 0; if (v > (listingValue[r['Partner ID']] || 0)) listingValue[r['Partner ID']] = v; });
 
-  const replies = events.filter(function (ev) { return ev['Kind'] === 'reply' && new Date(ev['At']).getTime() >= weekAgo && partners[ev['Partner ID']]; })
+  const replies = events.filter(function (ev) { return (ev['Kind'] === 'reply' || (ev['Kind'] === 'text' && ev['Direction'] === 'in')) && new Date(ev['At']).getTime() >= weekAgo && partners[ev['Partner ID']]; })
     .sort(function (a, b) { return new Date(b['At']) - new Date(a['At']); })
     .map(function (ev) { return { event: ev, partner: partners[ev['Partner ID']] }; });
 
@@ -341,6 +344,10 @@ function getTodayWork(opts) {
   Object.keys(lastReply).forEach(function (id) {
     const p = partners[id];
     if (p && !_yes_(p['Do Not Contact']) && p['Response'] !== 'Not interested' && !(lastCall[id] && lastCall[id] >= lastReply[id])) callIds[id] = 'replied';
+  });
+  Object.keys(lastMissed).forEach(function (id) {
+    const p = partners[id];
+    if (p && !_yes_(p['Do Not Contact']) && p['Response'] !== 'Not interested' && !(lastCall[id] && lastCall[id] >= lastMissed[id]) && !callIds[id]) callIds[id] = 'missed';
   });
   Object.keys(partners).forEach(function (id) {
     const p = partners[id];
@@ -350,9 +357,11 @@ function getTodayWork(opts) {
     if (!callIds[id]) callIds[id] = 'queued';
   });
   const calls = Object.keys(callIds).map(function (id) { return Object.assign({ listingValue: listingValue[id] || 0, why: callIds[id] }, partners[id]); })
-    .sort(function (a, b) { return (a.why === 'replied' ? 0 : 1) - (b.why === 'replied' ? 0 : 1) || (b.listingValue - a.listingValue) || ((lastReply[b['ID']] || 0) - (lastReply[a['ID']] || 0)); });
+    .sort(function (a, b) { const rank = function (w) { return w === 'replied' ? 0 : w === 'missed' ? 1 : 2; }; return rank(a.why) - rank(b.why) || (b.listingValue - a.listingValue) || ((lastReply[b['ID']] || lastMissed[b['ID']] || 0) - (lastReply[a['ID']] || lastMissed[a['ID']] || 0)); });
 
-  const needsReview = events.filter(function (ev) { return _yes_(ev['Needs Review']) && partners[ev['Partner ID']]; }).map(function (ev) { return { event: ev, partner: partners[ev['Partner ID']] }; });
+  // the human queue: automation guesses on a known partner, plus calls/texts from numbers nobody knows (owner and "everyone" scope only)
+  const needsReview = events.filter(function (ev) { return _yes_(ev['Needs Review']) && (partners[ev['Partner ID']] || (!ev['Partner ID'] && !ev['Home ID'] && scope === 'all')); })
+    .map(function (ev) { return { event: ev, partner: partners[ev['Partner ID']] || null }; });
   return { replies: replies, calls: calls, needsReview: needsReview, scope: scope };
 }
 
@@ -362,8 +371,8 @@ function resolveReview(eventId, decision) {
   const ev = _byId_(TAB.EVENTS, eventId);
   if (!ev) throw new Error('Event not found: ' + eventId);
   const pIdx = _findRowIndex_(TAB.PARTNERS, function (p) { return String(p['ID']) === String(ev['Partner ID']); });
-  if (decision === 'address') _updateRow_(TAB.PARTNERS, pIdx, { 'Response': 'Sent an address' });
-  if (decision === 'not-opt-out') _updateRow_(TAB.PARTNERS, pIdx, { 'Do Not Contact': '', 'Response': 'Replied' });
+  if (decision === 'address' && pIdx !== -1) _updateRow_(TAB.PARTNERS, pIdx, { 'Response': 'Sent an address' });
+  if (decision === 'not-opt-out' && pIdx !== -1) _updateRow_(TAB.PARTNERS, pIdx, { 'Do Not Contact': '', 'Response': 'Replied' });
   _updateRow_(TAB.EVENTS, ev._row, { 'Needs Review': '', 'By': me.email });
   return { ok: true };
 }

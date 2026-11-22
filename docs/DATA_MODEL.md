@@ -56,10 +56,11 @@ Versions are keyed by Letter. Settings by Name. Users by Email.
 | Column | Notes |
 |---|---|
 | ID, Partner ID *or* Home ID, Email ID | |
-| Kind | reply · bounce · opt-out · call · postcard · knock · note. |
-| Outcome | knock: no_answer · not_interested · talked · booked · posted_skipped. call: talked / voicemail / free text. |
-| At, Snippet, By | reply snippet or the note. By = email or `trigger`. |
-| Needs Review | Yes when an automation guessed (opt-out wording, address detected). A person clears it. |
+| Kind | reply · bounce · opt-out · call · text · voicemail · postcard · knock · note. |
+| Outcome | knock: no_answer · not_interested · talked · booked · posted_skipped. call: talked · voicemail · no_answer · missed (Quo) or free text (logged by hand). text: received · sent. |
+| At, Snippet, By | reply snippet, the note, the call summary or the text. By = staff email, `trigger` (reply check) or `quo` (incoming call/text). |
+| Needs Review | Yes when an automation guessed (opt-out wording, address detected) or a call/text came from a number nobody has (Partner ID blank). A person clears it. |
+| Direction, Duration, Phone, Recording URL, Transcript, Source, Source ID | Calls and texts from the phone system (Quo, appended 2026-11-22). Direction in/out; Duration seconds; Phone = the other party, digits; Source `quo`; Source ID = Quo's call/message id, the key later events (recording, transcript, summary, voicemail) update. A missed incoming call never counts as contact. |
 
 ## Referrals — one lead passed, and every roof report request
 
@@ -84,7 +85,10 @@ Up Body, QR Code URL (postcards), Locked (Yes once sending starts), Updated At.
 daily_cap (50) · sending_days (Tue,Wed,Thu) · sending_hour (9) · pause_sending
 · follow_up_days (4) · knock_delay_days (5) · sender_signature ·
 business_address · opt_out_line · job_manager_webhook · printer_format ·
-call_script_url · do_not_contact (extra emails, one per line).
+call_script_url · do_not_contact (extra emails, one per line) · dev_url ·
+quo_numbers / quo_users / quo_watch / quo_hook_url / quo_webhook_id /
+quo_webhook_url (the phone system; JSON where plural). The Quo API key, the
+webhook token and the signing key are Script Properties, never in the Sheet.
 
 ## Comments — pinned comments (developer tool)
 

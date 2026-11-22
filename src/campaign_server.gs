@@ -240,7 +240,7 @@ function recountPartnerStages() {
   events.forEach(function (ev) {
     if (ev['Kind'] === 'reply') { replied[ev['Partner ID']] = true; _maxDate_(lastContact, ev['Partner ID'], ev['At']); }
     if (ev['Kind'] === 'opt-out' && !_yes_(ev['Needs Review'])) optedOut[ev['Partner ID']] = true;
-    if (ev['Kind'] === 'call') _maxDate_(lastContact, ev['Partner ID'], ev['At']);
+    if ((ev['Kind'] === 'call' && ev['Outcome'] !== 'missed') || ev['Kind'] === 'voicemail' || ev['Kind'] === 'text') _maxDate_(lastContact, ev['Partner ID'], ev['At']);
   });
   referrals.forEach(function (r) { if (r['Direction'] === 'in') partnerOf[r['Partner ID']] = true; });
   const updates = [];

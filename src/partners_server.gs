@@ -352,6 +352,7 @@ function getPartner(id) {
     replies: events.filter(function (e) { return e['Kind'] === 'reply'; }).length,
     calls: events.filter(function (e) { return e['Kind'] === 'call'; }).length,
     talked: events.filter(function (e) { return e['Kind'] === 'call' && String(e['Outcome']).toLowerCase() === 'talked'; }).length,
+    texts: events.filter(function (e) { return e['Kind'] === 'text'; }).length,
     referralsIn: inRefs.length,
     referralsOut: referrals.length - inRefs.length,
     reportsSent: inRefs.filter(function (r) { return r['Report Sent At']; }).length,
