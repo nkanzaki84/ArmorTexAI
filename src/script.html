@@ -77,7 +77,14 @@
     toast(msg, 'error'); console.error(err);
   }
   var esc = escapeHtml;
-  function fmtPhone(d) { d = String(d || '').replace(/\D/g, ''); return d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : (d || ''); }
+  /** Gmail compose in a new tab, in the signed-in Workspace account (not the Mac's default mail app). */
+function gmailComposeUrl(to, subject) {
+  var me = (window.OUTREACH && OUTREACH.session && OUTREACH.session.email) || '';
+  return 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(to || '') +
+    (subject ? '&su=' + encodeURIComponent(subject) : '') +
+    (me ? '&authuser=' + encodeURIComponent(me) : '');
+}
+function fmtPhone(d) { d = String(d || '').replace(/\D/g, ''); return d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : (d || ''); }
   function fmtDateTime(v) { if (!v) return ''; var d = fmtDate(v), t = fmtTime(v); return t ? d + ', ' + t : d; }
   function pct(n) { return (Math.round(n * 1000) / 10) + '%'; }
   function fmtMoney(n) { n = Number(n); return n ? fmt$(n) : ''; }
