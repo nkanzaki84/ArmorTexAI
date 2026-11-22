@@ -167,10 +167,17 @@ function quoDeliveries() {
   if (!id) return { deliveries: [], status: quoStatus() };
   const r = _quoFetch_('get', '/webhooks/' + encodeURIComponent(id) + '/events?limit=10', null, true);
   const list = (r.code >= 200 && r.code < 300 && r.json && r.json.data) ? r.json.data : [];
-  return {
-    deliveries: list.map(function (d) { return { id: d.id, eventType: d.eventType, status: d.status, createdAt: d.createdAt, nextAttemptAt: d.nextAttemptAt || null }; }),
-    status: quoStatus(),
-  };
+  // the newest few in detail: what our URL answered on each attempt (the 302 question)
+  const deliveries = list.slice(0, 5).map(function (d) {
+    const out = { id: d.id, eventType: d.eventType, status: d.status, createdAt: d.createdAt, nextAttemptAt: d.nextAttemptAt || null, attempts: [] };
+    const det = _quoFetch_('get', '/webhooks/' + encodeURIComponent(id) + '/events/' + encodeURIComponent(d.id), null, true);
+    const attempts = (det.code >= 200 && det.code < 300 && det.json && det.json.data && det.json.data.attempts) || [];
+    out.attempts = attempts.map(function (a) {
+      return { at: a.timestamp, status: a.status, code: a.responseStatusCode, ms: a.responseDurationMs, body: String(a.responseBody || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240) };
+    });
+    return out;
+  });
+  return { deliveries: deliveries, status: quoStatus() };
 }
 
 // ============================================================

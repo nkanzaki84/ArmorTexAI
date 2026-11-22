@@ -29,6 +29,7 @@ function quoApi(ctx, state) {
     }
     if (/^\/webhooks\/\d+$/.test(path) && method === 'delete') { state.deleted = (state.deleted || []).concat(path); return { code: 204, text: '' }; }
     if (/^\/webhooks\/\d+\/events\/test$/.test(path)) return { code: 200, text: JSON.stringify({ id: 'EVtest', type: JSON.parse(opts.payload).eventType }) };
+    if (/^\/webhooks\/\d+\/events\/D1$/.test(path)) return { code: 200, text: JSON.stringify({ data: { id: 'D1', eventType: 'call.completed', attempts: [{ id: 'A1', timestamp: NOW.toISOString(), status: 'failed', responseStatusCode: 302, responseBody: '<HTML><HEAD><TITLE>Moved Temporarily</TITLE></HEAD><BODY>The document has moved</BODY></HTML>', responseDurationMs: 120 }] } }) };
     if (/^\/webhooks\/\d+\/events/.test(path)) return { code: 200, text: JSON.stringify({ data: [{ id: 'D1', eventType: 'call.completed', status: 'success', createdAt: NOW.toISOString() }] }) };
     let m = path.match(/^\/v1\/calls\/(.+)$/);
     if (m) { const c = state.calls[decodeURIComponent(m[1])]; return c ? { code: 200, text: JSON.stringify({ data: c }) } : { code: 404, text: '{"message":"not found"}' }; }
@@ -233,6 +234,7 @@ test('test event + delivery log: the receiver records a sample without storing i
   assert.equal(app.$rows('Events').length, 0);
   const d = app.quoSendTestEvent('call.completed');
   assert.equal(d.deliveries[0].status, 'success');
+  assert.deepEqual(d.deliveries[0].attempts.map(a => [a.code, a.body]), [[302, 'Moved Temporarily The document has moved']], 'each attempt shows what our URL answered');
   assert.equal(d.status.lastHook, null, 'sending a test clears the last-hook marker so the UI waits for the new one');
 });
 
