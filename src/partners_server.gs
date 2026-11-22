@@ -25,7 +25,9 @@ const PARTNER_IMPORT_ALIASES = {
  * do-not-contact list. New rows start at stage Prospect with no version.
  *
  * @param {string} csvText
- * @param {{type?: string, sourceList?: string}} opts  default type 'realtor'
+ * @param {{type?: string, sourceList?: string, established?: boolean}} opts  default type 'realtor';
+ *        established = these are existing relationships: they go straight into the Partners book
+ *        (Stage Partner, Partner Since = now) and never get the email test.
  * @return {{added:number, skipped:{noEmail:number, duplicate:number, doNotContact:number}, columns:string[]}}
  */
 function importPartners(csvText, opts) {
@@ -47,6 +49,7 @@ function importPartners(csvText, opts) {
   const skipped = { noEmail: 0, duplicate: 0, doNotContact: 0 };
   const rows = [];
   const now = new Date();
+  const established = !!opts.established;
   parsed.rows.forEach(function (r) {
     const email = _normEmail_(r.Email);
     if (!email || email.indexOf('@') === -1) { skipped.noEmail++; return; }
@@ -60,7 +63,7 @@ function importPartners(csvText, opts) {
       'Phone': _digits_(r.Phone),
       'Email': email,
       'Area': r.Area || '',
-      'Stage': 'Prospect',
+      'Stage': established ? 'Partner' : 'Prospect',
       'Version': '',
       'Response': '',
       'Do Not Contact': '',
@@ -70,6 +73,7 @@ function importPartners(csvText, opts) {
       'Source List': opts.sourceList || ('import ' + _dateKey_(now)),
       'Added At': now,
       'Added By': me.email,
+      'Partner Since': established ? now : '',
     });
   });
   const ids = _nextId_(TAB.PARTNERS, rows.length);
@@ -118,7 +122,8 @@ function assignVersions(opts) {
   const rng = opts.rng || Math.random;
   const partners = _readTab_(TAB.PARTNERS);
   const todo = partners.filter(function (p) {
-    return String(p['Type']).toLowerCase() === type && !String(p['Version'] || '').trim() && !_yes_(p['Do Not Contact']);
+    return String(p['Type']).toLowerCase() === type && !String(p['Version'] || '').trim() && !_yes_(p['Do Not Contact'])
+      && String(p['Stage']) !== 'Partner' && !p['Partner Since'];   // established partners are never in the email test
   });
   // group by company (blank company = each on their own)
   const groups = {};
@@ -197,7 +202,9 @@ function listPartners(filters) {
     const m = metrics[p['ID']] || { referralsIn: 0, reportsSent: 0, jobsSigned: 0, jobValue: 0, calls: 0, lastTouch: '' };
     const last = p['Last Contact'] || m.lastTouch;
     const days = last ? Math.floor((now - new Date(last).getTime()) / 86400000) : null;
-    return Object.assign({}, p, { metrics: m, daysSinceContact: isNaN(days) ? null : days, cold: days !== null && !isNaN(days) && days >= PARTNER_TOUCH_DAYS });
+    const o = Object.assign({}, p, { metrics: m, daysSinceContact: isNaN(days) ? null : days, cold: days !== null && !isNaN(days) && days >= PARTNER_TOUCH_DAYS });
+    Object.defineProperty(o, '_row', { value: p._row, enumerable: false });
+    return o;
   });
 }
 
@@ -206,8 +213,7 @@ function markAsPartner(id) {
   _requireRole_(WRITE_ROLES);
   const p = _byId_(TAB.PARTNERS, id);
   if (!p) throw new Error('Partner not found: ' + id);
-  const prof = PARTNER_TYPE_PROFILES[String(p['Type'])];
-  _updateRow_(TAB.PARTNERS, p._row, { 'Response': prof ? prof.win : WIN_RESPONSES[0], 'Stage': 'Partner', 'Partner Since': p['Partner Since'] || new Date() });
+  _updateRow_(TAB.PARTNERS, p._row, { 'Stage': 'Partner', 'Partner Since': p['Partner Since'] || new Date() });
   return { ok: true };
 }
 

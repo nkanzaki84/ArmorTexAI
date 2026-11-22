@@ -107,3 +107,28 @@ test('partner record: save, log call, do-not-contact cancels queued emails', () 
   assert.throws(() => app.savePartner(id, { response: 'Maybe' }), /Unknown response/);
   assert.throws(() => app.addPartner({ name: 'Dup', email: 'PAT@example.com' }), /already exists/);
 });
+
+test('established partners import straight into the book and never enter the email test', () => {
+  const app = loadApp({ user: OWNER });
+  app.setup();
+  const r = app.importPartners('Name,Company,Phone,Email,Area,Notes\nTammy Kessler,Texas Real Estate Executives,903-261-5684,tjkessler01@gmail.com,Gladewater,\nKarl Crawford,Keller Williams,903-520-5152,k.crawford@kw.com,Tyler,vendor list', { sourceList: 'established-realtors', established: true });
+  assert.equal(r.added, 2);
+  const book = app.listPartners({ section: 'partners' });
+  assert.equal(book.length, 2);
+  assert.ok(book.every(p => p.Stage === 'Partner' && p['Partner Since'] && p.Version === ''));
+  assert.equal(app.listPartners({ section: 'marketing' }).length, 0);
+  // prospects imported normally, then versions: only the prospects get one
+  app.importPartners('Name,Email\nNew Realtor,new@example.com');
+  const a = app.assignVersions({ versions: ['A', 'B', 'C'] });
+  assert.equal(a.assigned, 1);
+  assert.ok(app.listPartners({ section: 'partners' }).every(p => p.Version === ''));
+  // even with a version forced on, the batch skips the book
+  app._updateRows_('Partners', app.listPartners({ section: 'partners' }).map(p => ({ rowIndex: p._row, row: { Version: 'A' } })));
+  app.saveSettings({ business_address: 'X', opt_out_line: 'Reply no' });
+  app.saveVersion('A', { subject: 's', body: 'hi?\nX\nReply no' });
+  const b = app.buildTodayBatch({ now: new Date('2026-12-01T15:00:00Z') });
+  deq(b.firsts.map(p => p.Name), ['New Realtor']);
+  // recount keeps them in the book (Partner Since), no emails or wins needed
+  app.recountPartnerStages();
+  assert.equal(app.listPartners({ section: 'partners' }).length, 2);
+});

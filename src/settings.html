@@ -52,7 +52,8 @@
       <div class="f"><label>CSV file</label><input type="file" id="csvFile" accept=".csv,text/csv"></div>
       <div class="f"><label>Partner type</label><select id="csvType"><option value="realtor">Realtors</option><option value="inspector">Home inspectors</option><option value="insurance">Insurance agents</option><option value="property_manager">Property managers</option></select></div>
     </div>
-    <div class="f"><label>List name</label><input id="csvSource" placeholder="e.g. realtors-gregg-nov-2026"></div>
+    <div class="f"><label>List name</label><input id="csvSource" type="text" placeholder="e.g. realtors-gregg-nov-2026"></div>
+    <label class="row" style="margin-bottom:12px;font-weight:500"><input type="checkbox" id="csvEstablished" style="width:auto;margin:0"> These are established partners: straight into the Partners book, no emails ever</label>
     <div class="row"><button class="btn primary" id="importBtn">Import</button><span class="sub">Columns recognized: name or first/last, email, phone, company/brokerage, city/area.</span></div>
     <div id="importResult" style="margin-top:10px"></div>
   </div>
@@ -124,9 +125,9 @@
       var reader = new FileReader();
       reader.onload = function () {
         busy($('importBtn'), true, 'Importing…');
-        api('importPartners', reader.result, { type: $('csvType').value, sourceList: $('csvSource').value || file.name })
+        api('importPartners', reader.result, { type: $('csvType').value, sourceList: $('csvSource').value || file.name, established: $('csvEstablished').checked })
           .then(function (r) {
-            $('importResult').innerHTML = '<div class="ok-box">Added <b>' + r.added + '</b>. Skipped: ' + r.skipped.duplicate + ' duplicate, ' + r.skipped.noEmail + ' without email, ' + r.skipped.doNotContact + ' do-not-contact.<br><span class="sub">Columns used: ' + esc(r.columns.join(', ')) + '</span></div>';
+            $('importResult').innerHTML = '<div class="ok-box">Added <b>' + r.added + '</b>' + ($('csvEstablished').checked ? ' to the Partners book' : ' to Marketing') + '. Skipped: ' + r.skipped.duplicate + ' duplicate, ' + r.skipped.noEmail + ' without email, ' + r.skipped.doNotContact + ' do-not-contact.<br><span class="sub">Columns used: ' + esc(r.columns.join(', ')) + '</span></div>';
           }).catch(function (e) { $('importResult').innerHTML = '<div class="problem bad">' + esc(e.message) + '</div>'; })
           .finally(function () { busy($('importBtn'), false, 'Import'); });
       };

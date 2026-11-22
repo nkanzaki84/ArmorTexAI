@@ -19,7 +19,7 @@ test('marketing vs partners: section filter, mark/unmark, Partner Since, touch c
   let book = app.listPartners({ section: 'partners' });
   assert.equal(book.length, 1);
   assert.equal(book[0].Name, 'Bob');
-  assert.equal(book[0].Response, 'Referred a job');
+  assert.equal(book[0].Response, '', 'marking by hand invents no win');
   assert.ok(book[0]['Partner Since']);
   assert.equal(book[0].daysSinceContact, null, 'never contacted');
   assert.equal(book[0].cold, false);
