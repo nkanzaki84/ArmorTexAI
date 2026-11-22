@@ -83,6 +83,9 @@ test('registering the webhook: /exec only, token in the URL, events + numbers se
   assert.deepEqual(hook.events, app.QUO_HOOK_EVENTS);
   assert.deepEqual(hook.resourceIds, ['PN1', 'PN2']);
   assert.throws(() => app.quoRegisterWebhook('https://script.google.com/a/macros/x/s/ABC/dev'), /\/exec/);
+  // the /dev deployment id with /exec on the end is the trap Brian fell into on 2026-11-22
+  app.saveSettings({ dev_url: 'https://script.google.com/a/macros/x/s/DEVID123/dev' });
+  assert.throws(() => app.quoRegisterWebhook('https://script.google.com/a/macros/x/s/DEVID123/exec'), /Manage deployments/);
   // narrowing the numbers re-registers and removes the old webhook
   app.saveQuoWatch(['PN1']);
   assert.equal(state.webhooks.length, 2);

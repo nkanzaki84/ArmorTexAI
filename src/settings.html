@@ -118,7 +118,7 @@
     <div id="quoNumbers" style="display:none">
       <div class="f"><label>Numbers to log</label><div id="quoNumberList" class="row" style="gap:12px"></div><span class="sub">Calls and texts on these numbers are written to Events. Changing this re-registers the webhook.</span></div>
       <div class="f"><label class="row" style="font-weight:500;margin:0;flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" id="quoCallLinks" style="width:auto;margin:3px 0 0"><span style="flex:1">Call and text through the Quo app on iPhone and Android. The Call button opens Quo and dials from the Quo number above (caller ID = business number). Off = the phone's own dialer.</span></label><span class="sub">On a Mac this switch does nothing; set it once instead: FaceTime → Settings → "Default for calls" → Quo. On Windows: Settings → Default apps → by protocol → TEL → Quo. Then every Call button opens the Quo desktop app.</span></div>
-      <div class="f"><label>Where Quo posts (this app's /exec URL)</label><input id="quoHookUrl" placeholder="https://script.google.com/a/macros/armortexroofs.com/s/…/exec"><span class="sub">Needs a deployment with access <b>Anyone</b>, otherwise Quo's posts bounce off Google's sign-in page. The /dev URL won't work for this.</span></div>
+      <div class="f"><label>Where Quo posts (this app's /exec URL)</label><input id="quoHookUrl" placeholder="https://script.google.com/a/macros/armortexroofs.com/s/…/exec"><span class="sub">Copy it from the Apps Script editor → Deploy → <b>Manage deployments</b> → Web app URL (it starts with https://script.google.com/macros/s/… and its id is different from the /dev one). That deployment must have access <b>Anyone</b>, otherwise Quo's posts bounce off Google's sign-in page. The /dev URL won't work for this.</span></div>
       <div class="row"><button class="btn primary" id="quoHookBtn">Register webhook</button><button class="btn" id="quoTestBtn" style="display:none">Send a test event</button><button class="btn ghost" id="quoHookRemove" style="display:none">Remove webhook</button></div>
       <div id="quoHookInfo" class="sub" style="margin-top:8px"></div>
       <div id="quoResult" style="margin-top:10px"></div>
@@ -307,7 +307,8 @@
         var onIt = st.watch.indexOf(n.id) !== -1;
         return '<label class="chip ' + (onIt ? 'on' : '') + '" data-id="' + esc(n.id) + '"><input type="checkbox" hidden ' + (onIt ? 'checked' : '') + '> ' + esc(fmtPhone(String(n.number || '').replace(/\D/g, '').replace(/^1(\d{10})$/, '$1')) || n.number) + (n.name ? ' · ' + esc(n.name) : '') + (n.users.length ? ' <span class="sub" style="color:inherit;opacity:.75">(' + esc(n.users.map(function (u) { return String(u).split('@')[0]; }).join(', ')) + ')</span>' : '') + '</label>';
       }).join('') : '<span class="empty">No numbers in this Quo workspace.</span>';
-      if (!$('quoHookUrl').value) $('quoHookUrl').value = st.hookUrl || (String(st.appUrl || '').replace(/\/dev(\?.*)?$/, '/exec'));
+      // Never guess the /exec address from the /dev one: they are different deployments with different ids.
+      if (!$('quoHookUrl').value) $('quoHookUrl').value = st.hookUrl || (/\/exec(\?.*)?$/.test(String(st.appUrl || '')) ? String(st.appUrl).replace(/\?.*$/, '') : '');
       $('quoCallLinks').checked = !!st.callLinks;
       $('quoTestBtn').style.display = st.webhookId ? '' : 'none';
       $('quoHookRemove').style.display = st.webhookId ? '' : 'none';
