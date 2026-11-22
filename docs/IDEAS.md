@@ -98,6 +98,28 @@ Options for "really" calling from the app, pick by which number should show:
 - [ ] Parked 2026-11-22: run the Tyler list first. When ready: decide who fills the roster (an afternoon for the top brokerages, or ask the established partners for office intros) or whether to buy a list
 - [ ] Import with list name `realtors-gregg-2026-11` once Phone/Email are filled; rows with neither are skipped
 
+## Campaigns as records (nk, 2026-11-22) — agreed, build after the first real batch
+
+Brian: Marketing = the list of people we are courting; Campaign = where you
+start a campaign, plan the sending and upload the content. Agreed. The app
+already runs exactly one unnamed campaign (versions on Campaign, days/cap in
+Settings, audience = everyone with a version). Next step is a record per
+campaign:
+
+- A campaign answers five questions: **who** (type + lists + stage filter),
+  **what** (its own set of versions), **when** (start date, sending days,
+  daily cap, moved off Settings), **after** (one follow-up at +4 business
+  days, fixed by the brief), **did it work** (the stats page, per campaign).
+- Campaigns list: a card per campaign with status (draft / running / paused /
+  done), audience size, sent, replied, wins. Start form: name, partner type,
+  lists, versions, start date, days, cap.
+- Marketing gets a campaign filter and shows "in <campaign>" on each row.
+- Today's batch draws from every running campaign; a person still presses Send.
+- Keep off the table: a timer that sends on its own (brief: v1 is hand-sent);
+  drip sequences beyond the one follow-up; open tracking.
+- Sequence: send the five-address test batch first, start the Tyler campaign
+  for real, then mock up the Campaigns page before any code.
+
 ## Salesperson profiles, ownership and commissions (nk, 2026-11-22) — parked
 
 Each salesperson works their own leads and keeps their own realtor / inspector / property-manager relationships; leads are tracked through the sales cycle to commission.

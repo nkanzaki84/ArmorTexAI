@@ -77,6 +77,10 @@ The SFM suite look: `src/ui_base.html` (Brian's portable base: palette, inputs, 
 - **Hand-sent rule** (`HAND_SENT_RE`, `_handSentDate_`): on import, a Notes cell like "sent 11/3" → Stage Contacted, Last Contact = that date, Skip Email Test, Call Queue. Default on for prospect imports; `applyHandSentRule(sourceList)` retrofits an already-imported list and cancels queued emails.
 - Still parked: a rep profile page, per-rep funnel on Campaign, commissions (job manager; CRM supplies attribution via the hand-off), per-rep sending mailboxes. See `docs/IDEAS.md`.
 
+## Agreed, not built: campaigns as records (2026-11-22)
+
+Brian wants Marketing = the courting list and Campaign = start a campaign, plan the sending, upload the content. The app runs one unnamed campaign today. Plan in `docs/IDEAS.md` ("Campaigns as records"): a Campaigns tab with who / versions / start date / days / cap / status, stats per campaign, Today drawing from every running campaign, a person still pressing Send. Build it only after the five-address test batch and the first real Tyler batch have gone out; mock up first.
+
 ## Parked: referral tracking by product (2026-11-19)
 
 Brian will want referrals tracked per product (roof report, repair, replacement, Texas Roof Club membership) from any source (partner, customer, member, neighborhood). Not in effect yet. Design sketch in `docs/IDEAS.md`; the only thing to respect now is that Referrals grows by **appending** `Product`, `Source Kind`, `Source ID` columns later, and that no partner ever gets a payment field.
