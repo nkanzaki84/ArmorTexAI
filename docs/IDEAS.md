@@ -89,6 +89,14 @@ Options for "really" calling from the app, pick by which number should show:
 - [ ] Partner-referred address that matches a Home → link them so Tanner sees age + value
 - [ ] Cost per job per campaign (needs a place to enter postcard/print costs) vs the $1,600 appointment setter
 
+## Gregg County realtor list (2026-11-22)
+
+- The Tyler list (264 prospects) is 93 % Smith County. The Homes campaign is Gregg County, and the email test was planned around ~500 realtors, so a Gregg County list is wanted for January, not for Dec 1.
+- **Source found: TREC's public license-holder data on the Texas Open Data Portal** (dataset `s7ft-44qi`, updated daily; this session's environment "ArmorTex apps" allows data.texas.gov). Gregg County, active: 382 sales agents + 118 individual brokers = 500, with each agent's sponsoring brokerage. **No email, phone or street address in the data.**
+- Roster worksheet handed to Brian: `gregg-county-realtor-roster-2026-11.csv` (not in the repo: names). Top 10 brokerages cover ~220 agents; their office websites list agent emails/phones, which is the fastest honest way to fill the sheet. Rule from the briefs still applies: no scraping listing sites, no posing as a buyer.
+- [ ] Decide who fills it (Caitlin? an afternoon for the top brokerages) or whether to buy a list
+- [ ] Import with list name `realtors-gregg-2026-11` once Phone/Email are filled; rows with neither are skipped
+
 ## Salesperson profiles, ownership and commissions (nk, 2026-11-22) — parked
 
 Each salesperson works their own leads and keeps their own realtor / inspector / property-manager relationships; leads are tracked through the sales cycle to commission.
