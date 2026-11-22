@@ -98,6 +98,7 @@ Build nothing from the next version until the one before it has been used for re
 - Short, direct answers. Plain English over jargon; explain git/clasp when it matters.
 - He pastes screenshots and terminal output; trust them over assumptions.
 - After each change he wants the copy-paste commands: `git pull`, `clasp push -f`, and (only when promoting) `./deploy.sh "..."`.
+- **Bump `APP_VERSION` / `APP_BUILD_DATE` in Config.gs on every push that changes the UI.** The footer is how Brian tells whether his /dev tab has the new code; a stale number reads as "not updating".
 - Keep the ideas notebook (`docs/IDEAS.md`) current.
 
 ## What NOT to do
