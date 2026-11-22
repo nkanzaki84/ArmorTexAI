@@ -83,18 +83,22 @@
  * plain tel: link, which the phone's dialer handles (and on a Mac, whatever
  * FaceTime's "Default for calls" says, which can also be Quo).
  */
+// Quo's openphone:// links exist on iPhone and Android only. On a Mac or PC the
+// plain tel: link is right: FaceTime (Mac) / the TEL protocol (Windows) hand it
+// to whatever is the default calling app, which can be Quo's desktop app.
+function onAPhone() { return /iPhone|iPod|Android/i.test(navigator.userAgent || ''); }
 function callHref(phone) {
   var d = String(phone || '').replace(/\D/g, '');
   if (!d) return '';
   var q = (window.OUTREACH && OUTREACH.quo) || {};
-  if (q.viaApp) return 'openphone://dial?number=' + encodeURIComponent(d.length === 10 ? '+1' + d : '+' + d) + (q.from ? '&from=' + encodeURIComponent(q.from) : '') + '&action=call';
+  if (q.viaApp && onAPhone()) return 'openphone://dial?number=' + encodeURIComponent(d.length === 10 ? '+1' + d : '+' + d) + (q.from ? '&from=' + encodeURIComponent(q.from) : '') + '&action=call';
   return 'tel:' + d;
 }
 function textHref(phone) {
   var d = String(phone || '').replace(/\D/g, '');
   if (!d) return '';
   var q = (window.OUTREACH && OUTREACH.quo) || {};
-  if (q.viaApp) return 'openphone://message?number=' + encodeURIComponent(d.length === 10 ? '+1' + d : '+' + d) + (q.from ? '&from=' + encodeURIComponent(q.from) : '');
+  if (q.viaApp && onAPhone()) return 'openphone://message?number=' + encodeURIComponent(d.length === 10 ? '+1' + d : '+' + d) + (q.from ? '&from=' + encodeURIComponent(q.from) : '');
   return 'sms:' + d;
 }
 /** Gmail compose in a new tab, in the signed-in Workspace account (not the Mac's default mail app). */
