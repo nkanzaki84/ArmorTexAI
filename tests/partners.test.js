@@ -41,7 +41,7 @@ test('import skips no-email, duplicates (in file and existing) and do-not-contac
   app.setup();
   app.saveSettings({ do_not_contact: 'blocked@example.com\nOther@Example.com' });
   const first = app.importPartners('Name,Email\nA,a@example.com\nB,b@example.com\nNoMail,\nDup,a@example.com\nBlocked,blocked@example.com');
-  deq(first, { added: 2, skipped: { noEmail: 1, duplicate: 1, doNotContact: 1 }, columns: ['Name', 'Email'] });
+  deq(first, { added: 2, skipped: { noEmail: 1, duplicate: 1, doNotContact: 1, phoneOnly: 0 }, columns: ['Name', 'Email'] });
   // mark B do-not-contact, then re-import the same file
   const b = app.$rows('Partners').find(p => p.Name === 'B');
   app.setPartnerDoNotContact(b.ID, true, 'asked');
@@ -131,4 +131,28 @@ test('established partners import straight into the book and never enter the ema
   // recount keeps them in the book (Partner Since), no emails or wins needed
   app.recountPartnerStages();
   assert.equal(app.listPartners({ section: 'partners' }).length, 2);
+});
+
+test('import keeps phone-only rows, takes the first of two emails, moves "(Team)" and call notes into Notes', () => {
+  const app = loadApp({ user: OWNER });
+  app.setup();
+  const r = app.importPartners('Name,Phone Number,Brokerage,Email,Area,Notes,Call Notes\n' +
+    'Sherry Watson (Crown Jewel Realty Team),903-649-0397,Miller Home Group,sherryw.mhg@gmail.com,Gladewater,Sent,Has a roofer but will add us\n' +
+    'Lisa Williams,903-555-0101,KW,lisawilliams.realtor0@gmail.com; lwillimas0363@gmail.com,Tyler,,\n' +
+    'No Email Guy,903-555-0102,KW,,Tyler,,Called and LVM\n' +
+    'No Email Guy Again,903-555-0102,KW,,Tyler,,\n' +
+    'Nobody,,,,Tyler,,');
+  deq(r.skipped, { noEmail: 1, duplicate: 1, doNotContact: 0, phoneOnly: 1 });
+  assert.equal(r.added, 3);
+  const ps = app.$rows('Partners');
+  assert.equal(ps[0].Name, 'Sherry Watson');
+  assert.equal(ps[0].Notes, 'Crown Jewel Realty Team · Sent · Has a roofer but will add us');
+  assert.equal(ps[1].Email, 'lisawilliams.realtor0@gmail.com');
+  assert.equal(ps[2].Email, ''); assert.equal(ps[2].Phone, '9035550102'); assert.equal(ps[2].Notes, 'Called and LVM');
+  // phone-only prospects get a version but never a batch slot (no address to send to)
+  app.assignVersions({ versions: ['A', 'B', 'C'] });
+  app.saveSettings({ business_address: 'X', opt_out_line: 'Reply no' });
+  ['A', 'B', 'C'].forEach(l => app.saveVersion(l, { subject: 's', body: 'hi?\nX\nReply no' }));
+  const b = app.buildTodayBatch({ now: new Date('2026-12-01T15:00:00Z') });
+  assert.ok(!b.firsts.some(p => p.Name === 'No Email Guy'));
 });

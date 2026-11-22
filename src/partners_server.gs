@@ -13,6 +13,7 @@ const PARTNER_IMPORT_ALIASES = {
   'first name': '_first', 'first': '_first', 'last name': '_last', 'last': '_last',
   'email': 'Email', 'e-mail': 'Email', 'email address': 'Email',
   'phone': 'Phone', 'mobile': 'Phone', 'cell': 'Phone', 'phone number': 'Phone',
+  'call notes': '_callNotes',
   'company': 'Company', 'brokerage': 'Company', 'office': 'Company', 'firm': 'Company', 'agency': 'Company',
   'area': 'Area', 'city': 'Area', 'market': 'Area', 'territory': 'Area',
   'type': 'Type', 'partner type': 'Type',
@@ -38,30 +39,38 @@ function importPartners(csvText, opts) {
   const parsed = _parsePartnerCsv_(csvText);
   const existing = _readTab_(TAB.PARTNERS);
   const seen = {};
+  const seenPhone = {};
   const dnc = {};
   existing.forEach(function (p) {
     const e = _normEmail_(p['Email']);
     if (e) seen[e] = true;
+    const ph = _digits_(p['Phone']);
+    if (ph) seenPhone[ph] = true;
     if (e && _yes_(p['Do Not Contact'])) dnc[e] = true;
   });
   _doNotContactEmails_().forEach(function (e) { dnc[e] = true; });
 
-  const skipped = { noEmail: 0, duplicate: 0, doNotContact: 0 };
+  const skipped = { noEmail: 0, duplicate: 0, doNotContact: 0, phoneOnly: 0 };
   const rows = [];
   const now = new Date();
   const established = !!opts.established;
   parsed.rows.forEach(function (r) {
     const email = _normEmail_(r.Email);
-    if (!email || email.indexOf('@') === -1) { skipped.noEmail++; return; }
-    if (dnc[email]) { skipped.doNotContact++; return; }
-    if (seen[email]) { skipped.duplicate++; return; }
-    seen[email] = true;
+    const phone = _digits_(r.Phone);
+    const hasEmail = !!email && email.indexOf('@') !== -1;
+    if (!hasEmail && !phone) { skipped.noEmail++; return; }            // nothing to reach them by
+    if (hasEmail && dnc[email]) { skipped.doNotContact++; return; }
+    if (hasEmail && seen[email]) { skipped.duplicate++; return; }
+    if (!hasEmail && seenPhone[phone]) { skipped.duplicate++; return; }
+    if (hasEmail) seen[email] = true;
+    if (phone) seenPhone[phone] = true;
+    if (!hasEmail) skipped.phoneOnly = (skipped.phoneOnly || 0) + 1;    // kept, but the email test will skip them
     rows.push({
-      'Name': r.Name || email.split('@')[0],
+      'Name': r.Name || (hasEmail ? email.split('@')[0] : phone),
       'Type': (r.Type && PARTNER_TYPES.indexOf(String(r.Type).toLowerCase()) !== -1) ? String(r.Type).toLowerCase() : type,
       'Company': r.Company || '',
       'Phone': _digits_(r.Phone),
-      'Email': email,
+      'Email': hasEmail ? email : '',
       'Area': r.Area || '',
       'Stage': established ? 'Partner' : 'Prospect',
       'Version': '',
@@ -96,9 +105,15 @@ function _parsePartnerCsv_(csvText) {
     map.forEach(function (col, j) { if (col) r[col] = String(line[j] === undefined ? '' : line[j]).trim(); });
     if (!r.Name && (r._first || r._last)) r.Name = [r._first, r._last].filter(Boolean).join(' ');
     delete r._first; delete r._last;
+    if (r._callNotes) { r.Notes = [r.Notes, r._callNotes].filter(Boolean).join(' · '); delete r._callNotes; }
+    // "Sherry Watson (Crown Jewel Realty Team)" → name + a note
+    const paren = String(r.Name || '').match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (paren) { r.Name = paren[1].trim(); r.Notes = [paren[2].trim(), r.Notes].filter(Boolean).join(' · '); }
+    // two addresses in one cell → the first one
+    if (r.Email && /[;,\s]/.test(String(r.Email).trim())) r.Email = String(r.Email).split(/[;,\s]+/).filter(Boolean)[0];
     rows.push(r);
   }
-  return { columns: map.filter(Boolean), rows: rows };
+  return { columns: map.filter(function (c) { return c && c[0] !== '_'; }), rows: rows };
 }
 
 // ============================================================
