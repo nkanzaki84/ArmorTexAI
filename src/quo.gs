@@ -117,7 +117,7 @@ function quoRegisterWebhook(hookUrl) {
   hookUrl = String(hookUrl || '').trim();
   if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(hookUrl)) throw new Error('The hook URL must be this web app\'s /exec address (https://script.google.com/…/exec). The /dev address does not accept posts from outside.');
   // The /dev door and the /exec door have different deployment ids; a /dev id with "/exec" on the end is not a real address.
-  const devUrl = String(_appDevUrl_(ScriptApp.getService().getUrl()) || '');
+  const devUrl = String(_setting_(SETTING.DEV_URL) || '');   // only an explicit /dev URL; the fallback guess would flag the real /exec
   const devId = (devUrl.match(/\/s\/([^\/]+)\/dev/) || [])[1];
   if (devId && hookUrl.indexOf('/s/' + devId + '/') !== -1) throw new Error('That is the /dev deployment\'s id with /exec on the end, which Google answers with a sign-in page. Copy the Web app URL from Apps Script → Deploy → Manage deployments instead.');
   const watch = _quoJsonSetting_(SETTING.QUO_WATCH, []);
