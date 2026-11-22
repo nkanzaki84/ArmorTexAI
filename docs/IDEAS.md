@@ -47,7 +47,8 @@ Options for "really" calling from the app, pick by which number should show:
   `doPost` deployment of ours → Events row matched by phone, unknown numbers
   to the review queue; ~2 days. Or **Twilio**, ~$40/mo at Tanner's volume but
   we build the texting inbox and need A2P 10DLC registration (weeks); ~1 week.
-  Recommendation 2026-11-22: Quo Business for Tanner only, after v1 sends.
+  **Decided 2026-11-22 (nk): Quo.** Tanner already has it. Build the webhook
+  endpoint after the plan + API key are confirmed; mock the record page first.
   Google Voice Starter ($10) remains the no-database answer.
 - Rule either way: no cold calls to homeowners. Call buttons on Homes appear
   only when `Phone Given By Owner` is Yes.
