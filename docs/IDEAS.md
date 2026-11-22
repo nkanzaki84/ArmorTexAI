@@ -40,6 +40,15 @@ Options for "really" calling from the app, pick by which number should show:
       Apps Script's iframe blocks mic access.
 - [ ] Browser softphone (Twilio Voice JS) — ruled out for now: HtmlService's
       sandbox does not grant microphone access.
+- **If every call and text must land in the app as Events** (nk asked
+  2026-11-22): Google Voice is out, it has no feed (Takeout/Vault only).
+  Two ways: **Quo (ex-OpenPhone)**, Business plan ~$23–33/user/mo, calls +
+  texts + recording + transcripts, webhooks post each call/text to a public
+  `doPost` deployment of ours → Events row matched by phone, unknown numbers
+  to the review queue; ~2 days. Or **Twilio**, ~$40/mo at Tanner's volume but
+  we build the texting inbox and need A2P 10DLC registration (weeks); ~1 week.
+  Recommendation 2026-11-22: Quo Business for Tanner only, after v1 sends.
+  Google Voice Starter ($10) remains the no-database answer.
 - Rule either way: no cold calls to homeowners. Call buttons on Homes appear
   only when `Phone Given By Owner` is Yes.
 
