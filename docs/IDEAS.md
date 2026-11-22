@@ -179,6 +179,12 @@ Sketch so nothing built now gets in the way:
 
 ## Someday / maybe
 
+- **Brevo / Mailchimp newsletter to the Partners book** (nk asked about Brevo
+  2026-11-22): not for the realtor email test (brief: plain text from Brian's
+  inbox, no pixel/links, reply matching lives in Gmail). Fine later for a
+  monthly note to established partners, owned by Caitlin; export the book as
+  a list, nothing to build.
+
 - [ ] Move to the Firebase project (commit `0a7865b`, tag `firebase-foundation`) if the list grows past a few thousand contacts; Gmail API instead of GmailApp
 - [ ] Tyler / Smith County homes from another data source
 - [ ] Texas Roof Club membership: yearly report, grade history (job manager side)
