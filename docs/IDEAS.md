@@ -49,6 +49,25 @@ Options for "really" calling from the app, pick by which number should show:
   we build the texting inbox and need A2P 10DLC registration (weeks); ~1 week.
   **Decided 2026-11-22 (nk): Quo.** Tanner already has it. Build the webhook
   endpoint after the plan + API key are confirmed; mock the record page first.
+  What the docs say (read 2026-11-22, api.quo.com, header `Quo-Api-Version:
+  2026-03-30`, auth `Authorization: <key>` no Bearer, 10 req/s):
+  - Webhooks (`POST /webhooks`, events `call.completed`, `call.recording.completed`,
+    `call.transcript.completed`, `call.summary.completed`, `call.voicemail.completed`,
+    `message.received`, `message.delivered`), filter by phone number id, retries
+    ~27 h, dedupe on `webhook-id` header, `POST /webhooks/:id/events/test`.
+    Transcripts + summaries need **Business or Scale**; calls/texts/recordings any paid plan.
+  - List calls/messages need `participants=<one number>`, so polling per
+    contact is out; webhooks it is.
+  - Apps Script `doPost` cannot read headers (no signature check) and answers
+    with a 302 first. Design: token in the webhook URL, treat the post as a
+    nudge, re-fetch the call/message from the API with the key, store only
+    what Quo confirms. Test the 302 with a test event; fallback = Zapier
+    catch-hook relay. Needs a second deployment with access "Anyone".
+  - Caller ID name on the realtor's phone: needs US carrier registration
+    (company tax id) then "Caller ID names" in workspace settings, ≤15 chars,
+    48–72 h, not every carrier shows it. Otherwise just the number.
+  - API key: Workspace settings → API, owner/admin only, full account access;
+    it goes in Settings → Developer (Script Properties), never in chat.
   Google Voice Starter ($10) remains the no-database answer.
 - Rule either way: no cold calls to homeowners. Call buttons on Homes appear
   only when `Phone Given By Owner` is Yes.
