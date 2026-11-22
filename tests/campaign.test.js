@@ -30,9 +30,13 @@ const SAT = new Date('2026-12-05T15:00:00Z');
 test('validateVersion enforces address, opt-out, plain text, closing question', () => {
   const app = loadApp({ user: OWNER });
   app.setup();
-  const noSettings = app.validateVersion({ Channel: 'email', Subject: 's', Body: 'hello?' });
-  assert.ok(noSettings.some(p => /Business address setting/.test(p)));
-  assert.ok(noSettings.some(p => /opt-out line/.test(p)), 'default opt-out line is seeded, body lacks it');
+  // defaults are seeded (Tyler address, opt-out line); a body without them fails
+  const noFooter = app.validateVersion({ Channel: 'email', Subject: 's', Body: 'hello?' });
+  assert.ok(noFooter.some(p => /business address/.test(p)));
+  assert.ok(noFooter.some(p => /opt-out line/.test(p)));
+  // and an emptied setting is reported as such
+  app.saveSettings({ business_address: '' });
+  assert.ok(app.validateVersion({ Channel: 'email', Subject: 's', Body: 'hello?' }).some(p => /Business address setting is empty/.test(p)));
   app.saveSettings({ business_address: ADDRESS, opt_out_line: OPT_OUT });
   deq(app.validateVersion({ Channel: 'email', Subject: 's', Body: GOOD_BODY }), []);
   const bad = app.validateVersion({ Channel: 'email', Subject: '', Body: 'See https://example.com <b>now</b>. ' + OPT_OUT });
