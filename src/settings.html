@@ -51,7 +51,7 @@
   <div class="hd"><h2>Import partners</h2><span class="sub">CSV · duplicates and do-not-contact are skipped</span></div>
   <div class="bd">
     <div class="grid2">
-      <div class="f"><label>File</label><input type="file" id="csvFile" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"><span class="hint">CSV or Excel (.xlsx). For Excel the first sheet is used; the first row must be the headers.</span></div>
+      <div class="f"><label>File</label><input type="file" id="csvFile" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"><span class="hint">CSV or Excel (.xlsx). First sheet; a title block above the headers is fine. A Status column saying "Active Partner" puts that row in the book.</span></div>
       <div class="f"><label>Partner type</label><select id="csvType"><option value="realtor">Realtors</option><option value="inspector">Home inspectors</option><option value="insurance">Insurance agents</option><option value="property_manager">Property managers</option></select></div>
     </div>
     <div class="f"><label>List name</label><input id="csvSource" type="text" placeholder="e.g. realtors-gregg-nov-2026"></div>
@@ -167,7 +167,7 @@
         busy($('importBtn'), true, 'Importing…');
         api('importPartners', csvText, { type: $('csvType').value, sourceList: $('csvSource').value || file.name.replace(/\.(xlsx?|csv)$/i, ''), established: $('csvEstablished').checked, rep: $('csvRep').value, handSentToCalls: $('csvHandSent').checked })
           .then(function (r) {
-            $('importResult').innerHTML = '<div class="ok-box">Added <b>' + r.added + '</b>' + ($('csvEstablished').checked ? ' to the Partners book' : ' to Marketing') + '. Skipped: ' + r.skipped.duplicate + ' duplicate, ' + r.skipped.noEmail + ' with no email or phone, ' + r.skipped.doNotContact + ' do-not-contact.' + (r.skipped.phoneOnly ? ' ' + r.skipped.phoneOnly + ' have a phone but no email (call only).' : '') + (r.queuedForCalls ? ' <b>' + r.queuedForCalls + '</b> were already emailed by hand → call list, not the email test.' : '') + (r.rep ? ' Assigned to ' + esc(r.rep) + '.' : '') + '<br><span class="sub">Columns used: ' + esc(r.columns.join(', ')) + '</span></div>';
+            $('importResult').innerHTML = '<div class="ok-box">Added <b>' + r.added + '</b>' + ($('csvEstablished').checked ? ' to the Partners book' : ' to Marketing') + '. Skipped: ' + r.skipped.duplicate + ' duplicate, ' + r.skipped.noEmail + ' with no email or phone, ' + r.skipped.doNotContact + ' do-not-contact.' + (r.skipped.phoneOnly ? ' ' + r.skipped.phoneOnly + ' have a phone but no email (call only).' : '') + (r.skipped.established ? ' <b>' + r.skipped.established + '</b> went into the Partners book.' : '') + (r.queuedForCalls ? ' <b>' + r.queuedForCalls + '</b> were already emailed by hand → call list, not the email test.' : '') + (r.rep ? ' Assigned to ' + esc(r.rep) + '.' : '') + '<br><span class="sub">Columns used: ' + esc(r.columns.join(', ')) + '</span></div>';
           }).catch(function (e) { importProblem('Import failed: ' + (e.message || e)); })
           .finally(function () { busy($('importBtn'), false, 'Import'); });
       };

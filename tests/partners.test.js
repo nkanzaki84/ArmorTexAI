@@ -41,7 +41,7 @@ test('import skips no-email, duplicates (in file and existing) and do-not-contac
   app.setup();
   app.saveSettings({ do_not_contact: 'blocked@example.com\nOther@Example.com' });
   const first = app.importPartners('Name,Email\nA,a@example.com\nB,b@example.com\nNoMail,\nDup,a@example.com\nBlocked,blocked@example.com');
-  deq({ added: first.added, skipped: first.skipped, columns: first.columns }, { added: 2, skipped: { noEmail: 1, duplicate: 1, doNotContact: 1, phoneOnly: 0 }, columns: ['Name', 'Email'] });
+  deq({ added: first.added, skipped: first.skipped, columns: first.columns }, { added: 2, skipped: { noEmail: 1, duplicate: 1, doNotContact: 1, phoneOnly: 0, established: 0 }, columns: ['Name', 'Email'] });
   // mark B do-not-contact, then re-import the same file
   const b = app.$rows('Partners').find(p => p.Name === 'B');
   app.setPartnerDoNotContact(b.ID, true, 'asked');
@@ -142,7 +142,7 @@ test('import keeps phone-only rows, takes the first of two emails, moves "(Team)
     'No Email Guy,903-555-0102,KW,,Tyler,,Called and LVM\n' +
     'No Email Guy Again,903-555-0102,KW,,Tyler,,\n' +
     'Nobody,,,,Tyler,,');
-  deq(r.skipped, { noEmail: 1, duplicate: 1, doNotContact: 0, phoneOnly: 1 });
+  deq(r.skipped, { noEmail: 1, duplicate: 1, doNotContact: 0, phoneOnly: 1, established: 0 });
   assert.equal(r.added, 3);
   const ps = app.$rows('Partners');
   assert.equal(ps[0].Name, 'Sherry Watson');
@@ -155,4 +155,21 @@ test('import keeps phone-only rows, takes the first of two emails, moves "(Team)
   ['A', 'B', 'C'].forEach(l => app.saveVersion(l, { subject: 's', body: 'hi?\nX\nReply no' }));
   const b = app.buildTodayBatch({ now: new Date('2026-12-01T15:00:00Z') });
   assert.ok(!b.firsts.some(p => p.Name === 'No Email Guy'));
+});
+
+test('import finds the header row under a title block, skips a leading empty column, and reads Status = Active Partner', () => {
+  const app = loadApp({ user: OWNER });
+  app.setup();
+  const csv = ',Realtor Contact Directory,,,,\n,8,8,0,8\n,Total Contacts,Active Partners,Prospects,Brokerages\n' +
+    ',Realtor Name,Brokerage,Phone,Email,Market Area,Status,Notes\n' +
+    ',Tammy Kessler,Texas Real Estate Executives,903-261-5684,tjkessler01@gmail.com,Gladewater,Active Partner,\n' +
+    ',Someone New,KW,903-555-0100,new@x.com,Tyler,Prospect,sent 11/3\n';
+  const r = app.importPartners(csv, { sourceList: 'eight', rep: 'brian@armortexroofs.com' });
+  assert.equal(r.added, 2);
+  assert.equal(r.skipped.established, 1);
+  assert.equal(r.queuedForCalls, 1);
+  const ps = app.$rows('Partners');
+  assert.equal(ps[0].Name, 'Tammy Kessler'); assert.equal(ps[0].Stage, 'Partner'); assert.ok(ps[0]['Partner Since']); assert.equal(ps[0].Area, 'Gladewater');
+  assert.equal(ps[1].Name, 'Someone New'); assert.equal(ps[1].Stage, 'Contacted'); assert.equal(ps[1]['Call Queue'], 'Yes');
+  assert.throws(() => app.importPartners('just,some,numbers\n1,2,3'), /No header row found/);
 });

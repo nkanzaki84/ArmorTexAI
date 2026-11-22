@@ -9,13 +9,14 @@
 
 // Accepted header spellings → our column. Matching is case/space-insensitive.
 const PARTNER_IMPORT_ALIASES = {
-  'name': 'Name', 'full name': 'Name', 'agent': 'Name', 'agent name': 'Name', 'contact': 'Name',
+  'name': 'Name', 'full name': 'Name', 'agent': 'Name', 'agent name': 'Name', 'contact': 'Name', 'realtor name': 'Name', 'realtor': 'Name', 'contact name': 'Name',
   'first name': '_first', 'first': '_first', 'last name': '_last', 'last': '_last',
   'email': 'Email', 'e-mail': 'Email', 'email address': 'Email',
   'phone': 'Phone', 'mobile': 'Phone', 'cell': 'Phone', 'phone number': 'Phone',
   'call notes': '_callNotes',
   'company': 'Company', 'brokerage': 'Company', 'office': 'Company', 'firm': 'Company', 'agency': 'Company',
-  'area': 'Area', 'city': 'Area', 'market': 'Area', 'territory': 'Area',
+  'area': 'Area', 'city': 'Area', 'market': 'Area', 'territory': 'Area', 'market area': 'Area',
+  'status': '_status',   // "Active Partner" on a row → that row goes straight into the book
   'type': 'Type', 'partner type': 'Type',
   'notes': 'Notes',
 };
@@ -53,7 +54,7 @@ function importPartners(csvText, opts) {
   });
   _doNotContactEmails_().forEach(function (e) { dnc[e] = true; });
 
-  const skipped = { noEmail: 0, duplicate: 0, doNotContact: 0, phoneOnly: 0 };
+  const skipped = { noEmail: 0, duplicate: 0, doNotContact: 0, phoneOnly: 0, established: 0 };
   const rows = [];
   const now = new Date();
   const established = !!opts.established;
@@ -72,7 +73,8 @@ function importPartners(csvText, opts) {
     if (hasEmail) seen[email] = true;
     if (phone) seenPhone[phone] = true;
     if (!hasEmail) skipped.phoneOnly = (skipped.phoneOnly || 0) + 1;    // kept, but the email test will skip them
-    const hs = handSent ? _handSentDate_(r.Notes, now) : null;
+    const rowEstablished = established || !!r._established;   // the file's own Status column can say "Active Partner"
+    const hs = (handSent && !rowEstablished) ? _handSentDate_(r.Notes, now) : null;
     if (hs) queued++;
     rows.push({
       'Rep': rep,
@@ -84,7 +86,7 @@ function importPartners(csvText, opts) {
       'Phone': _digits_(r.Phone),
       'Email': hasEmail ? email : '',
       'Area': r.Area || '',
-      'Stage': established ? 'Partner' : (hs ? 'Contacted' : 'Prospect'),
+      'Stage': rowEstablished ? 'Partner' : (hs ? 'Contacted' : 'Prospect'),
       'Version': '',
       'Response': '',
       'Do Not Contact': '',
@@ -94,8 +96,9 @@ function importPartners(csvText, opts) {
       'Source List': opts.sourceList || ('import ' + _dateKey_(now)),
       'Added At': now,
       'Added By': me.email,
-      'Partner Since': established ? now : '',
+      'Partner Since': rowEstablished ? now : '',
     });
+    if (rowEstablished) skipped.established = (skipped.established || 0) + 1;
   });
   const ids = _nextId_(TAB.PARTNERS, rows.length);
   rows.forEach(function (row, i) { row['ID'] = ids[i]; });
@@ -170,14 +173,24 @@ function setCallQueue(id, on) {
   return { ok: true };
 }
 
-/** CSV → { columns:[mapped names], rows:[{Name, Email, …}] } */
+/**
+ * CSV → { columns:[mapped names], rows:[{Name, Email, …}] }
+ * The header row is the first row (within the first 25) with at least two
+ * recognised column names, so a title block or summary rows above it are
+ * ignored, as are leading empty columns.
+ */
 function _parsePartnerCsv_(csvText) {
-  const table = Utilities.parseCsv(String(csvText || '').replace(/^﻿/, ''));
+  const table = Utilities.parseCsv(String(csvText || '').replace(/^\uFEFF/, ''));
   if (!table.length) return { columns: [], rows: [] };
-  const header = table[0].map(function (h) { return String(h || '').trim().toLowerCase().replace(/\s+/g, ' '); });
-  const map = header.map(function (h) { return PARTNER_IMPORT_ALIASES[h] || null; });
+  const norm = function (h) { return String(h || '').trim().toLowerCase().replace(/\s+/g, ' '); };
+  let headerRow = -1, map = null;
+  for (let r = 0; r < Math.min(table.length, 25); r++) {
+    const m = table[r].map(function (h) { return PARTNER_IMPORT_ALIASES[norm(h)] || null; });
+    if (m.filter(Boolean).length >= 2) { headerRow = r; map = m; break; }
+  }
+  if (headerRow === -1) throw new Error('No header row found. The sheet needs a row with column names like Name, Email, Phone, Brokerage.');
   const rows = [];
-  for (let i = 1; i < table.length; i++) {
+  for (let i = headerRow + 1; i < table.length; i++) {
     const line = table[i];
     if (!line.some(function (c) { return String(c).trim() !== ''; })) continue;
     const r = {};
@@ -185,6 +198,8 @@ function _parsePartnerCsv_(csvText) {
     if (!r.Name && (r._first || r._last)) r.Name = [r._first, r._last].filter(Boolean).join(' ');
     delete r._first; delete r._last;
     if (r._callNotes) { r.Notes = [r.Notes, r._callNotes].filter(Boolean).join(' · '); delete r._callNotes; }
+    r._established = /partner/i.test(String(r._status || '')) && !/prospect/i.test(String(r._status || ''));
+    delete r._status;
     // "Sherry Watson (Crown Jewel Realty Team)" → name + a note
     const paren = String(r.Name || '').match(/^(.*?)\s*\(([^)]+)\)\s*$/);
     if (paren) { r.Name = paren[1].trim(); r.Notes = [paren[2].trim(), r.Notes].filter(Boolean).join(' · '); }
