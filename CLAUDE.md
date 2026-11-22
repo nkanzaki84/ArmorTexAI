@@ -114,7 +114,7 @@ Build nothing from the next version until the one before it has been used for re
 - Mockup first, then code. He reviews screens at the real /dev URL.
 - Short, direct answers. Plain English over jargon; explain git/clasp when it matters.
 - He pastes screenshots and terminal output; trust them over assumptions.
-- After each change he wants the copy-paste commands: `git pull`, `clasp push -f`, and (only when promoting) `./deploy.sh "..."`.
+- After each change he wants ONE combined copy-paste command (asked 2026-11-22), in a single `bash` block: `cd ~/ArmorTexAI && git pull && clasp push -f` (add `&& ./deploy.sh "..."` only when promoting). Not three separate blocks.
 - **Bump `APP_VERSION` / `APP_BUILD_DATE` in Config.gs on every push that changes the UI.** The footer is how Brian tells whether his /dev tab has the new code; a stale number reads as "not updating".
 - Keep the ideas notebook (`docs/IDEAS.md`) current.
 
