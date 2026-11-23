@@ -58,7 +58,12 @@ function seed(app) {
   app.savePartner(app.$rows('Partners').find(p => p.Name === 'Carl Dawson').ID, { response: 'Referred a job', nextStep: 'Drop off report samples Fri' });
   let s = 11; const rng = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
   app.assignVersions({ versions: ['A', 'B', 'C'], rng });
-  app.saveCampaign('CP-1', { name: 'Tyler realtors · email test', lists: ['realtors-gregg-nov-2026'], stages: ['Prospect'], versions: ['A', 'B', 'C'], startDate: '2026-11-17', notes: 'The first email test. Letters A/B/C, no E until pay-at-closing is decided.' });
+  // curated lists: the whole Gregg file, and a hand-picked group Tanner met
+  const l1 = app.createList({ name: 'Gregg County realtors · Nov 2026', notes: 'the whole import, minus the book' }).id;
+  app.addMatchingToList(l1, { type: 'realtor', sourceList: 'realtors-gregg-nov-2026' });
+  const l2 = app.createList({ name: 'Met at the TAR mixer', notes: 'Tanner shook hands with these on Nov 12' }).id;
+  app.addToList(l2, app.$rows('Partners').filter(p => p.Type === 'realtor').slice(3, 15).map(p => p.ID));
+  app.saveCampaign('CP-1', { name: 'Tyler realtors · email test', lists: [l1], stages: [], versions: ['A', 'B', 'C'], startDate: '2026-11-17', notes: 'The first email test. Letters A/B/C, no E until pay-at-closing is decided.' });
   app.createCampaign({ name: 'Home inspectors · January', type: 'inspector', versions: ['A', 'B'], startDate: '2027-01-06' });
   // a little history so Campaign and records have something to show
   const ps = app.$rows('Partners');

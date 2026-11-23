@@ -5,7 +5,7 @@ row has an ID; tabs link by ID, never by typed name. `setup()` adds missing
 columns to the right and never renames. `src/Config.gs → HEADERS` is the
 authority; this page explains the columns.
 
-IDs: `P-12` partner, `H-340` home, `E-55` email, `EV-7` event, `R-3` referral, `CP-1` campaign.
+IDs: `P-12` partner, `H-340` home, `E-55` email, `EV-7` event, `R-3` referral, `CP-1` campaign, `L-2` list.
 Versions are keyed by Letter. Settings by Name. Users by Email.
 
 ## Partners — one person
@@ -23,6 +23,7 @@ Versions are keyed by Letter. Settings by Name. Users by Email.
 | Skip Email Test | Yes = never assigned a version, never in a batch (e.g. emailed by hand before the app). |
 | Call Queue | Yes = on Today's call list until a call is logged after Last Contact. |
 | Campaign ID | the email campaign this person was dealt into (one at a time; set by Deal letters). |
+| Lists | curated lists this person is on, list ids comma-separated (`L-1,L-4`). |
 | Quo Contact ID | the contact Quo holds for this person, pushed from the app (externalId = our ID). The app is the source of truth; only a changed phone/email comes back from Quo. |
 | Partner Since | set the first time Stage becomes `Partner` (by a win, a referral in, or *Mark as partner*). Separates the **Marketing** pipeline (Prospect/Contacted/Replied) from the **Partners** book. |
 | **Type profile columns** (sparse): Areas Served · Listings Per Year, Avg Listing Value (realtor) · Inspections Per Month, Refers Roofers (inspector) · Carriers, Handles Claims (insurance) · Doors Managed, Property Types, Decision Maker (property manager) | Which apply is defined per type in `PARTNER_TYPE_PROFILES` (Config.gs), along with the company label, the win response and the email versions. |
@@ -78,12 +79,18 @@ Versions are keyed by Letter. Settings by Name. Users by Email.
 | Report Sent At, Report Link, Estimate Started At, Signed Or Lost, Contract Amount, Paid At, Paid Amount | the four status updates that come back. The CRM stores, never edits. |
 | Notes | |
 
+## Lists — a named group of people
+
+ID, Name, Notes, Created At, Created By. Membership is the `Lists` column on
+Partners. Built by hand or by filter on the Lists page; campaigns point at
+them. Lists never carry status.
+
 ## Campaigns — one push to one audience
 
 | Column | Notes |
 |---|---|
 | ID, Name, Status | draft → running ⇄ paused → done. Only running campaigns feed Today's batch. |
-| Partner Type, Lists, Stages | the audience filters (lists/stages blank = all). The Partners book, hand-emailed people, do-not-contact and no-email are always left out. |
+| Partner Type, Lists, Stages | the audience: Lists holds list ids (`L-3`) and/or import-file names, any one qualifies (blank = everyone of the type). Stages is kept but hidden in the UI. The Partners book, hand-emailed people, do-not-contact and no-email are always left out. |
 | Versions | letters in play, e.g. `A,B,C`. Each has its own Versions row (Campaign ID). |
 | Start Date, Sending Days, Daily Cap, Follow Up Days | the plan; blank days/cap/follow-up inherit Settings. |
 | Created At, Created By, Notes | |

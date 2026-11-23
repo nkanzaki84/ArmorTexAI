@@ -23,8 +23,8 @@
         <div class="f"><label>Partner type</label><select name="type" id="newType"></select></div>
         <div class="f"><label>Start date</label><input name="startDate" type="date"></div>
       </div>
-      <div class="f"><label>Lists</label><div class="row" id="newLists"></div><span class="sub">None ticked = every list.</span></div>
-      <div class="f"><label>Stages</label><div class="row" id="newStages"></div><span class="sub">None ticked = Prospect, Contacted and Replied. The Partners book is never emailed.</span></div>
+      <div class="f"><label>Lists</label><div class="row" id="newLists"></div><span class="sub">Ticked lists add up. None ticked = everyone of this type. The Partners book, hand-emailed and opted-out people are never emailed.</span></div>
+      <div id="newStages" style="display:none"></div>
       <div class="f"><label>Letters</label><div class="row" id="newLetters"></div><span class="sub">The wording is copied from your last campaign of this type, editable until the first send.</span></div>
       <div class="row" style="justify-content:flex-end;margin-top:12px"><button type="button" class="btn" id="newCancel">Cancel</button><button type="submit" class="btn primary">Create</button></div>
     </form>
@@ -38,7 +38,7 @@
     function render(list) {
       $('rows').innerHTML = list.length ? list.map(function (c) {
         var runs = c.firstSentAt ? fmtDate(c.firstSentAt) + (c.lastSentAt && fmtDate(c.lastSentAt) !== fmtDate(c.firstSentAt) ? ' → ' + fmtDate(c.lastSentAt) : '') : (c.startDate ? 'starts ' + fmtDate(c.startDate) : 'not started');
-        return '<tr class="link" data-id="' + esc(c.id) + '"><td><b>' + esc(c.name) + '</b><div class="sub">' + esc(c.typeLabel) + ' · letters ' + esc(c.versions.join(', ') || '—') + (c.lists.length ? ' · ' + esc(c.lists.join(', ')) : '') + '</div></td>' +
+        return '<tr class="link" data-id="' + esc(c.id) + '"><td><b>' + esc(c.name) + '</b><div class="sub">' + esc(c.typeLabel) + ' · letters ' + esc(c.versions.join(', ') || '—') + (c.listNames && c.listNames.length ? ' · ' + esc(c.listNames.join(', ')) : '') + '</div></td>' +
           '<td>' + statusPill(c.status) + '</td>' +
           '<td class="num">' + c.audience + (c.dealt < c.audience ? ' <span class="sub">' + (c.audience - c.dealt) + ' undealt</span>' : '') + '</td>' +
           '<td class="num">' + c.sent + (c.audience ? ' <span class="sub">of ' + c.audience + '</span>' : '') + '</td>' +
@@ -60,7 +60,7 @@
         $('newType').innerHTML = Object.keys(profiles).map(function (k) { return '<option value="' + esc(k) + '">' + esc(profiles[k].plural || profiles[k].label) + '</option>'; }).join('');
         chips($('newStages'), ['Prospect', 'Contacted', 'Replied'].map(function (s) { return { value: s, label: s }; }), []);
         chips($('newLetters'), ['A', 'B', 'C', 'E'].map(function (l) { return { value: l, label: l }; }), ['A', 'B', 'C']);
-        api('listSourceLists').then(function (ls) { lists = ls; chips($('newLists'), ls.map(function (l) { return { value: l.sourceList, label: l.sourceList + ' · ' + l.count }; }), []); }).catch(fail);
+        api('listLists').then(function (ls) { lists = ls; chips($('newLists'), ls.map(function (l) { return { value: l.id, label: l.name + ' · ' + l.count }; }), []); if (!ls.length) $('newLists').innerHTML = '<span class="sub">No lists yet: make one under Lists first, or leave this blank for everyone of the type.</span>'; }).catch(fail);
         $('newModal').classList.add('show');
       });
       on($('newCancel'), 'click', function () { $('newModal').classList.remove('show'); });

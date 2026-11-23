@@ -56,6 +56,7 @@
       <? } else { ?>
       <a href="<?= appUrl ?>?page=marketing&side=partners" class="<?= (page === 'marketing' || (page === 'partner' && section === 'marketing')) ? 'active' : '' ?>"><i>📣</i><span>Marketing</span></a>
       <a href="<?= appUrl ?>?page=partners&side=partners" class="<?= (page === 'partners' || (page === 'partner' && section === 'partners')) ? 'active' : '' ?>"><i>🤝</i><span>Partners</span></a>
+      <a href="<?= appUrl ?>?page=lists&side=partners" class="<?= page === 'lists' ? 'active' : '' ?>"><i>📋</i><span>Lists</span></a>
       <? } ?>
       <a href="<?= appUrl ?>?page=campaigns&side=<?= side ?>" class="<?= (page === 'campaigns' || page === 'campaign') ? 'active' : '' ?>"><i>📊</i><span>Campaigns</span></a>
       <? if (session.allowedPages.indexOf('settings') !== -1) { ?>
@@ -83,6 +84,7 @@
     <? } else if (page === 'marketing') { ?><?!= include('partners', { section: 'marketing', appUrl: appUrl }) ?>
     <? } else if (page === 'partner') { ?><?!= include('partner', { section: section }) ?>
     <? } else if (page === 'homes' || page === 'home') { ?><?!= include('homes') ?>
+    <? } else if (page === 'lists') { ?><?!= include('lists') ?>
     <? } else if (page === 'campaigns') { ?><?!= include('campaigns') ?>
     <? } else if (page === 'campaign') { ?><?!= include('campaign') ?>
     <? } else if (page === 'settings') { ?><?!= include('settings') ?>

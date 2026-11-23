@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.7.0';
+const APP_VERSION    = '0.8.0';
 const APP_BUILD_DATE = '2026-11-22';
 
 // ===== Script Property keys =====
@@ -41,6 +41,7 @@ const TAB = {
   EMAILS:    'Emails',
   EVENTS:    'Events',
   CAMPAIGNS: 'Campaigns',
+  LISTS:     'Lists',
   REFERRALS: 'Referrals',
   VERSIONS:  'Versions',
   SETTINGS:  'Settings',
@@ -57,6 +58,7 @@ const ID_PREFIX = {
   'Referrals': 'R',
   'Comments':  'C',
   'Campaigns': 'CP',
+  'Lists':     'L',
 };
 
 // ===== Column headers per tab. Order matters for new tabs; existing tabs are
@@ -97,6 +99,7 @@ const HEADERS = {
     'Call Queue',            // Yes = on the call list until a call is logged after Last Contact
     'Quo Contact ID',        // the contact Quo holds for this person (pushed from here; the app is the source of truth)
     'Campaign ID',           // the email campaign this person was dealt into (one at a time)
+    'Lists',                 // curated lists this person is on: list IDs, comma-separated (L-1,L-4)
   ],
   'Homes': [
     'ID',
@@ -187,12 +190,19 @@ const HEADERS = {
     'Paid Amount',
     'Notes',
   ],
+  'Lists': [
+    'ID',                // L-1
+    'Name',
+    'Notes',
+    'Created At',
+    'Created By',
+  ],
   'Campaigns': [
     'ID',                // CP-1
     'Name',
     'Status',            // draft | running | paused | done
     'Partner Type',      // realtor | inspector | insurance | property_manager
-    'Lists',             // Source List names, comma-separated; blank = every list
+    'Lists',             // audience: list IDs (L-3) and/or import-file names, comma-separated; blank = everyone of the type
     'Stages',            // Prospect,Contacted,Replied; blank = every pipeline stage (never Partner)
     'Versions',          // letters in play, e.g. A,B,C
     'Start Date',
@@ -404,15 +414,16 @@ const PAGE_CATALOG = [
   { key: 'today',     label: 'Today' },
   { key: 'marketing', label: 'Marketing' },   // the pipeline: prospects we are still courting
   { key: 'partners',  label: 'Partners' },    // established relationships
+  { key: 'lists',     label: 'Lists' },       // curated groups of people, picked by hand or by filter; campaigns point at them
   { key: 'homes',    label: 'Homes' },
   { key: 'campaigns', label: 'Campaigns' },  // the ledger; page=campaign&id=CP-1 is one campaign's record
   { key: 'settings', label: 'Settings' },
 ];
 
 const DEFAULT_ROLE_ACCESS = {
-  owner:    ['today', 'marketing', 'partners', 'homes', 'campaigns', 'settings'],
-  sales:    ['today', 'marketing', 'partners', 'homes', 'campaigns'],
-  viewonly: ['today', 'marketing', 'partners', 'homes', 'campaigns'],
+  owner:    ['today', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'settings'],
+  sales:    ['today', 'marketing', 'partners', 'lists', 'homes', 'campaigns'],
+  viewonly: ['today', 'marketing', 'partners', 'lists', 'homes', 'campaigns'],
 };
 
 const WRITE_ROLES = ['owner', 'sales'];   // who may change data

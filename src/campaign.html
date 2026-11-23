@@ -72,9 +72,11 @@
       var c = data.campaign, a = data.audience;
       var chip = function (v, label, on) { return '<label class="chip ' + (on ? 'on' : '') + '"><input type="checkbox" value="' + esc(v) + '" hidden' + (on ? ' checked' : '') + '> ' + esc(label) + '</label>'; };
       var ex = Object.keys(a.excluded).map(function (k) { return a.excluded[k] + ' ' + k; }).join(' · ');
-      var html = '<div class="card"><div class="hd"><h2>Who is in it</h2><span class="sub">' + esc(c.typeLabel) + ' · filters define the audience; Save to apply</span></div><div class="bd">' +
-        '<div class="grid2"><div class="f"><label>Lists</label><div class="row" id="audLists">' + (data.lists.map(function (l) { return chip(l.sourceList, l.sourceList + ' · ' + l.count, c.lists.indexOf(l.sourceList) !== -1); }).join('') || '<span class="sub">no lists imported yet</span>') + '</div><span class="sub">None ticked = every list.</span></div>' +
-        '<div class="f"><label>Stages</label><div class="row" id="audStages">' + data.stageOptions.map(function (s) { return chip(s, s, c.stages.indexOf(s) !== -1); }).join('') + '</div><span class="sub">None ticked = all three. The Partners book is never emailed.</span></div></div>' +
+      var curated = data.curated || [];
+      var html = '<div class="card"><div class="hd"><h2>Who is in it</h2><span class="sub">' + esc(c.typeLabel) + ' · pick lists, then Save</span><div class="spacer"></div><a class="btn sm ghost" href="#" onclick="go(\'lists\'); return false;">📋 Manage lists</a></div><div class="bd">' +
+        '<div class="f"><label>Lists</label><div class="row" id="audLists">' + (curated.map(function (l) { return chip(l.id, l.name + ' · ' + l.count, c.lists.indexOf(l.id) !== -1); }).join('') || '<span class="sub">No lists yet. Make one under Lists, or use an import file below.</span>') + '</div><span class="sub">Ticked lists add up. None ticked = everyone of this type.</span></div>' +
+        '<details style="margin:4px 0 10px"><summary class="sub" style="cursor:pointer">Import files (the file a person arrived in)</summary><div class="row" id="audSources" style="margin-top:6px">' + (data.lists.map(function (l) { return chip(l.sourceList, l.sourceList + ' · ' + l.count, c.lists.indexOf(l.sourceList) !== -1); }).join('') || '<span class="sub">nothing imported yet</span>') + '</div></details>' +
+        '<div id="audStages" style="display:none">' + data.stageOptions.map(function (s) { return chip(s, s, c.stages.indexOf(s) !== -1); }).join('') + '</div>' +
         '<div class="ok-box"><b>' + a.members.length + ' in this campaign</b>' + (a.undealt ? ' · <b>' + a.undealt + '</b> match the filters and are not in yet' : '') + (ex ? '<div class="sub" style="margin-top:4px">Left out: ' + esc(ex) + '</div>' : '') + '</div>' +
         '</div></div>';
       var counts = Object.keys(a.counts).filter(function (k) { return k !== 'none'; }).map(function (k) { return '<span class="pill">' + esc(k) + ' · ' + a.counts[k] + '</span>'; }).join(' ');
@@ -200,13 +202,13 @@
     function markDirty() { dirty = true; $('saveAll').style.display = isAdmin ? '' : 'none'; }
     function saveFilters() {
       if (!$('audLists')) return Promise.resolve();
-      return api('saveCampaign', id, { lists: picked($('audLists')), stages: picked($('audStages')), versions: picked($('audLetters')) });
+      return api('saveCampaign', id, { lists: picked($('audLists')).concat(picked($('audSources'))), stages: picked($('audStages')), versions: picked($('audLetters')) });
     }
     function saveAll() {
       var payload = {};
       var sf = $('schedForm');
       if (sf) { payload.startDate = sf.startDate.value; payload.dailyCap = sf.dailyCap.value; payload.followUpDays = sf.followUpDays.value; payload.notes = sf.notes.value; payload.sendingDays = picked($('schedDays')).join(','); }
-      if ($('audLists')) { payload.lists = picked($('audLists')); payload.stages = picked($('audStages')); payload.versions = picked($('audLetters')); }
+      if ($('audLists')) { payload.lists = picked($('audLists')).concat(picked($('audSources'))); payload.stages = picked($('audStages')); payload.versions = picked($('audLetters')); }
       busy($('saveAll'), true, 'Saving…');
       api('saveCampaign', id, payload).then(function () { toast('Saved', 'success'); stampSaved($('savedStamp')); dirty = false; load(); }).catch(fail).finally(function () { busy($('saveAll'), false, '💾 Save'); });
     }

@@ -100,6 +100,12 @@ The SFM suite look: `src/ui_base.html` (Brian's portable base: palette, inputs, 
 - `npm test` and `npm run preview` run with `TZ=America/Chicago` so `_parseLocalDate_` behaves as in Apps Script (a date-only start date is Central midnight).
 - Tests: `tests/campaigns.test.js`.
 
+## Lists (built 2026-11-23, v0.8.0; Brian: "a lists section where I can create different email lists")
+
+`src/lists_server.gs` + `lists.html` (`page=lists`, every role). Tab `Lists` (L-): ID, Name, Notes, Created At/By. Membership lives on the partner: `Partners.Lists` = "L-1,L-4" (a person can be on many). Lists only answer "who"; Stage answers "how far along"; never give a list its own statuses. Sales and the owner create/rename/add/remove (`createList`, `saveList`, `addToList`, `removeFromList`, `addMatchingToList` with `matchPartners` filter {type, sourceList, area contains, stage, rep, q}; the Partners book and DNC are never swept in by filter); `deleteList` owner only. The Lists page: index on the left, members on the right, "Add one person" (type-ahead) and "Add everyone who…" (Count, then Add). The partner record's Contact card shows the person's lists with ✕ and an "+ add to list…" picker (saves immediately).
+- Campaigns point at lists: `Campaigns.Lists` holds list ids (`L-3`) and/or import-file names; `_campaignMatches_` accepts either (a person needs to be on any one). The Audience tab shows curated lists as the main chips and import files under a collapsed "Import files" row; the Stages chips are hidden (kept server-side). The New campaign dialog offers curated lists only. The ledger shows list names (`listNames`).
+- Not built: bulk "tick people on Marketing → Add to list" (see IDEAS). Tests: `tests/lists.test.js`.
+
 ## Parked: referral tracking by product (2026-11-19)
 
 Brian will want referrals tracked per product (roof report, repair, replacement, Texas Roof Club membership) from any source (partner, customer, member, neighborhood). Not in effect yet. Design sketch in `docs/IDEAS.md`; the only thing to respect now is that Referrals grows by **appending** `Product`, `Source Kind`, `Source ID` columns later, and that no partner ever gets a payment field.

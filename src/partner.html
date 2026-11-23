@@ -64,6 +64,7 @@
         '<div>Rep</div><div>' + (canWrite ? '<select class="inline-input" id="repSel"><option value="">— unassigned —</option></select>' : esc(p.Rep || '—')) + '</div>' +
         '<div>Last contact</div><div>' + (fmtDateTime(p['Last Contact']) || '—') + '</div>' +
         '<div>Notes</div><div>' + (canWrite ? '<textarea class="inline-input" name="notes" style="width:100%;max-width:420px;min-height:54px">' + esc(p.Notes || '') + '</textarea>' : esc(p.Notes || '—')) + '</div>' +
+        '<div>Lists</div><div id="listsRow" class="sub">…</div>' +
         (p['Quo Contact ID'] ? '<div>Quo</div><div class="sub">in Quo as contact ' + esc(p['Quo Contact ID']) + ' · edits here go to Quo on Save</div>' : '') +
         (canWrite ? '</form>' : '</div>') +
         (canWrite ? '<div class="ft"><form id="nsForm" class="row" style="flex:1"><input name="nextStep" type="text" placeholder="Next step, e.g. Call Tue" value="' + esc(p['Next Step'] || '') + '" class="inline-input" style="flex:1" title="Enter saves">' +
@@ -130,6 +131,18 @@
         busy($('saveAll'), true, 'Saving…');
         api('savePartner', id, payload).then(function () { toast('Saved ' + p.Name, 'success'); stampSaved($('savedStamp')); load(); }).catch(fail).finally(function () { busy($('saveAll'), false, '💾 Save'); });
       }
+      // lists this person is on, plus an "add to" picker (saves immediately)
+      function renderLists(all) {
+        var mine = String(p.Lists || '').split(',').filter(Boolean);
+        var html = all.filter(function (l) { return mine.indexOf(l.id) !== -1; }).map(function (l) { return '<span class="chip on" style="margin:0 4px 4px 0">' + esc(l.name) + (canWrite ? ' <a href="#" data-unlist="' + esc(l.id) + '" title="Take off this list" style="color:inherit;text-decoration:none">✕</a>' : '') + '</span>'; }).join('');
+        var rest = all.filter(function (l) { return mine.indexOf(l.id) === -1; });
+        if (canWrite && rest.length) html += '<select class="chip" id="addListSel" style="margin:0 0 4px"><option value="">+ add to list…</option>' + rest.map(function (l) { return '<option value="' + esc(l.id) + '">' + esc(l.name) + '</option>'; }).join('') + '</select>';
+        if (!html) html = '<span class="sub">none</span>';
+        $('listsRow').innerHTML = html;
+        on($('listsRow'), 'click', function (e) { var a = e.target.closest('[data-unlist]'); if (!a) return; e.preventDefault(); api('removeFromList', a.dataset.unlist, [id]).then(function () { toast('Removed from list', 'success'); load(); }).catch(fail); });
+        if ($('addListSel')) on($('addListSel'), 'change', function () { var v = $('addListSel').value; if (!v) return; api('addToList', v, [id]).then(function () { toast('Added to list', 'success'); load(); }).catch(fail); });
+      }
+      api('listLists').then(renderLists).catch(function () { $('listsRow').textContent = '—'; });
       on($('nsForm'), 'submit', function (e) { e.preventDefault(); saveAll(); });
       on($('contactForm'), 'submit', function (e) { e.preventDefault(); saveAll(); });
       on($('profForm'), 'submit', function (e) { e.preventDefault(); saveAll(); });

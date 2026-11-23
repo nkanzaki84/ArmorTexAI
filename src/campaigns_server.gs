@@ -63,8 +63,13 @@ function _campaignSending_(c) {
 /** Does this partner match the campaign's audience filters? (Exclusions are judged separately.) */
 function _campaignMatches_(c, p) {
   if (String(p['Type']).toLowerCase() !== String(c['Partner Type']).toLowerCase()) return false;
+  // Lists: curated list ids (L-3) or import-file names; a person needs to be on any one of them
   const lists = _csvList_(c['Lists']);
-  if (lists.length && lists.indexOf(String(p['Source List'] || '').trim()) === -1) return false;
+  if (lists.length) {
+    const mine = _partnerListIds_(p);
+    const hit = lists.some(function (l) { return /^L-\d+$/.test(l) ? mine.indexOf(l) !== -1 : l === String(p['Source List'] || '').trim(); });
+    if (!hit) return false;
+  }
   const stages = _csvList_(c['Stages']);
   if (stages.length && stages.indexOf(String(p['Stage'] || 'Prospect')) === -1) return false;
   return true;
@@ -114,6 +119,7 @@ function _campaignSummary_(c, partners, emails, events) {
     id: id, name: String(c['Name'] || ''), status: String(c['Status'] || 'draft'), type: String(c['Partner Type'] || ''),
     typeLabel: (PARTNER_TYPE_PROFILES[String(c['Partner Type'])] || {}).plural || String(c['Partner Type'] || ''),
     versions: _csvList_(c['Versions']), lists: _csvList_(c['Lists']), stages: _csvList_(c['Stages']),
+    listNames: _csvList_(c['Lists']).map(function (l) { const row = /^L-\d+$/.test(l) ? _byId_(TAB.LISTS, l) : null; return row ? String(row['Name']) : l; }),
     audience: members.length, dealt: members.filter(function (p) { return String(p['Version'] || '').trim(); }).length,
     sent: sentFirst.length, replied: Object.keys(replied).length, replyRate: sentFirst.length ? Object.keys(replied).length / sentFirst.length : 0,
     wins: wins, winNoun: (PARTNER_TYPE_PROFILES[String(c['Partner Type'])] || {}).winVerb || 'won',
@@ -140,6 +146,7 @@ function getCampaign(id) {
     audience: campaignAudience(id),
     plan: _campaignPlan_(c, partners, emails, new Date()),
     lists: listSourceLists(),
+    curated: listLists(),
     stageOptions: ['Prospect', 'Contacted', 'Replied'],
     letterOptions: EMAIL_VERSIONS,
   };

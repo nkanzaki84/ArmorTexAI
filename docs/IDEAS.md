@@ -198,6 +198,10 @@ Sketch so nothing built now gets in the way:
 
 ## Someday / maybe
 
+- **Bulk add to list from Marketing / Partners** (2026-11-23): tick rows →
+  "Add to list". Today you add from the Lists page (one by one or by filter)
+  or from the record. Worth it once Tanner builds lists in the field.
+
 - **Brevo / Mailchimp newsletter to the Partners book** (nk asked about Brevo
   2026-11-22): not for the realtor email test (brief: plain text from Brian's
   inbox, no pixel/links, reply matching lives in Gmail). Fine later for a
