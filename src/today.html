@@ -7,6 +7,11 @@
   <ul class="list" id="reviewList"></ul>
 </div>
 
+<div class="card" id="sampleCard" style="display:none">
+  <div class="hd"><h2>Said yes to the sample report</h2><span class="sub">the AI read the reply; you press Send</span></div>
+  <ul class="list" id="sampleList"></ul>
+</div>
+
 <div class="card">
   <div class="hd"><h2>New replies</h2><span class="sub">last 7 days · call these first</span></div>
   <ul class="list" id="replyList"><li class="empty">Loading…</li></ul>
@@ -99,6 +104,13 @@
       $('callList').innerHTML = w.calls.length ? w.calls.map(function (p) {
         return partnerLine(p, '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span>' + (p.why === 'replied' ? '<span class="pill warn">replied</span>' : p.why === 'missed' ? '<span class="pill bad">missed their call</span>' : p.why === 'noreply' ? '<span class="pill navy">no reply to the email</span>' : '<span class="pill">emailed by hand' + (p['Last Contact'] ? ' ' + fmtDate(p['Last Contact']) : '') + '</span>') + ' ' + repChip(p) + (p.listingValue ? ' <span class="pill navy">' + fmt$(p.listingValue) + '</span>' : '') + '</span>' + callBtn(p) + '</div>');
       }).join('') : '<li class="empty">Nobody to call right now.</li>';
+      var sr = w.sampleRequests || [];
+      $('sampleCard').style.display = sr.length ? '' : 'none';
+      $('sampleList').innerHTML = sr.map(function (r) {
+        var p = r.partner, ev = r.event;
+        return '<li data-id="' + esc(p.ID) + '" class="link"><div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + ' <span class="sub">' + esc(p.Company || '') + '</span></div><div class="sub" style="white-space:pre-wrap">“' + esc((ev.Snippet || '').slice(0, 200)) + '”</div><div class="sub">' + fmtDateTime(ev.At) + ' · 🤖 ' + esc(ev['AI Reason'] || 'read as a yes') + '</div></div>' +
+          (canWrite ? '<div style="display:flex;flex-direction:column;gap:4px"><button class="btn sm primary" data-sample="' + esc(ev.ID) + '">📎 Send sample report</button><button class="btn sm ghost" data-sample-dismiss="' + esc(ev.ID) + '">Not now</button></div>' : '') + '</li>';
+      }).join('');
       var rv = w.needsReview || [];
       $('reviewCard').style.display = rv.length ? '' : 'none';
       $('reviewList').innerHTML = rv.map(function (r) {
@@ -116,6 +128,13 @@
       renderStats();
     }
 
+    on($('sampleList'), 'click', function (e) {
+      var b = e.target.closest('[data-sample], [data-sample-dismiss]');
+      if (!b) { var li = e.target.closest('li[data-id]'); if (li) go('partner', { id: li.dataset.id, from: 'marketing' }); return; }
+      e.stopPropagation();
+      if (b.dataset.sample) { busy(b, true, 'Sending…'); api('sendSuggestedSample', b.dataset.sample).then(function (r) { toast('Sample report sent' + (r.inThread ? ' in their thread' : ''), 'success'); loadWork(); }).catch(fail).finally(function () { busy(b, false, '📎 Send sample report'); }); }
+      else api('dismissSampleSuggestion', b.dataset.sampleDismiss).then(function () { toast('Dismissed', 'success'); loadWork(); }).catch(fail);
+    });
     function loadBatch() { api('buildTodayBatch', {}).then(renderBatch).catch(function (e) { $('batchList').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; fail(e); }); }
     function loadWork() { api('getTodayWork', { rep: scope }).then(renderWork).catch(function (e) { $('replyList').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; }); }
 

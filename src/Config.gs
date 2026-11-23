@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.11.2';
+const APP_VERSION    = '0.12.0';
 const APP_BUILD_DATE = '2026-11-23';
 
 // ===== Script Property keys =====
@@ -162,6 +162,10 @@ const HEADERS = {
     'Transcript',        // call transcript or voicemail transcript (text)
     'Source',            // quo | app | trigger
     'Source ID',         // Quo call / message id (dedupe + later updates)
+    // AI reply reading (Gemini). Appended 2026-11-23.
+    'AI Verdict',        // reply events: yes | no | unclear — did they say yes to the sample report?
+    'AI Reason',         // the model's one-line reason (or error: …)
+    'AI Action',         // suggested | sent | already sent | dismissed by … | error: …
   ],
   'Referrals': [
     'ID',
@@ -378,7 +382,16 @@ const SETTING = {
   SAMPLE_REPORT_FILE:    'sample_report_file',     // Drive link or file id of the PDF
   SAMPLE_REPORT_SUBJECT: 'sample_report_subject',
   SAMPLE_REPORT_BODY:    'sample_report_body',     // {{first}} {{name}} {{company}} {{rep}} {{address}}
+  // AI reply reading (Gemini). The key itself is Script Property GEMINI_API_KEY.
+  AI_SAMPLE_MODE:   'ai_sample_mode',      // off | suggest | auto
+  AI_GEMINI_MODEL:  'ai_gemini_model',     // e.g. gemini-2.5-flash; blank = GEMINI_DEFAULT_MODEL
 };
+
+// ===== AI reply reading (Gemini) =====
+const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
+const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
+const PROP_GEMINI_API_KEY = 'GEMINI_API_KEY';
+const AI_SAMPLE_MODES = ['off', 'suggest', 'auto'];
 
 // ===== Quo (phone system) =====
 const QUO_API = 'https://api.quo.com';
@@ -407,6 +420,8 @@ const SETTING_DEFAULTS = {
   call_script_url:      '',
   do_not_contact:       '',
   dev_url:              '',
+  ai_sample_mode:        'off',
+  ai_gemini_model:       '',
   sample_report_file:    '',
   sample_report_subject: 'Sample roof report from ArmorTex',
   sample_report_body:    "Hi {{first}},\n\nHere's the sample roof report I mentioned. It's what you'd get on any of your listings within 48 hours of sending me the address, at no cost and with no strings.\n\nIf there's a property you'd like one on, reply with the address and I'll get it going.\n\n{{rep}}\nArmorTex Roofs\n{{address}}",

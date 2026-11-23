@@ -112,7 +112,8 @@
             (ev.Transcript ? '<details style="margin-top:4px"><summary class="sub" style="cursor:pointer">Transcript</summary><div class="sub" style="white-space:pre-wrap">' + esc(ev.Transcript) + '</div></details>' : '');
         }
         if (ev.Kind === 'text') return '<b>' + (ev.Direction === 'in' ? '💬 text in' : '💬 text') + '</b>' + who + (ev.Snippet ? '<div class="sub" style="white-space:pre-wrap">' + esc(ev.Snippet) + '</div>' : '');
-        return '<b>' + esc(ev.Kind) + '</b>' + (ev.Outcome ? ' · ' + esc(ev.Outcome) : '') + who + (ev.Snippet ? '<div class="sub">' + esc(ev.Snippet) + '</div>' : '');
+        var ai = ev['AI Verdict'] ? ' <span class="pill ' + (ev['AI Verdict'] === 'yes' ? 'ok' : ev['AI Verdict'] === 'no' ? 'bad' : '') + '" title="' + esc(ev['AI Reason'] || '') + '">🤖 ' + (ev['AI Verdict'] === 'yes' ? 'wants the sample' : ev['AI Verdict'] === 'no' ? 'said no' : 'unclear') + (ev['AI Action'] ? ' · ' + esc(ev['AI Action']) : '') + '</span>' : '';
+        return '<b>' + esc(ev.Kind) + '</b>' + (ev.Outcome ? ' · ' + esc(ev.Outcome) : '') + who + ai + (ev.Snippet ? '<div class="sub">' + esc(ev.Snippet) + '</div>' : '');
       }
       html += '<div class="card"><div class="hd"><h2>Activity</h2></div>' +
         (data.events.length ? '<ul class="timeline" style="padding:6px 16px">' + data.events.slice().reverse().map(function (ev) {

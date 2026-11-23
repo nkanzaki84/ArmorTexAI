@@ -290,6 +290,10 @@ function checkReplies() {
   _updateRows_(TAB.EMAILS, emailUpdates);
   _updateRows_(TAB.PARTNERS, Object.keys(partnerUpdates).map(function (id) { return { rowIndex: partners[id]._row, row: partnerUpdates[id] }; }));
   props.setProperty(PROP_LAST_REPLY_CHECK, String(nowSec));
+  // AI reads the new replies (opt-outs excluded) and sends or suggests the sample report
+  try {
+    report.ai = _aiHandleReplies_(newEvents.filter(function (ev) { return ev['Kind'] === 'reply' && !dncPartners[ev['Partner ID']]; }), new Date());
+  } catch (err) { report.ai = { error: String(err.message || err) }; }
   return report;
 }
 
@@ -409,7 +413,11 @@ function getTodayWork(opts) {
   // the human queue: automation guesses on a known partner, plus calls/texts from numbers nobody knows (owner and "everyone" scope only)
   const needsReview = events.filter(function (ev) { return _yes_(ev['Needs Review']) && (partners[ev['Partner ID']] || (!ev['Partner ID'] && !ev['Home ID'] && scope === 'all')); })
     .map(function (ev) { return { event: ev, partner: partners[ev['Partner ID']] || null }; });
-  return { replies: replies, calls: calls, needsReview: needsReview, scope: scope };
+  // the AI read a "yes" to the sample report and left it for a person to press (suggest mode)
+  const sampleRequests = events.filter(function (ev) { return ev['Kind'] === 'reply' && String(ev['AI Verdict']) === 'yes' && String(ev['AI Action']) === 'suggested' && partners[ev['Partner ID']] && !_yes_(partners[ev['Partner ID']]['Do Not Contact']); })
+    .sort(function (a, b) { return new Date(b['At']) - new Date(a['At']); })
+    .map(function (ev) { return { event: ev, partner: partners[ev['Partner ID']] }; });
+  return { replies: replies, calls: calls, needsReview: needsReview, sampleRequests: sampleRequests, scope: scope };
 }
 
 /** A person confirms or dismisses an automation's guess. */

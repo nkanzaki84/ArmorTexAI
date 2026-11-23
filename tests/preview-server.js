@@ -74,7 +74,7 @@ function seed(app) {
   ps.slice(0, 60).forEach((p, i) => {
     const sentAt = new Date(now - day * (7 - (i % 5)));
     emails.push({ ID: 'E-' + (i + 1), 'Campaign ID': 'CP-1', 'Partner ID': p.ID, Version: p.Version, Step: 'first', 'Scheduled For': sentAt, 'Sent At': sentAt, 'Gmail Thread ID': 'thr' + i, 'Gmail Message ID': 'msg' + i, Status: i % 17 === 3 ? 'bounced' : 'sent', Subject: 'Free roof report on your listings, 48 hours', 'Sent By': 'tanner@armortexroofs.com' });
-    if (i % 6 === 1) events.push({ ID: 'EV-' + events.length, 'Partner ID': p.ID, 'Email ID': 'E-' + (i + 1), Kind: 'reply', At: new Date(sentAt.getTime() + day), Snippet: i % 12 === 1 ? 'Sure, can you look at 214 Bayhills Dr, Hideaway? Listing goes live Friday.' : 'Send the sample over, thanks.', By: 'trigger' });
+    if (i % 6 === 1) events.push({ ID: 'EV-' + events.length, 'Partner ID': p.ID, 'Email ID': 'E-' + (i + 1), Kind: 'reply', At: new Date(sentAt.getTime() + day), Snippet: i % 12 === 1 ? 'Sure, can you look at 214 Bayhills Dr, Hideaway? Listing goes live Friday.' : 'Send the sample over, thanks.', By: 'trigger', 'AI Verdict': 'yes', 'AI Reason': 'They asked for the sample to be sent.', 'AI Action': i % 12 === 1 ? 'sent' : 'suggested' });
     if (i % 9 === 2) events.push({ ID: 'EV-' + events.length, 'Partner ID': p.ID, Kind: 'call', Outcome: 'talked', At: new Date(sentAt.getTime() + day * 2), Snippet: 'Wants the sample. Has two listings in Fairway Oaks.', By: 'tanner@armortexroofs.com' });
   });
   // calls and texts as Quo would have logged them (ps[2] = a realtor with a full phone history, ps[3] = a missed call, plus one unknown number)

@@ -103,6 +103,20 @@
   </form>
 </div>
 
+<div class="card" id="aiCard">
+  <div class="hd"><h2>AI reply reading</h2><span class="sub">Gemini reads each reply: did they say yes to the sample report?</span><div class="spacer"></div><span class="pill" id="aiPill">…</span></div>
+  <div class="bd">
+    <div class="f"><label>Gemini API key</label><div class="row"><input id="aiKey" type="password" placeholder="AIza…" autocomplete="off" style="flex:1"><button class="btn" id="aiKeySave">Save key</button><button class="btn ghost" id="aiKeyClear" style="display:none">Remove</button></div><span class="hint">Google AI Studio → Get API key, signed in with your Workspace account. Stored in Script Properties, not in the Sheet, and never shown again.</span></div>
+    <div class="grid2">
+      <div class="f"><label>Model</label><select id="aiModel"></select></div>
+      <div class="f"><label>What happens on a "yes"</label><select id="aiMode"><option value="off">Off: nothing is read</option><option value="suggest">Suggest: a card on Today, a person presses Send</option><option value="auto">Auto: the sample report goes out at once</option></select></div>
+    </div>
+    <div class="sub" id="aiNote" style="margin:-4px 0 10px"></div>
+    <div class="row"><button class="btn primary" id="aiSave">Save</button></div>
+    <div class="f" style="margin-top:12px"><label>Try it</label><div class="row"><input id="aiTry" placeholder="sure, would be cool to see" style="flex:1"><button class="btn" id="aiTryBtn">Read it</button></div><span class="sub" id="aiTryOut"></span></div>
+  </div>
+</div>
+
 <div class="card" id="quoCard">
   <div class="hd"><h2>Quo phone system</h2><span class="sub">Tanner's calls and texts land on the realtor's record</span><div class="spacer"></div><span id="quoPill" class="pill">…</span></div>
   <div class="bd">
@@ -323,6 +337,22 @@
       if (st.lastError) info += (info ? '<br>' : '') + '<span style="color:var(--bad)">Last problem: ' + esc(st.lastError) + '</span>';
       $('quoHookInfo').innerHTML = info;
     }
+    (function () {
+      function aiRender(s) {
+        $('aiPill').textContent = s.connected ? (s.mode === 'off' ? 'key saved · off' : s.mode) : 'no key';
+        $('aiPill').className = 'pill ' + (s.connected ? (s.mode === 'off' ? '' : 'ok') : 'warn');
+        $('aiKeyClear').style.display = s.connected ? '' : 'none';
+        $('aiModel').innerHTML = (s.models.length ? s.models : (s.model ? [{ id: s.model, label: s.model }] : [])).map(function (m) { return '<option value="' + esc(m.id) + '"' + (m.id === s.model ? ' selected' : '') + '>' + esc(m.id) + '</option>'; }).join('') || '<option value="">save a key first</option>';
+        $('aiMode').value = s.mode;
+        $('aiNote').innerHTML = (s.error ? '<span class="pill bad">' + esc(s.error) + '</span> ' : '') + (!s.sampleReady ? '<span class="pill warn">No sample report file yet: set it above, or nothing can be sent.</span> ' : '') + 'Only replies to our emails are read, never opt-outs or do-not-contact people. One sample per person, ever. In auto mode the send is logged on the record as “sent by the AI”.';
+      }
+      function aiLoad() { api('aiStatus').then(aiRender).catch(function (e) { $('aiPill').textContent = 'error'; $('aiPill').className = 'pill bad'; $('aiNote').textContent = e.message; }); }
+      on($('aiKeySave'), 'click', function () { busy($('aiKeySave'), true, 'Checking…'); api('saveGeminiKey', $('aiKey').value).then(function (s) { $('aiKey').value = ''; toast('Key works: ' + s.models.length + ' models', 'success'); aiRender(s); }).catch(fail).finally(function () { busy($('aiKeySave'), false, 'Save key'); }); });
+      on($('aiKeyClear'), 'click', function () { if (!confirm('Remove the Gemini key and turn reply reading off?')) return; api('clearGeminiKey').then(function (s) { toast('Removed', 'success'); aiRender(s); }).catch(fail); });
+      on($('aiSave'), 'click', function () { busy($('aiSave'), true, 'Saving…'); api('saveAiSettings', { mode: $('aiMode').value, model: $('aiModel').value }).then(function (s) { toast('Saved', 'success'); aiRender(s); }).catch(fail).finally(function () { busy($('aiSave'), false, 'Save'); }); });
+      on($('aiTryBtn'), 'click', function () { busy($('aiTryBtn'), true, '…'); $('aiTryOut').textContent = ''; api('aiTestClassify', $('aiTry').value).then(function (r) { $('aiTryOut').innerHTML = '<span class="pill ' + (r.verdict === 'yes' ? 'ok' : r.verdict === 'no' ? 'bad' : '') + '">' + esc(r.verdict) + '</span> ' + esc(r.reason); }).catch(fail).finally(function () { busy($('aiTryBtn'), false, 'Read it'); }); });
+      aiLoad();
+    })();
     function quoLoad() { api('quoStatus').then(quoRender).catch(function (e) { $('quoPill').textContent = 'error'; $('quoPill').className = 'pill bad'; $('quoHookInfo').textContent = e.message; }); }
     quoLoad();
     on($('quoKeyBtn'), 'click', function () {
