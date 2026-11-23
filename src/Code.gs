@@ -50,6 +50,7 @@ function doGet(e) {
   tpl.canComment = !session.denied && COMMENT_ROLES.indexOf(session.role) !== -1;
   tpl.profiles = PARTNER_TYPE_PROFILES;
   tpl.quo = _quoLinkConfig_();
+  tpl.multiCampaigns = noAccess ? [] : _multiCampaignIds_();
   tpl.winResponses = WIN_RESPONSES;
   tpl.appVersion = APP_VERSION;
   tpl.appBuildDate = APP_BUILD_DATE;

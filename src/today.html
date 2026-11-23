@@ -51,7 +51,7 @@
     function repChip(p) { var r = p.Rep; if (!r || scope === 'mine') return ''; var n = r.split('@')[0]; return '<span class="pill" title="' + esc(r) + '">' + esc(n) + '</span>'; }
 
     function partnerLine(p, right) {
-      return '<li class="link" data-id="' + esc(p.ID) + '">' + verBadge(p.Version) +
+      return '<li class="link" data-id="' + esc(p.ID) + '">' + letterBadge(p) +
         '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + '</div></div>' + (right || '') + '</li>';
     }
     function callBtn(p) {
@@ -71,11 +71,11 @@
       batch = b;
       var running = (b.campaigns || []).map(function (c) { return c.name + ' (' + (c.followUps + c.firsts) + ')'; }).join(' · ');
       $('batchSub').textContent = (b.sendingDay ? 'sending day · cap ' + b.cap : b.weekday + ' is not a sending day') + (running ? ' · ' + running : '');
-      var all = (b.followUps || []).map(function (e) { return { kind: 'follow-up', p: e.partner, v: e.Version }; })
-        .concat((b.firsts || []).map(function (p) { return { kind: 'first', p: p, v: p.Version }; }));
+      var all = (b.followUps || []).map(function (e) { return { kind: 'follow-up', p: e.partner, v: e.Version, campaignId: e.campaignId || e['Campaign ID'] }; })
+        .concat((b.firsts || []).map(function (p) { return { kind: 'first', p: p, v: p.Version, campaignId: p['Campaign ID'] }; }));
       $('batchList').innerHTML = all.length ? all.map(function (x) {
         var p = x.p || {};
-        return '<li>' + verBadge(x.v) + '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Email ? ' · ' + esc(p.Email) : '') + '</div></div><span class="pill ' + (x.kind === 'follow-up' ? 'warn' : '') + '">' + x.kind + '</span></li>';
+        return '<li>' + letterBadge({ 'Campaign ID': x.campaignId, Version: x.v }) + '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Email ? ' · ' + esc(p.Email) : '') + '</div></div><span class="pill ' + (x.kind === 'follow-up' ? 'warn' : '') + '">' + x.kind + '</span></li>';
       }).join('') : '<li class="empty">' + (b.cap ? 'No one to email today. Start a campaign under Campaigns and deal letters.' : 'Daily cap is 0.') + '</li>';
       var probs = $('batchProblems');
       var onlyDay = b.problems.length && b.problems.every(function (p) { return /not a sending day/.test(p); });

@@ -51,6 +51,11 @@ function _normTags_(v) {
   return out;
 }
 
+/** Ids of campaigns comparing more than one wording; only their members show a letter badge. */
+function _multiCampaignIds_() {
+  return _readTab_(TAB.CAMPAIGNS).filter(function (c) { return _csvList_(c['Versions']).length > 1; }).map(function (c) { return String(c['ID']); });
+}
+
 function _csvList_(v) { return String(v || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
 
 /** Cap, days and follow-up gap for a campaign, falling back to Settings. */

@@ -171,7 +171,7 @@
             '<span class="sub">' + m.referralsIn + ' referral' + (m.referralsIn === 1 ? '' : 's') + (m.jobsSigned ? ' · ' + m.jobsSigned + ' job' + (m.jobsSigned === 1 ? '' : 's') + (m.jobValue ? ' · ' + fmtMoney(m.jobValue) : '') : '') + '</span>' +
             (p.daysSinceContact === null ? '<span class="pill warn">never contacted</span>' : p.cold ? '<span class="pill bad">🥶 ' + p.daysSinceContact + ' days quiet</span>' : '<span class="pill ok">' + p.daysSinceContact + 'd ago</span>') + '</div>';
         }
-        return '<li class="link" data-id="' + esc(p.ID) + '">' + (MARKETING ? verBadge(p.Version) : '<span class="ver" style="background:#e8f6ee;color:#17743d">🤝</span>') +
+        return '<li class="link" data-id="' + esc(p.ID) + '">' + (MARKETING ? letterBadge(p) : '<span class="ver" style="background:#e8f6ee;color:#17743d">🤝</span>') +
           '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + ' <span class="sub">' + esc((O.profiles[p.Type] || {}).label || p.Type) + '</span></div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + (p.Phone ? ' · ' + fmtPhone(p.Phone) : '') + '</div>' + (facts ? '<div class="sub" style="color:var(--navy)">' + esc(facts) + '</div>' : '') + '</div>' +
           right + (p.Phone ? '<a class="btn sm" href="' + esc(callHref(p.Phone)) + '" onclick="event.stopPropagation()" title="Call">📞</a>' : '') + '</li>';
       }).join('') : '<li class="empty">' + emptyText() + '</li>';

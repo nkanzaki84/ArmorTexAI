@@ -135,6 +135,11 @@ function fmtPhone(d) { d = String(d || '').replace(/\D/g, ''); return d.length =
   function fmtDateTime(v) { if (!v) return ''; var d = fmtDate(v), t = fmtTime(v); return t ? d + ', ' + t : d; }
   function pct(n) { return (Math.round(n * 1000) / 10) + '%'; }
   function fmtMoney(n) { n = Number(n); return n ? fmt$(n) : ''; }
+  /** Letter badge only when the row's campaign is comparing wordings; otherwise nothing. */
+  function letterBadge(row) {
+    var cid = row && String(row['Campaign ID'] || row.campaignId || '');
+    return (cid && (O.multiCampaigns || []).indexOf(cid) !== -1 && row.Version) ? verBadge(row.Version) + ' ' : '';
+  }
   function verBadge(v) { return '<span class="ver ' + (v ? esc(v) : 'none') + '">' + (v ? esc(v) : '–') + '</span>'; }
   function stagePill(s) {
     var k = { Prospect: '', Contacted: 'navy', Replied: 'warn', Partner: 'ok', Target: '', Mailed: 'navy', Knocked: 'navy', Talked: 'warn', 'Roof check booked': 'ok' }[s] || '';
