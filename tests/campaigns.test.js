@@ -233,3 +233,26 @@ test('one letter by default; the call plan puts no-reply people on the call list
   app.saveCampaign(id, { callAfterDays: '' });
   assert.equal(app.getTodayWork({ rep: 'all', now: new Date('2026-12-04T16:00:00Z') }).calls.filter(p => p.why === 'noreply').length, 0);
 });
+
+test('tags are filed lowercase and deduped; duplicate copies wording (unlocked), plan and tags but no people; done leaves Today', () => {
+  const app = appWithLists();
+  const { id } = app.createCampaign({ name: 'Dec', type: 'realtor', lists: ['tyler'], tags: 'Realtors, Tyler , december, realtors', dailyCap: 4, callAfterDays: 5 });
+  assert.deepEqual(app.getCampaign(id).campaign.tags, ['realtors', 'tyler', 'december']);
+  app.saveCampaign(id, { tags: ['Q4', 'tyler'] });
+  assert.deepEqual(app.listCampaigns().find(c => c.id === id).tags, ['q4', 'tyler']);
+  assert.deepEqual(app.createCampaign({ name: 'Insp', type: 'inspector' }).id && app.listCampaigns()[0].tags, ['inspector'], 'default tag = the type');
+  app.saveVersion('A', { subject: 'Dec subject', body: BODY, followUpBody: 'Still?' }, id);
+  app.dealLetters(id, { rng: seeded(2) });
+  app.saveCampaign(id, { status: 'running' });
+  app.sendTodayBatch({ now: TUE });
+  assert.ok(app.listVersions(id).every(v => v.Locked === 'Yes'));
+  const copy = app.duplicateCampaign(id, { name: 'Dec again' });
+  const c2 = app.getCampaign(copy.id);
+  assert.equal(c2.campaign.status, 'draft'); assert.equal(c2.campaign.audience, 0); assert.deepEqual(c2.campaign.lists, []);
+  assert.deepEqual(c2.campaign.tags, ['q4', 'tyler']); assert.equal(c2.campaign.cap, 4); assert.equal(c2.campaign.callAfterDays, 5);
+  assert.deepEqual(c2.versions.map(v => [v.Subject, v.Locked]), [['Dec subject', '']], 'the copy has editable wording again');
+  // done: off Today, numbers kept
+  app.saveCampaign(id, { status: 'done' });
+  assert.equal(app.buildTodayBatch({ now: TUE }).campaigns.some(c => c.id === id), false);
+  assert.equal(app.listCampaigns().find(c => c.id === id).sent, 4);
+});

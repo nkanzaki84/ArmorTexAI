@@ -4,6 +4,8 @@
   <span id="titlePills"></span>
   <div class="spacer"></div>
   <span class="sub" id="savedStamp"></span>
+  <button class="btn ghost" id="dupBtn" style="display:none" title="A new draft with this wording and plan, pointed at a list you choose">⧉ Duplicate</button>
+  <button class="btn ghost" id="doneBtn" style="display:none" title="Nothing more to send: file it. Numbers and results stay.">✓ Mark done</button>
   <button class="btn" id="statusBtn" style="display:none"></button>
   <button class="btn navy" id="sendNowBtn" style="display:none" title="Owner only: send this campaign's batch now, even if today is not a sending day">📨 Send now</button>
   <button class="btn primary" id="saveAll" style="display:none">💾 Save</button>
@@ -157,6 +159,7 @@
         '<div class="f"><label>Sending days</label><div class="row" id="schedDays">' + dayChips + '</div><span class="sub">' + (sd.inherited.days ? 'Using Settings (' + esc(sd.daysLabel) + '). Tick days to override.' : 'Untick all to go back to Settings.') + '</span></div>' +
         '<div class="grid2"><div class="f"><label>Follow-up email after (business days)</label><input name="followUpDays" type="number" min="1" max="30" value="' + esc(raw['Follow Up Days'] === '' ? '' : raw['Follow Up Days']) + '" placeholder="' + sd.followUpDays + ' (Settings)"' + dis + '><span class="sub">One follow-up, same thread. Never a third.</span></div>' +
         '<div class="f"><label>Call plan: call after (business days)</label><input name="callAfterDays" type="number" min="0" max="60" value="' + esc(raw['Call After Days'] === '' ? '' : raw['Call After Days']) + '" placeholder="blank = no call step"' + dis + '><span class="sub">Anyone who has not replied by then lands on Today\'s call list. Replies get a call right away regardless.</span></div></div>' +
+        '<div class="f"><label>Tags</label><input name="tags" value="' + esc(c.tags.join(', ')) + '" placeholder="e.g. realtors, tyler, december"' + dis + '><span class="sub">How the Campaigns page files it. Comma-separated.</span></div>' +
         '<div class="f"><label>Notes</label><textarea name="notes" style="min-height:60px"' + dis + '>' + esc(c.notes) + '</textarea></div>' +
         '<div class="sub">A person presses Send on Today. The plan only says what will be offered.</div></form></div>' +
         '<div class="card"><div class="hd"><h2>Drawn out</h2><span class="sub">from today, at this cap</span></div>' +
@@ -209,7 +212,7 @@
     function saveAll() {
       var payload = {};
       var sf = $('schedForm');
-      if (sf) { payload.startDate = sf.startDate.value; payload.dailyCap = sf.dailyCap.value; payload.followUpDays = sf.followUpDays.value; payload.callAfterDays = sf.callAfterDays.value; payload.notes = sf.notes.value; payload.sendingDays = picked($('schedDays')).join(','); }
+      if (sf) { payload.startDate = sf.startDate.value; payload.dailyCap = sf.dailyCap.value; payload.followUpDays = sf.followUpDays.value; payload.callAfterDays = sf.callAfterDays.value; payload.notes = sf.notes.value; payload.tags = sf.tags.value; payload.sendingDays = picked($('schedDays')).join(','); }
       if ($('audLists')) { payload.lists = picked($('audLists')).concat(picked($('audSources'))); payload.stages = picked($('audStages')); payload.versions = picked($('audLetters')); }
       busy($('saveAll'), true, 'Saving…');
       api('saveCampaign', id, payload).then(function () { toast('Saved', 'success'); stampSaved($('savedStamp')); dirty = false; load(); }).catch(fail).finally(function () { busy($('saveAll'), false, '💾 Save'); });
@@ -231,6 +234,15 @@
         }).catch(fail).finally(function () { busy($('sendNowBtn'), false, '📨 Send now'); });
       }).catch(fail);
     });
+    on($('dupBtn'), 'click', function () {
+      var name = prompt('Name for the copy:', data.campaign.name + ' (copy)'); if (!name) return;
+      busy($('dupBtn'), true, '…');
+      api('duplicateCampaign', id, { name: name }).then(function (r) { toast('Copied. Pick its list on the Audience tab.', 'success'); go('campaign', { id: r.id }); }).catch(fail).finally(function () { busy($('dupBtn'), false, '⧉ Duplicate'); });
+    });
+    on($('doneBtn'), 'click', function () {
+      if (!confirm('Mark "' + data.campaign.name + '" as done? It leaves Today and the default Campaigns view. Its numbers and results stay.')) return;
+      api('saveCampaign', id, { status: 'done' }).then(function () { toast('Filed as done', 'success'); load(); }).catch(fail);
+    });
     on($('statusBtn'), 'click', function () {
       var n = nextStatus(data.campaign.status); if (!n) return;
       if (n.to === 'running' && !confirm('Start sending? From the next sending day this campaign shows on Today, and its letters lock at the first send.')) return;
@@ -243,10 +255,12 @@
         data = d; results = null;
         var c = d.campaign;
         $('titleName').textContent = c.name;
-        $('titlePills').innerHTML = statusPill(c.status) + ' <span class="sub">' + esc(c.typeLabel) + (c.firstSentAt ? ' · started ' + fmtDate(c.firstSentAt) : c.startDate ? ' · starts ' + fmtDate(c.startDate) : '') + '</span>';
+        $('titlePills').innerHTML = statusPill(c.status) + ' <span class="sub">' + esc(c.typeLabel) + (c.firstSentAt ? ' · started ' + fmtDate(c.firstSentAt) : c.startDate ? ' · starts ' + fmtDate(c.startDate) : '') + '</span>' + c.tags.map(function (t) { return ' <span class="pill" style="font-size:11px">' + esc(t) + '</span>'; }).join('');
         var n = nextStatus(c.status);
         $('statusBtn').style.display = isAdmin && n ? '' : 'none'; if (n) $('statusBtn').textContent = n.label;
         $('sendNowBtn').style.display = isAdmin && c.status === 'running' ? '' : 'none';
+        $('dupBtn').style.display = isAdmin ? '' : 'none';
+        $('doneBtn').style.display = isAdmin && c.status !== 'done' && c.status !== 'draft' ? '' : 'none';
         $('saveAll').style.display = 'none';
         $('nAud').textContent = c.audience; $('nCopy').textContent = c.versions.length;
         renderOverview(); renderAudience(); renderCopy(); renderSchedule();

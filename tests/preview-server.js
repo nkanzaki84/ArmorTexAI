@@ -63,8 +63,10 @@ function seed(app) {
   app.addMatchingToList(l1, { type: 'realtor', sourceList: 'realtors-gregg-nov-2026' });
   const l2 = app.createList({ name: 'Met at the TAR mixer', notes: 'Tanner shook hands with these on Nov 12' }).id;
   app.addToList(l2, app.$rows('Partners').filter(p => p.Type === 'realtor').slice(3, 15).map(p => p.ID));
-  app.saveCampaign('CP-1', { name: 'Tyler realtors · email test', lists: [l1], stages: [], versions: ['A', 'B', 'C'], startDate: '2026-11-17', notes: 'The first email test. Letters A/B/C, no E until pay-at-closing is decided.' });
-  app.createCampaign({ name: 'Home inspectors · January', type: 'inspector', versions: ['A', 'B'], startDate: '2027-01-06' });
+  app.saveCampaign('CP-1', { name: 'Tyler realtors · email test', lists: [l1], stages: [], versions: ['A', 'B', 'C'], startDate: '2026-11-17', notes: 'The first email test. Letters A/B/C, no E until pay-at-closing is decided.', tags: ['realtors', 'gregg', 'november'] });
+  app.createCampaign({ name: 'Home inspectors · January', type: 'inspector', versions: ['A', 'B'], startDate: '2027-01-06', tags: ['inspectors', 'january'] });
+  const old = app.createCampaign({ name: 'Gladewater test · five addresses', type: 'realtor', tags: ['realtors', 'test'] });
+  app.saveCampaign(old.id, { status: 'done' });
   // a little history so Campaign and records have something to show
   const ps = app.$rows('Partners');
   const day = 86400000; const now = Date.now();

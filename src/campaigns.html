@@ -5,9 +5,15 @@
 </div>
 
 <div class="card">
+  <div class="hd" style="flex-wrap:wrap;gap:8px">
+    <input class="inline-input" id="cpSearch" placeholder="🔍 Search name, tag, notes…" style="max-width:280px">
+    <span id="tagChips" class="chips"></span>
+    <div class="spacer"></div>
+    <label class="chip" id="showDone" style="margin:0"><input type="checkbox" hidden> Show finished</label>
+  </div>
   <div class="scroll-x">
     <table>
-      <thead><tr><th>Campaign</th><th>Status</th><th class="num">Audience</th><th class="num">Sent</th><th class="num">Replied</th><th class="num">Wins</th><th>Runs</th><th></th></tr></thead>
+      <thead><tr><th data-sort="name">Campaign</th><th data-sort="status">Status</th><th class="num" data-sort="audience">Audience</th><th class="num" data-sort="sent">Sent</th><th class="num" data-sort="replyRate">Replied</th><th class="num" data-sort="wins">Wins</th><th data-sort="date">Runs</th><th></th></tr></thead>
       <tbody id="rows"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
     </table>
   </div>
@@ -23,6 +29,7 @@
         <div class="f"><label>Partner type</label><select name="type" id="newType"></select></div>
         <div class="f"><label>Start date</label><input name="startDate" type="date"></div>
       </div>
+      <div class="f"><label>Tags</label><input name="tags" placeholder="e.g. realtors, tyler, december"><span class="sub">Words to find it by later. Comma-separated.</span></div>
       <div class="f"><label>Lists</label><div class="row" id="newLists"></div><span class="sub">Ticked lists add up. None ticked = everyone of this type. The Partners book, hand-emailed and opted-out people are never emailed.</span></div>
       <div id="newStages" style="display:none"></div>
       <details class="f"><summary class="sub" style="cursor:pointer">Compare wordings? (optional)</summary><div class="row" id="newLetters" style="margin-top:6px"></div><span class="sub">One letter (A) is the norm. Tick B or C only to test a second wording on the same people. Wording is copied from your last campaign of this type.</span></details>
@@ -35,18 +42,43 @@
   (function () {
     var profiles = O.profiles || {};
     function statusPill(s) { return '<span class="pill ' + ({ running: 'ok', paused: 'warn', done: 'navy', draft: '' }[s] || '') + '">' + esc(s) + '</span>'; }
+    var all = [], tag = '', q = '', showDone = false, sortKey = 'date', sortDir = -1;
+    function dateOf(c) { return new Date(c.firstSentAt || c.startDate || c.createdAt || 0).getTime() || 0; }
+    function view() {
+      var list = all.filter(function (c) {
+        if (!showDone && c.status === 'done') return false;
+        if (tag && c.tags.indexOf(tag) === -1) return false;
+        if (q && [c.name, c.tags.join(' '), c.notes, c.typeLabel, (c.listNames || []).join(' ')].join(' ').toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      });
+      var val = function (c) { return sortKey === 'date' ? dateOf(c) : sortKey === 'name' ? c.name.toLowerCase() : sortKey === 'status' ? ['running', 'paused', 'draft', 'done'].indexOf(c.status) : (c[sortKey] || 0); };
+      list.sort(function (a, b) { var x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * sortDir; });
+      return list;
+    }
+    function renderTags() {
+      var counts = {};
+      all.forEach(function (c) { if (showDone || c.status !== 'done') c.tags.forEach(function (t) { counts[t] = (counts[t] || 0) + 1; }); });
+      var tags = Object.keys(counts).sort();
+      $('tagChips').innerHTML = tags.map(function (t) { return '<button class="chip ' + (tag === t ? 'on' : '') + '" data-tag="' + esc(t) + '">' + esc(t) + ' · ' + counts[t] + '</button>'; }).join('');
+      document.querySelectorAll('th[data-sort]').forEach(function (th) { th.style.cursor = 'pointer'; th.title = 'Sort'; th.innerHTML = th.textContent.replace(/ [▲▼]$/, '') + (th.dataset.sort === sortKey ? (sortDir < 0 ? ' ▼' : ' ▲') : ''); });
+    }
     function render(list) {
+      all = list; renderTags(); list = view();
       $('rows').innerHTML = list.length ? list.map(function (c) {
         var runs = c.firstSentAt ? fmtDate(c.firstSentAt) + (c.lastSentAt && fmtDate(c.lastSentAt) !== fmtDate(c.firstSentAt) ? ' → ' + fmtDate(c.lastSentAt) : '') : (c.startDate ? 'starts ' + fmtDate(c.startDate) : 'not started');
-        return '<tr class="link" data-id="' + esc(c.id) + '"><td><b>' + esc(c.name) + '</b><div class="sub">' + esc(c.typeLabel) + ' · letters ' + esc(c.versions.join(', ') || '—') + (c.listNames && c.listNames.length ? ' · ' + esc(c.listNames.join(', ')) : '') + '</div></td>' +
+        return '<tr class="link" data-id="' + esc(c.id) + '"><td><b>' + esc(c.name) + '</b><div class="sub">' + esc(c.typeLabel) + ' · letters ' + esc(c.versions.join(', ') || '—') + (c.listNames && c.listNames.length ? ' · ' + esc(c.listNames.join(', ')) : '') + '</div>' + (c.tags.length ? '<div style="margin-top:3px">' + c.tags.map(function (t) { return '<span class="pill" style="font-size:11px;margin-right:4px">' + esc(t) + '</span>'; }).join('') + '</div>' : '') + '</td>' +
           '<td>' + statusPill(c.status) + '</td>' +
           '<td class="num">' + c.audience + (c.dealt < c.audience ? ' <span class="sub">' + (c.audience - c.dealt) + ' undealt</span>' : '') + '</td>' +
           '<td class="num">' + c.sent + (c.audience ? ' <span class="sub">of ' + c.audience + '</span>' : '') + '</td>' +
           '<td class="num">' + (c.sent ? '<b>' + pct(c.replyRate) + '</b> <span class="sub">' + c.replied + ' of ' + c.sent + '</span>' : '—') + '</td>' +
           '<td class="num">' + (c.sent ? c.wins + ' <span class="sub">' + esc(c.winNoun) + '</span>' : '—') + '</td>' +
           '<td>' + esc(runs) + '<div class="sub">' + c.cap + '/day · ' + esc(c.days) + '</div></td><td>›</td></tr>';
-      }).join('') : '<tr><td colspan="8" class="empty">No campaigns yet.' + (isAdmin ? ' Press + New campaign.' : '') + '</td></tr>';
+      }).join('') : '<tr><td colspan="8" class="empty">' + (all.length ? 'Nothing matches.' + (!showDone && all.some(function (c) { return c.status === 'done'; }) ? ' Finished campaigns are hidden; tick Show finished.' : '') : 'No campaigns yet.' + (isAdmin ? ' Press + New campaign.' : '')) + '</td></tr>';
     }
+    on($('cpSearch'), 'input', function () { q = $('cpSearch').value.trim().toLowerCase(); render(all); });
+    on($('tagChips'), 'click', function (e) { var b = e.target.closest('[data-tag]'); if (!b) return; tag = tag === b.dataset.tag ? '' : b.dataset.tag; render(all); });
+    on($('showDone'), 'click', function (e) { e.preventDefault(); showDone = !showDone; $('showDone').classList.toggle('on', showDone); render(all); });
+    document.querySelector('thead').addEventListener('click', function (e) { var th = e.target.closest('th[data-sort]'); if (!th) return; if (sortKey === th.dataset.sort) sortDir = -sortDir; else { sortKey = th.dataset.sort; sortDir = th.dataset.sort === 'name' ? 1 : -1; } render(all); });
     function load() { api('listCampaigns').then(render).catch(fail); }
     on($('rows'), 'click', function (e) { var tr = e.target.closest('tr[data-id]'); if (tr) go('campaign', { id: tr.dataset.id }); });
 
@@ -69,7 +101,7 @@
         e.preventDefault();
         var f = e.target;
         var picked = function (box) { return Array.prototype.map.call(box.querySelectorAll('input:checked'), function (i) { return i.value; }); };
-        var payload = { name: f.name.value, type: f.type.value, startDate: f.startDate.value, lists: picked($('newLists')), stages: picked($('newStages')), versions: picked($('newLetters')) };
+        var payload = { name: f.name.value, type: f.type.value, startDate: f.startDate.value, tags: f.tags.value, lists: picked($('newLists')), stages: picked($('newStages')), versions: picked($('newLetters')) };
         var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Creating…');
         api('createCampaign', payload).then(function (r) { toast('Campaign created', 'success'); go('campaign', { id: r.id }); }).catch(fail).finally(function () { busy(btn, false, 'Create'); });
       });

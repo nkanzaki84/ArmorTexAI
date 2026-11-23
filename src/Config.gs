@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.9.0';
+const APP_VERSION    = '0.10.0';
 const APP_BUILD_DATE = '2026-11-22';
 
 // ===== Script Property keys =====
@@ -213,6 +213,7 @@ const HEADERS = {
     'Created By',
     'Notes',
     'Call After Days',   // the call plan: business days after the first email with no reply → Today's call list (blank = no call step); appended 2026-11-23
+    'Tags',              // free words, comma-separated, lowercase: the library's filing system (appended 2026-11-23)
   ],
   'Versions': [
     'Letter',            // A | B | C | E  (postcards: P1, P2, …)

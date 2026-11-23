@@ -43,6 +43,14 @@ function _campaignMemberTest_(cid) {
   };
 }
 
+/** Tags: lowercase words, trimmed, deduped; accepts an array or a comma/space string. */
+function _normTags_(v) {
+  const raw = Array.isArray(v) ? v : String(v || '').split(/[,\n]+/);
+  const out = [];
+  raw.map(function (t) { return String(t).trim().toLowerCase().replace(/\s+/g, '-'); }).filter(Boolean).forEach(function (t) { if (out.indexOf(t) === -1) out.push(t); });
+  return out;
+}
+
 function _csvList_(v) { return String(v || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
 
 /** Cap, days and follow-up gap for a campaign, falling back to Settings. */
@@ -126,7 +134,7 @@ function _campaignSummary_(c, partners, emails, events) {
     wins: wins, winNoun: (PARTNER_TYPE_PROFILES[String(c['Partner Type'])] || {}).winVerb || 'won',
     startDate: c['Start Date'] || '', firstSentAt: firstSent ? new Date(firstSent).toISOString() : '', lastSentAt: lastSent ? new Date(lastSent).toISOString() : '',
     cap: sending.cap, days: sending.daysLabel, followUpDays: sending.followUpDays, callAfterDays: sending.callAfterDays,
-    createdAt: c['Created At'] || '', notes: String(c['Notes'] || ''),
+    createdAt: c['Created At'] || '', notes: String(c['Notes'] || ''), tags: _normTags_(c['Tags']),
   };
 }
 
@@ -172,6 +180,7 @@ function createCampaign(payload) {
     'Follow Up Days': payload.followUpDays === undefined || payload.followUpDays === '' ? '' : parseInt(payload.followUpDays, 10),
     'Created At': new Date(), 'Created By': me.email, 'Notes': String(payload.notes || ''),
     'Call After Days': payload.callAfterDays === undefined ? DEFAULT_CALL_AFTER_DAYS : (String(payload.callAfterDays).trim() === '' ? '' : parseInt(payload.callAfterDays, 10)),
+    'Tags': _normTags_(payload.tags !== undefined ? payload.tags : [type]).join(','),
   };
   _appendRows_(TAB.CAMPAIGNS, [row]);
   // letters: copy wording from the newest campaign of this type that has any, else blank
@@ -232,6 +241,7 @@ function saveCampaign(id, payload) {
     else { const n = parseInt(payload.followUpDays, 10); if (isNaN(n) || n < 1) throw new Error('Follow-up must be at least 1 business day.'); row['Follow Up Days'] = n; }
   }
   if (payload.notes !== undefined) row['Notes'] = String(payload.notes || '');
+  if (payload.tags !== undefined) row['Tags'] = _normTags_(payload.tags).join(',');
   if (payload.status !== undefined) {
     const st = String(payload.status);
     if (CAMPAIGN_STATUSES.indexOf(st) === -1) throw new Error('Unknown status: ' + st);
@@ -245,6 +255,32 @@ function saveCampaign(id, payload) {
   }
   _updateRow_(TAB.CAMPAIGNS, c._row, row);
   return { ok: true };
+}
+
+/**
+ * Duplicate: a new draft with this campaign's wording (unlocked), plan, letters
+ * and tags, pointed at the lists you name (or none). No people come along;
+ * they are dealt fresh. Owner only. The original stays as the record.
+ */
+function duplicateCampaign(id, payload) {
+  _requireRole_(ADMIN_ROLES);
+  payload = payload || {};
+  const src = _campaignById_(id);
+  const name = String(payload.name || '').trim() || (String(src['Name'] || '') + ' (copy)');
+  const created = createCampaign({
+    name: name, type: src['Partner Type'], lists: payload.lists !== undefined ? payload.lists : [], stages: _csvList_(src['Stages']),
+    versions: _csvList_(src['Versions']), startDate: payload.startDate || '', sendingDays: src['Sending Days'] || '', dailyCap: src['Daily Cap'] === undefined ? '' : src['Daily Cap'],
+    followUpDays: src['Follow Up Days'] === undefined ? '' : src['Follow Up Days'], callAfterDays: src['Call After Days'] === undefined ? '' : src['Call After Days'],
+    notes: 'Copied from ' + src['Name'] + ' (' + src['ID'] + ').', tags: _normTags_(src['Tags']),
+  });
+  // wording: exactly this campaign's, not the type's latest
+  const mine = {};
+  _readTab_(TAB.VERSIONS).forEach(function (v) { if (String(v['Campaign ID']) === String(id)) mine[String(v['Letter'])] = v; });
+  _updateRows_(TAB.VERSIONS, _readTab_(TAB.VERSIONS).filter(function (v) { return String(v['Campaign ID']) === created.id && mine[String(v['Letter'])]; }).map(function (v) {
+    const s = mine[String(v['Letter'])];
+    return { rowIndex: v._row, row: { 'Angle': s['Angle'] || '', 'Subject': s['Subject'] || '', 'Body': s['Body'] || '', 'Follow Up Body': s['Follow Up Body'] || '', 'Locked': '' } };
+  }));
+  return created;
 }
 
 // ============================================================
