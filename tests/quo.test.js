@@ -179,7 +179,7 @@ test('recording, transcript, summary and voicemail update the same call row, in 
   const ev = evs[0];
   assert.equal(ev.Outcome, 'talked'); assert.equal(String(ev.Duration), '61');
   assert.equal(ev['Recording URL'], 'https://rec.example.com/RE1.mp3');
-  assert.equal(ev.Transcript, 'Tanner Fought: Hi Terri, Tanner with ArmorTex.\n+19035550123: Oh hi, yes send the sample.');
+  assert.equal(ev.Transcript, 'Tanner Fought: Hi Terri, Tanner with ArmorTex.\nTerri Searcy: Oh hi, yes send the sample.', 'the other side is named when the number is known');
   assert.equal(ev.Snippet, 'Terri wants the sample report. Next: Email the sample today.');
   // a voicemail we left on an unanswered call
   state.calls.AC3 = { id: 'AC3', direction: 'outgoing', status: 'no-answer', duration: 0, participants: ['+19035550124'], createdAt: '2026-11-24T14:10:00Z', completedAt: '2026-11-24T14:10:40Z' };

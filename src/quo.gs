@@ -239,7 +239,7 @@ function _quoHandleEvent_(envelope, now) {
       if (!existing) Object.assign(patch, _quoCallRow_(call, res, phone, by, now), rec ? { 'Recording URL': rec.url } : {});
     } else if (type === 'call.transcript.completed') {
       if (res.processingStatus && res.processingStatus !== 'completed') return { action: 'ignored', reason: 'transcript ' + res.processingStatus };
-      patch['Transcript'] = _quoDialogueText_(res.dialogue, users);
+      patch['Transcript'] = _quoDialogueText_(res.dialogue, users, _quoNameForPhone_(phone));
       if (!existing) Object.assign(patch, _quoCallRow_(call, res, phone, by, now), { 'Transcript': patch['Transcript'] });
     } else if (type === 'call.summary.completed') {
       if (res.processingStatus && res.processingStatus !== 'completed') return { action: 'ignored', reason: 'summary ' + res.processingStatus };
@@ -575,9 +575,17 @@ function _quoDate_(iso, fallback) {
   return d && !isNaN(d.getTime()) ? d : (fallback || new Date());
 }
 
-function _quoDialogueText_(dialogue, users) {
+/** The partner's (or home's) name for a phone number, else '' . */
+function _quoNameForPhone_(digits) {
+  const m = digits ? _quoMatchByPhone_(digits) : null;
+  if (!m) return '';
+  const row = _byId_(m.column === 'Partner ID' ? TAB.PARTNERS : TAB.HOMES, m.id);
+  return row ? String(row['Name'] || row['Owner Name'] || '') : '';
+}
+
+function _quoDialogueText_(dialogue, users, otherName) {
   return (dialogue || []).map(function (line) {
-    const who = line.userId ? ((users[line.userId] && (users[line.userId].name || users[line.userId].email)) || 'us') : (line.identifier || 'them');
+    const who = line.userId ? ((users[line.userId] && (users[line.userId].name || users[line.userId].email)) || 'us') : (otherName || line.identifier || 'them');
     return who + ': ' + String(line.content || '');
   }).join('\n').slice(0, 20000);
 }
