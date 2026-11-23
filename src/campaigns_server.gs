@@ -36,11 +36,36 @@ function _defaultCampaignId_() {
 function _campaignMemberTest_(cid) {
   cid = String(cid);
   const isDefault = cid === String((_readTab_(TAB.CAMPAIGNS)[0] || {})['ID']);
+  // history counts: anyone this campaign emailed stays in its numbers even after they moved on (2026-11-23)
+  const emailedIn = {};
+  _readTab_(TAB.EMAILS).forEach(function (e) { if (String(e['Campaign ID']) === cid && e['Status'] !== 'cancelled' && e['Sent At']) emailedIn[e['Partner ID']] = true; });
   return function (p) {
+    if (emailedIn[p['ID']]) return true;
     const own = String(p['Campaign ID'] || '').trim();
     if (own) return own === cid;
     return isDefault && !!String(p['Version'] || '').trim();
   };
+}
+
+/**
+ * Everything the audience rules need, read once per call: which campaigns are still open,
+ * who was emailed / replied in which campaign, when each person was last emailed.
+ */
+function _campaignCtx_() {
+  const ctx = { open: {}, emailedIn: {}, repliedIn: {}, lastSent: {}, reengageDays: parseInt(_setting_(SETTING.REENGAGE_DAYS), 10) };
+  if (isNaN(ctx.reengageDays)) ctx.reengageDays = 90;
+  _readTab_(TAB.CAMPAIGNS).forEach(function (c) { ctx.open[String(c['ID'])] = String(c['Status']) !== 'done'; });
+  _readTab_(TAB.EMAILS).forEach(function (e) {
+    if (e['Status'] === 'cancelled' || !e['Sent At']) return;
+    const cid = String(e['Campaign ID'] || ''), pid = String(e['Partner ID']);
+    const t = new Date(e['Sent At']).getTime();
+    if (e['Step'] === 'first' || e['Step'] === 'followup') { if (!ctx.lastSent[pid] || ctx.lastSent[pid] < t) ctx.lastSent[pid] = t; }
+    if (cid) {
+      (ctx.emailedIn[cid] = ctx.emailedIn[cid] || {})[pid] = true;
+      if (e['Status'] === 'replied') (ctx.repliedIn[cid] = ctx.repliedIn[cid] || {})[pid] = true;
+    }
+  });
+  return ctx;
 }
 
 /** Tags: lowercase words, trimmed, deduped; accepts an array or a comma/space string. */
@@ -70,18 +95,26 @@ function _campaignSending_(c) {
     daysLabel: daysRaw,
     followUpDays: isNaN(follow) ? 4 : follow,
     callAfterDays: String(c['Call After Days'] || '').trim() === '' ? 0 : Math.max(0, parseInt(c['Call After Days'], 10) || 0),
+    visitAfterDays: String(c['Visit After Days'] || '').trim() === '' ? 0 : Math.max(0, parseInt(c['Visit After Days'], 10) || 0),
     inherited: { cap: String(c['Daily Cap'] || '').trim() === '', days: String(c['Sending Days'] || '').trim() === '', followUpDays: String(c['Follow Up Days'] || '').trim() === '' },
   };
 }
 
 /** Does this partner match the campaign's audience filters? (Exclusions are judged separately.) */
-function _campaignMatches_(c, p) {
+function _campaignMatches_(c, p, ctx) {
   if (String(p['Type']).toLowerCase() !== String(c['Partner Type']).toLowerCase()) return false;
-  // Lists: curated list ids (L-3) or import-file names; a person needs to be on any one of them
+  // Lists: curated list ids (L-3), import-file names, or an earlier campaign (CP-1 = its people who never replied);
+  // a person needs to be on any one of them
   const lists = _csvList_(c['Lists']);
   if (lists.length) {
+    ctx = ctx || _campaignCtx_();
     const mine = _partnerListIds_(p);
-    const hit = lists.some(function (l) { return /^L-\d+$/.test(l) ? mine.indexOf(l) !== -1 : l === String(p['Source List'] || '').trim(); });
+    const pid = String(p['ID']);
+    const hit = lists.some(function (l) {
+      if (/^L-\d+$/.test(l)) return mine.indexOf(l) !== -1;
+      if (/^CP-\d+$/.test(l)) return l !== String(c['ID']) && !!(ctx.emailedIn[l] || {})[pid] && !(ctx.repliedIn[l] || {})[pid];
+      return l === String(p['Source List'] || '').trim();
+    });
     if (!hit) return false;
   }
   const stages = _csvList_(c['Stages']);
@@ -90,12 +123,19 @@ function _campaignMatches_(c, p) {
 }
 
 /** Why a matching partner is left out of the email campaign, or '' if they can go in. */
-function _campaignExclusion_(c, p, dnc) {
-  if (String(p['Campaign ID'] || '').trim() && String(p['Campaign ID']) !== String(c['ID'])) return 'other campaign';
+function _campaignExclusion_(c, p, dnc, ctx) {
+  ctx = ctx || _campaignCtx_();
+  const own = String(p['Campaign ID'] || '').trim();
+  // tied to a campaign only while it is open; a finished campaign releases its people (Brian, 2026-11-23)
+  if (own && own !== String(c['ID']) && ctx.open[own] !== false) return 'in another campaign';
   if (String(p['Stage']) === 'Partner' || p['Partner Since']) return 'in the book';
   if (_yes_(p['Skip Email Test'])) return 'emailed by hand';
   if (_yes_(p['Do Not Contact']) || dnc[_normEmail_(p['Email'])]) return 'do-not-contact';
+  if (COLD_RESPONSES.indexOf(String(p['Response'] || '')) !== -1) return String(p['Response']) === 'Bounced' ? 'bounced (fix the email first)' : 'said no';
   if (!_normEmail_(p['Email'])) return 'no email';
+  // cooling-off: nobody gets a new pitch within N days of the last one
+  const last = ctx.lastSent[String(p['ID'])];
+  if (last && ctx.reengageDays > 0 && (Date.now() - last) < ctx.reengageDays * 86400000) return 'emailed in the last ' + ctx.reengageDays + ' days';
   return '';
 }
 
@@ -132,13 +172,14 @@ function _campaignSummary_(c, partners, emails, events) {
   return {
     id: id, name: String(c['Name'] || ''), status: String(c['Status'] || 'draft'), type: String(c['Partner Type'] || ''),
     typeLabel: (PARTNER_TYPE_PROFILES[String(c['Partner Type'])] || {}).plural || String(c['Partner Type'] || ''),
+    typeKey: String(c['Partner Type'] || ''),
     versions: _csvList_(c['Versions']), lists: _csvList_(c['Lists']), stages: _csvList_(c['Stages']),
-    listNames: _csvList_(c['Lists']).map(function (l) { const row = /^L-\d+$/.test(l) ? _byId_(TAB.LISTS, l) : null; return row ? String(row['Name']) : l; }),
+    listNames: _csvList_(c['Lists']).map(function (l) { const row = /^L-\d+$/.test(l) ? _byId_(TAB.LISTS, l) : null; if (row) return String(row['Name']); const prev = /^CP-\d+$/.test(l) ? _byId_(TAB.CAMPAIGNS, l) : null; return prev ? 'no reply to “' + String(prev['Name']) + '”' : l; }),
     audience: members.length, dealt: members.filter(function (p) { return String(p['Version'] || '').trim(); }).length,
     sent: sentFirst.length, replied: Object.keys(replied).length, replyRate: sentFirst.length ? Object.keys(replied).length / sentFirst.length : 0,
     wins: wins, winNoun: (PARTNER_TYPE_PROFILES[String(c['Partner Type'])] || {}).winVerb || 'won',
     startDate: c['Start Date'] || '', firstSentAt: firstSent ? new Date(firstSent).toISOString() : '', lastSentAt: lastSent ? new Date(lastSent).toISOString() : '',
-    cap: sending.cap, days: sending.daysLabel, followUpDays: sending.followUpDays, callAfterDays: sending.callAfterDays,
+    cap: sending.cap, days: sending.daysLabel, followUpDays: sending.followUpDays, callAfterDays: sending.callAfterDays, visitAfterDays: sending.visitAfterDays,
     createdAt: c['Created At'] || '', notes: String(c['Notes'] || ''), tags: _normTags_(c['Tags']),
   };
 }
@@ -153,14 +194,16 @@ function getCampaign(id) {
   const summary = _campaignSummary_(c, partners, emails, events);
   return {
     campaign: summary,
-    raw: { 'Start Date': c['Start Date'] || '', 'Sending Days': c['Sending Days'] || '', 'Daily Cap': c['Daily Cap'] === undefined ? '' : c['Daily Cap'], 'Follow Up Days': c['Follow Up Days'] === undefined ? '' : c['Follow Up Days'], 'Call After Days': c['Call After Days'] === undefined ? '' : c['Call After Days'] },
+    raw: { 'Start Date': c['Start Date'] || '', 'Sending Days': c['Sending Days'] || '', 'Daily Cap': c['Daily Cap'] === undefined ? '' : c['Daily Cap'], 'Follow Up Days': c['Follow Up Days'] === undefined ? '' : c['Follow Up Days'], 'Call After Days': c['Call After Days'] === undefined ? '' : c['Call After Days'], 'Visit After Days': c['Visit After Days'] === undefined ? '' : c['Visit After Days'] },
     sending: _campaignSending_(c),
     versions: listVersions(id),
     stats: getCampaignStats(id),
     audience: campaignAudience(id),
     plan: _campaignPlan_(c, partners, emails, new Date()),
     lists: listSourceLists(),
+    reengageDays: _campaignCtx_().reengageDays,
     curated: listLists(),
+    earlier: _readTab_(TAB.CAMPAIGNS).filter(function (x) { return String(x['ID']) !== String(id) && String(x['Partner Type']) === String(c['Partner Type']); }).map(function (x) { return { id: String(x['ID']), name: String(x['Name']), status: String(x['Status']), noReply: _campaignNoReplyCount_(String(x['ID'])) }; }),
     stageOptions: ['Prospect', 'Contacted', 'Replied'],
     letterOptions: EMAIL_VERSIONS,
   };
@@ -185,6 +228,7 @@ function createCampaign(payload) {
     'Follow Up Days': payload.followUpDays === undefined || payload.followUpDays === '' ? '' : parseInt(payload.followUpDays, 10),
     'Created At': new Date(), 'Created By': me.email, 'Notes': String(payload.notes || ''),
     'Call After Days': payload.callAfterDays === undefined ? DEFAULT_CALL_AFTER_DAYS : (String(payload.callAfterDays).trim() === '' ? '' : parseInt(payload.callAfterDays, 10)),
+    'Visit After Days': payload.visitAfterDays === undefined || String(payload.visitAfterDays).trim() === '' ? '' : parseInt(payload.visitAfterDays, 10),
     'Tags': _normTags_(payload.tags !== undefined ? payload.tags : [type]).join(','),
   };
   _appendRows_(TAB.CAMPAIGNS, [row]);
@@ -237,6 +281,10 @@ function saveCampaign(id, payload) {
       row['Daily Cap'] = n;
     }
   }
+  if (payload.visitAfterDays !== undefined) {
+    if (String(payload.visitAfterDays).trim() === '') row['Visit After Days'] = '';
+    else { const n = parseInt(payload.visitAfterDays, 10); if (isNaN(n) || n < 0) throw new Error('Visit step must be a whole number of business days.'); row['Visit After Days'] = n; }
+  }
   if (payload.callAfterDays !== undefined) {
     if (String(payload.callAfterDays).trim() === '') row['Call After Days'] = '';
     else { const n = parseInt(payload.callAfterDays, 10); if (isNaN(n) || n < 0) throw new Error('Call plan must be a whole number of business days (0 = call right after the email).'); row['Call After Days'] = n; }
@@ -275,7 +323,7 @@ function duplicateCampaign(id, payload) {
   const created = createCampaign({
     name: name, type: src['Partner Type'], lists: payload.lists !== undefined ? payload.lists : [], stages: _csvList_(src['Stages']),
     versions: _csvList_(src['Versions']), startDate: payload.startDate || '', sendingDays: src['Sending Days'] || '', dailyCap: src['Daily Cap'] === undefined ? '' : src['Daily Cap'],
-    followUpDays: src['Follow Up Days'] === undefined ? '' : src['Follow Up Days'], callAfterDays: src['Call After Days'] === undefined ? '' : src['Call After Days'],
+    followUpDays: src['Follow Up Days'] === undefined ? '' : src['Follow Up Days'], callAfterDays: src['Call After Days'] === undefined ? '' : src['Call After Days'], visitAfterDays: src['Visit After Days'] === undefined ? '' : src['Visit After Days'],
     notes: 'Copied from ' + src['Name'] + ' (' + src['ID'] + ').', tags: _normTags_(src['Tags']),
   });
   // wording: exactly this campaign's, not the type's latest
@@ -303,10 +351,11 @@ function campaignAudience(id) {
   const excluded = {};
   let matching = 0, undealt = 0;
   const isMember = _campaignMemberTest_(id);
+  const ctx = _campaignCtx_();
   partners.forEach(function (p) {
     const inIt = isMember(p);
-    if (!inIt && !_campaignMatches_(c, p)) return;
-    const why = inIt ? '' : _campaignExclusion_(c, p, dnc);
+    if (!inIt && !_campaignMatches_(c, p, ctx)) return;
+    const why = inIt ? '' : _campaignExclusion_(c, p, dnc, ctx);
     if (why) { excluded[why] = (excluded[why] || 0) + 1; return; }
     matching++;
     if (inIt) members.push({ ID: p['ID'], Name: p['Name'], Company: p['Company'], Area: p['Area'], Email: p['Email'], Stage: p['Stage'], Rep: p['Rep'], Version: p['Version'], 'Source List': p['Source List'] });
@@ -332,9 +381,10 @@ function dealLetters(id, opts) {
   const dnc = {};
   _doNotContactEmails_().forEach(function (e) { dnc[e] = true; });
   const isMember = _campaignMemberTest_(id);
+  const ctx = _campaignCtx_();
   const todo = _readTab_(TAB.PARTNERS).filter(function (p) {
     if (isMember(p)) return !String(p['Version'] || '').trim();   // already in, just needs a letter
-    return _campaignMatches_(c, p) && !_campaignExclusion_(c, p, dnc);
+    return _campaignMatches_(c, p, ctx) && !_campaignExclusion_(c, p, dnc, ctx);
   });
   const groups = {};
   todo.forEach(function (p) { const key = String(p['Company'] || '').trim().toLowerCase() || ('solo:' + p['ID']); (groups[key] = groups[key] || []).push(p); });
@@ -405,7 +455,7 @@ function _campaignPlan_(c, partners, emails, now) {
   let queuedFollowUps = 0;
   emails.forEach(function (e) {
     if (e['Status'] === 'cancelled') return;
-    if (String(e['Campaign ID']) === id || memberIds[e['Partner ID']]) {
+    if (String(e['Campaign ID']) === id || (!String(e['Campaign ID'] || '').trim() && memberIds[e['Partner ID']])) {
       if (e['Step'] === 'first') emailed[e['Partner ID']] = true;
       if (e['Step'] === 'followup' && e['Status'] === 'queued') queuedFollowUps++;
     }
@@ -504,4 +554,15 @@ function createTestCampaign(emailsText) {
   let running = true, why = '';
   try { saveCampaign(id, { status: 'running' }); } catch (err) { running = false; why = err.message; }
   return { campaignId: id, added: imported.added, existed: imported.skipped.duplicate, dealt: dealt.dealt, running: running, problem: why };
+}
+
+/** How many people a campaign emailed who never replied in it (the pool for the next part of a series). */
+function _campaignNoReplyCount_(cid) {
+  const emailed = {}, replied = {};
+  _readTab_(TAB.EMAILS).forEach(function (e) {
+    if (String(e['Campaign ID']) !== String(cid) || e['Status'] === 'cancelled' || !e['Sent At']) return;
+    emailed[e['Partner ID']] = true;
+    if (e['Status'] === 'replied') replied[e['Partner ID']] = true;
+  });
+  return Object.keys(emailed).filter(function (pid) { return !replied[pid]; }).length;
 }

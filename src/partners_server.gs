@@ -103,7 +103,8 @@ function importPartners(csvText, opts) {
   const ids = _nextId_(TAB.PARTNERS, rows.length);
   rows.forEach(function (row, i) { row['ID'] = ids[i]; });
   _appendRows_(TAB.PARTNERS, rows);
-  return { added: rows.length, skipped: skipped, columns: parsed.columns, queuedForCalls: queued, rep: rep };
+  const offices = _syncOffices_(me);
+  return { added: rows.length, skipped: skipped, columns: parsed.columns, queuedForCalls: queued, rep: rep, officesCreated: offices.created };
 }
 
 /** "sent 11/3" → a Date (this year, or last year if that would be in the future); "sent" alone → `now`. null if not hand-sent. */
@@ -343,7 +344,15 @@ function getPartner(id) {
     jobValue: inRefs.reduce(function (sum, r) { return sum + (Number(r['Contract Amount']) || Number(r['Job Value']) || 0); }, 0),
     won: WIN_RESPONSES.indexOf(String(p['Response'])) !== -1 || inRefs.length > 0,
   };
-  return { partner: p, tier: _tierOf_(p), emails: emails, events: events, referrals: referrals, metrics: metrics, profile: PARTNER_TYPE_PROFILES[String(p['Type'])] || null };
+  let office = null;
+  if (String(p['Office ID'] || '').trim()) {
+    const o = _byId_(TAB.OFFICES, p['Office ID']);
+    if (o) {
+      const v = (_visitsByOffice_()[String(o['ID'])] || [])[0];
+      office = { id: String(o['ID']), name: String(o['Name'] || ''), agents: _readTab_(TAB.PARTNERS).filter(function (x) { return String(x['Office ID']) === String(o['ID']); }).length, lastVisit: v ? v['At'] : (o['Last Visit'] || '') };
+    }
+  }
+  return { partner: p, tier: _tierOf_(p), office: office, emails: emails, events: events, referrals: referrals, metrics: metrics, profile: PARTNER_TYPE_PROFILES[String(p['Type'])] || null };
 }
 
 /** Add a partner by hand. */
@@ -372,6 +381,7 @@ function addPartner(payload) {
   if (row['Rep'] && !_isStaffEmail_(row['Rep'])) throw new Error('Not on the team: ' + row['Rep']);
   if (!row['Name']) throw new Error('Name is required.');
   _appendRows_(TAB.PARTNERS, [row]);
+  _syncOffices_(me);
   _quoPushContactQuietly_(row['ID']);
   return row['ID'];
 }
@@ -426,6 +436,7 @@ function savePartner(id, payload) {
     });
   }
   _updateRow_(TAB.PARTNERS, idx, row);
+  if (row['Company'] !== undefined) { _updateRow_(TAB.PARTNERS, idx, { 'Office ID': '' }); _syncOffices_(); }   // a new company name re-matches the office
   if (row['Name'] !== undefined || row['Company'] !== undefined || row['Phone'] !== undefined || row['Email'] !== undefined) _quoPushContactQuietly_(id);
   return { ok: true };
 }

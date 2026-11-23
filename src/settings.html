@@ -11,6 +11,7 @@
       <div class="f"><label>Sending hour (Central, 24h)</label><input name="sending_hour" type="number" min="0" max="23"></div>
       <div class="f"><label>Pause sending</label><select name="pause_sending"><option>No</option><option>Yes</option></select></div>
       <div class="f"><label>Follow-up after (business days)</label><input name="follow_up_days" type="number" min="1" max="30"></div>
+      <div class="f"><label>Cooling-off before a new campaign (days)</label><input name="reengage_days" type="number" min="0" max="365"><span class="hint">Nobody is put in a new campaign within this many days of their last email. 0 = none.</span></div>
       <div class="f"><label>Knock list opens (days after mailing)</label><input name="knock_delay_days" type="number" min="0" max="60"></div>
     </div>
     <div class="f"><label>Business street address (required in every email)</label><input name="business_address" placeholder="123 Main St, Longview, TX 75601"></div>

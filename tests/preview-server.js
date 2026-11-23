@@ -63,6 +63,13 @@ function seed(app) {
   app.addMatchingToList(l1, { type: 'realtor', sourceList: 'realtors-gregg-nov-2026' });
   const l2 = app.createList({ name: 'Met at the TAR mixer', notes: 'Tanner shook hands with these on Nov 12' }).id;
   app.addToList(l2, app.$rows('Partners').filter(p => p.Type === 'realtor').slice(3, 15).map(p => p.ID));
+  // offices: the brokerages behind the seeded people, one visited, one with a visit step due
+  (function () {
+    const offices = app.listOffices();
+    const kw = offices.find(o => /keller/i.test(o.name));
+    if (kw) { app.saveOffice(kw.id, { address: '5521 Old Jacksonville Hwy, Tyler, TX', manager: 'Pat Delgado', phone: '9035550199' }); app.logOfficeVisit(kw.id, { outcome: 'left_samples', met: 'Pat', notes: 'Sales meeting Thursdays 9am; bring 10 reports.', at: new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10) }); }
+    app.saveCampaign('CP-1', { visitAfterDays: 2 });
+  })();
   // content library
   app.createContent({ title: 'Judson Rd before/after', kind: 'photo', link: 'https://drive.google.com/file/d/example1/view', text: 'Twenty-year-old three-tab replaced with architectural shingle, one day.', tags: ['before-after', 'tyler'] });
   app.createContent({ title: 'Hail check caption', kind: 'caption', text: 'Storm came through last night. Give it a week, then look for granules in the gutters. A roof check is free; message us.', tags: ['hail', 'storm'] });

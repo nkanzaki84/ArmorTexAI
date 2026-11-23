@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.15.0';
+const APP_VERSION    = '0.16.0';
 const APP_BUILD_DATE = '2026-11-23';
 
 // ===== Script Property keys =====
@@ -45,6 +45,7 @@ const TAB = {
   LISTS:     'Lists',
   SOCIAL:    'Social Posts',
   CONTENT:   'Content',
+  OFFICES:   'Offices',
   REFERRALS: 'Referrals',
   VERSIONS:  'Versions',
   SETTINGS:  'Settings',
@@ -64,6 +65,7 @@ const ID_PREFIX = {
   'Lists':     'L',
   'Social Posts': 'SP',
   'Content':   'CT',
+  'Offices':   'OF',
 };
 
 // ===== Column headers per tab. Order matters for new tabs; existing tabs are
@@ -105,6 +107,7 @@ const HEADERS = {
     'Quo Contact ID',        // the contact Quo holds for this person (pushed from here; the app is the source of truth)
     'Campaign ID',           // the email campaign this person was dealt into (one at a time)
     'Lists',                 // curated lists this person is on: list IDs, comma-separated (L-1,L-4)
+    'Office ID',             // the brokerage/office this person works out of (OF-3), matched from Company; appended 2026-11-23
   ],
   'Homes': [
     'ID',
@@ -171,6 +174,7 @@ const HEADERS = {
     'AI Verdict',        // reply events: yes | no | unclear — did they say yes to the sample report?
     'AI Reason',         // the model's one-line reason (or error: …)
     'AI Action',         // suggested | sent | already sent | dismissed by … | error: …
+    'Office ID',         // office visits (Kind = visit): which office; appended 2026-11-23
   ],
   'Referrals': [
     'ID',
@@ -198,6 +202,20 @@ const HEADERS = {
     'Paid At',
     'Paid Amount',
     'Notes',
+  ],
+  'Offices': [         // brokerages / offices (2026-11-23): the second lens on prospects; one visit touches every agent there
+    'ID',                // OF-1
+    'Name',
+    'Aliases',           // other spellings of the company that map here, comma-separated (merged offices, import variants)
+    'Address',
+    'Phone',
+    'Manager',
+    'Notes',
+    'Last Visit',
+    'Created At',
+    'Created By',
+    'Updated At',
+    'Updated By',
   ],
   'Content': [         // the content library (2026-11-23): links + text + tags; files stay in Drive/Canva
     'ID',                // CT-1
@@ -254,6 +272,7 @@ const HEADERS = {
     'Notes',
     'Call After Days',   // the call plan: business days after the first email with no reply → Today's call list (blank = no call step); appended 2026-11-23
     'Tags',              // free words, comma-separated, lowercase: the library's filing system (appended 2026-11-23)
+    'Visit After Days',  // the visit step: business days after the first email → the office lands on Today's Visits list (blank = no visit step); appended 2026-11-23
   ],
   'Versions': [
     'Letter',            // A | B | C | E  (postcards: P1, P2, …)
@@ -392,7 +411,8 @@ const CAMPAIGN_STATUSES = ['draft', 'running', 'paused', 'done'];
 const DEFAULT_CALL_AFTER_DAYS = 7;   // a new campaign's call plan: call anyone who hasn't replied 7 business days after the first email
 const DEFAULT_CAMPAIGN = { Name: 'Realtor email test', 'Partner Type': 'realtor', Versions: 'A', Status: 'running' };   // seeded once; the one campaign the app ran before campaigns existed
 const EMAIL_STATUSES = ['queued', 'sent', 'replied', 'bounced', 'cancelled'];
-const EVENT_KINDS = ['reply', 'bounce', 'opt-out', 'call', 'text', 'voicemail', 'postcard', 'knock', 'note'];
+const EVENT_KINDS = ['reply', 'bounce', 'opt-out', 'call', 'text', 'voicemail', 'postcard', 'knock', 'note', 'visit'];
+const VISIT_OUTCOMES = ['met_manager', 'left_samples', 'sales_meeting', 'nobody', 'other'];   // office visits
 const CALL_OUTCOMES = ['talked', 'voicemail', 'no_answer', 'missed'];   // Quo maps to these; a person may type anything
 const KNOCK_OUTCOMES = ['no_answer', 'not_interested', 'talked', 'booked', 'posted_skipped'];
 
@@ -403,6 +423,7 @@ const SETTING = {
   SENDING_HOUR:     'sending_hour',       // Central time, 24h
   PAUSE_SENDING:    'pause_sending',      // Yes | No
   FOLLOW_UP_DAYS:   'follow_up_days',     // business days after first email
+  REENGAGE_DAYS:    'reengage_days',      // calendar days after someone's last email before a new campaign may include them (2026-11-23)
   KNOCK_DELAY_DAYS: 'knock_delay_days',   // days after a mailing before the knock list opens
   SENDER_NAME:      'sender_name',        // display name on outgoing email
   SENDER_SIGNATURE: 'sender_signature',
@@ -449,6 +470,7 @@ const PROP_QUO_LAST_ERROR = 'QUO_LAST_ERROR';
 
 const SETTING_DEFAULTS = {
   daily_cap:            '50',
+  reengage_days:        '90',
   sending_days:         'Tue,Wed,Thu',
   sending_hour:         '9',
   pause_sending:        'No',
@@ -483,6 +505,7 @@ const PAGE_CATALOG = [
   { key: 'today',     label: 'Today' },
   { key: 'calendar',  label: 'Calendar' },    // month view of everything with a date
   { key: 'prospects', label: 'Prospects' },   // cold: never answered (Stage Prospect/Contacted, or a no)
+  { key: 'offices',   label: 'Offices' },     // brokerages: the second lens on prospects; page=office&id=OF-1 is one office
   { key: 'marketing', label: 'Marketing' },   // warm: replied, being worked (Stage Replied)
   { key: 'partners',  label: 'Partners' },    // hot: the book (Stage Partner)
   { key: 'lists',     label: 'Lists' },       // curated groups of people, picked by hand or by filter; campaigns point at them
@@ -494,9 +517,9 @@ const PAGE_CATALOG = [
 ];
 
 const DEFAULT_ROLE_ACCESS = {
-  owner:    ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'content', 'settings'],
-  sales:    ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'content'],
-  viewonly: ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'content'],
+  owner:    ['today', 'calendar', 'prospects', 'offices', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'content', 'settings'],
+  sales:    ['today', 'calendar', 'prospects', 'offices', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'content'],
+  viewonly: ['today', 'calendar', 'prospects', 'offices', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'content'],
 };
 
 const WRITE_ROLES = ['owner', 'sales'];   // who may change data

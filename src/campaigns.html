@@ -31,6 +31,7 @@
       </div>
       <div class="f"><label>Tags</label><div id="newTags"></div><span class="sub">Words to find it by later. Type one and press Enter.</span></div>
       <div class="f"><label>Lists</label><div class="row" id="newLists"></div><span class="sub">Ticked lists add up. None ticked = everyone of this type. The Partners book, hand-emailed and opted-out people are never emailed.</span></div>
+      <div class="f" id="newEarlierWrap" style="display:none"><label>Or: people from an earlier campaign who never replied</label><div class="row" id="newEarlier"></div><span class="sub">Part 2 of a series. Same people, new angle, after the cooling-off.</span></div>
       <div id="newStages" style="display:none"></div>
       <div id="newLetters" style="display:none"></div>
       <div class="sub">The email text starts as a copy of your last campaign of this type; edit it on the Email tab before sending.</div>
@@ -95,6 +96,14 @@
         $('newType').innerHTML = Object.keys(profiles).map(function (k) { return '<option value="' + esc(k) + '">' + esc(profiles[k].plural || profiles[k].label) + '</option>'; }).join('');
         chips($('newStages'), ['Prospect', 'Contacted', 'Replied'].map(function (s) { return { value: s, label: s }; }), []);
         chips($('newLetters'), ['A', 'B', 'C', 'E'].map(function (l) { return { value: l, label: l }; }), ['A']);
+        var fillEarlier = function () {
+          var type = $('newType').value;
+          var prev = all.filter(function (c) { return c.typeKey === type && c.sent > 0; });
+          $('newEarlierWrap').style.display = prev.length ? '' : 'none';
+          chips($('newEarlier'), prev.map(function (c) { return { value: c.id, label: c.name + ' · ' + (c.sent - c.replied) + ' no reply' }; }), []);
+        };
+        $('newType').onchange = fillEarlier;
+        setTimeout(fillEarlier, 0);
         api('listLists').then(function (ls) { lists = ls; chips($('newLists'), ls.map(function (l) { return { value: l.id, label: l.name + ' · ' + l.count }; }), []); if (!ls.length) $('newLists').innerHTML = '<span class="sub">No lists yet: make one under Lists first, or leave this blank for everyone of the type.</span>'; }).catch(fail);
         $('newModal').classList.add('show');
       });
@@ -104,7 +113,7 @@
         e.preventDefault();
         var f = e.target;
         var picked = function (box) { return Array.prototype.map.call(box.querySelectorAll('input:checked'), function (i) { return i.value; }); };
-        var payload = { name: f.name.value, type: f.type.value, startDate: f.startDate.value, tags: newTags ? newTags.get() : [], lists: picked($('newLists')), stages: picked($('newStages')), versions: picked($('newLetters')) };
+        var payload = { name: f.name.value, type: f.type.value, startDate: f.startDate.value, tags: newTags ? newTags.get() : [], lists: picked($('newLists')).concat(picked($('newEarlier'))), stages: picked($('newStages')), versions: picked($('newLetters')) };
         var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Creating…');
         api('createCampaign', payload).then(function (r) { toast('Campaign created', 'success'); go('campaign', { id: r.id }); }).catch(fail).finally(function () { busy(btn, false, 'Create'); });
       });

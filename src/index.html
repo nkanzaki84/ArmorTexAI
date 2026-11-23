@@ -59,6 +59,7 @@
       <a href="<?= appUrl ?>?page=homes&side=homes" class="<?= (page === 'homes' || page === 'home') ? 'active' : '' ?>"><i>🏠</i><span>Homes</span></a>
       <? } else { ?>
       <a href="<?= appUrl ?>?page=prospects&side=partners" class="<?= (page === 'prospects' || (page === 'partner' && section === 'prospects')) ? 'active' : '' ?>" title="Cold: never answered"><i>❄️</i><span>Prospects</span></a>
+      <a href="<?= appUrl ?>?page=offices&side=partners" class="<?= (page === 'offices' || page === 'office') ? 'active' : '' ?>" title="Brokerages: one visit touches every agent there"><i>🏢</i><span>Offices</span></a>
       <a href="<?= appUrl ?>?page=marketing&side=partners" class="<?= (page === 'marketing' || (page === 'partner' && section === 'marketing')) ? 'active' : '' ?>" title="Warm: replied, being worked"><i>🌤️</i><span>Marketing</span></a>
       <a href="<?= appUrl ?>?page=partners&side=partners" class="<?= (page === 'partners' || (page === 'partner' && section === 'partners')) ? 'active' : '' ?>"><i>🤝</i><span>Partners</span></a>
       <a href="<?= appUrl ?>?page=lists&side=partners" class="<?= page === 'lists' ? 'active' : '' ?>"><i>📋</i><span>Lists</span></a>
@@ -96,6 +97,8 @@
     <? } else if (page === 'marketing') { ?><?!= include('partners', { section: 'marketing', appUrl: appUrl }) ?>
     <? } else if (page === 'prospects') { ?><?!= include('partners', { section: 'prospects', appUrl: appUrl }) ?>
     <? } else if (page === 'partner') { ?><?!= include('partner', { section: section }) ?>
+    <? } else if (page === 'offices') { ?><?!= include('offices') ?>
+    <? } else if (page === 'office') { ?><?!= include('office') ?>
     <? } else if (page === 'homes' || page === 'home') { ?><?!= include('homes') ?>
     <? } else if (page === 'lists') { ?><?!= include('lists') ?>
     <? } else if (page === 'social') { ?><?!= include('social') ?>

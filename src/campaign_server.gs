@@ -108,8 +108,6 @@ function buildTodayBatch(opts) {
   partners.forEach(function (p) { byId[p['ID']] = p; });
   const dnc = {};
   _doNotContactEmails_().forEach(function (e) { dnc[e] = true; });
-  const emailed = {};
-  emails.forEach(function (e) { if (e['Status'] !== 'cancelled') emailed[e['Partner ID']] = true; });
   const versionRows = _readTab_(TAB.VERSIONS);
 
   const campaigns = _readTab_(TAB.CAMPAIGNS).filter(function (c) { return String(c['Status']) === 'running' && (!opts.campaignId || String(c['ID']) === String(opts.campaignId)); });
@@ -127,6 +125,8 @@ function buildTodayBatch(opts) {
     partners.forEach(function (p) { if (isMember(p)) memberIds[p['ID']] = true; });
     const mine = emails.filter(function (e) { return String(e['Campaign ID']) === cid || (!String(e['Campaign ID'] || '').trim() && memberIds[e['Partner ID']]); });
     const sentToday = mine.filter(function (e) { return e['Status'] !== 'cancelled' && e['Sent At'] && _dateKey_(new Date(e['Sent At'])) === todayKey; }).length;
+    const emailed = {};   // in THIS campaign; someone re-engaged after an earlier one starts fresh here
+    mine.forEach(function (e) { if (e['Status'] !== 'cancelled') emailed[e['Partner ID']] = true; });
     const room = Math.max(0, sending.cap - sentToday);
 
     const followUps = mine.filter(function (e) {

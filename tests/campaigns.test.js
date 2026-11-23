@@ -70,7 +70,7 @@ test('deal letters: joins the audience, deals in turn within brokerages, keeps e
   assert.equal(r.dealt, 0, 'nothing left to deal');
   // a second campaign on the same list cannot take them
   const other = app.createCampaign({ name: 'Again', type: 'realtor', lists: ['tyler'], versions: ['A'] });
-  assert.equal(app.campaignAudience(other.id).excluded['other campaign'], 29);
+  assert.equal(app.campaignAudience(other.id).excluded['in another campaign'], 29);
   assert.equal(app.dealLetters(other.id).dealt, 0);
   // a newcomer on the list is dealt on the next press, and only them
   app.importPartners('Name,Email,Brokerage\nNew Realtor,new@example.com,KW', { sourceList: 'tyler' });
@@ -269,4 +269,50 @@ test('tags are filed lowercase and deduped; duplicate copies wording (unlocked),
   app.saveCampaign(id, { status: 'done' });
   assert.equal(app.buildTodayBatch({ now: TUE }).campaigns.some(c => c.id === id), false);
   assert.equal(app.listCampaigns().find(c => c.id === id).sent, 4);
+});
+
+test('release and series: a finished campaign frees its people after the cooling-off; Part 2 takes the silent ones; said-no stays out', () => {
+  const app = appWithLists();
+  const p1 = app.createCampaign({ name: 'Part 1', type: 'realtor', lists: ['tyler'], versions: ['A'], dailyCap: 50, sendingDays: 'Tue,Wed,Thu' });
+  app.saveVersion('A', { subject: 'One', body: BODY, followUpBody: 'Hi {{first}}, still there?' }, p1.id);
+  app.dealLetters(p1.id, { rng: seeded(2) });
+  app.saveCampaign(p1.id, { status: 'running' });
+  const rep = app.sendTodayBatch({ now: TUE });
+  assert.equal(rep.sent, 29);
+  const members = app.$rows('Partners').filter(p => p['Campaign ID'] === p1.id);
+  // two reply, one says no
+  const e = {}; app.$rows('Emails').filter(x => x.Step === 'first').forEach(x => { e[x['Partner ID']] = x; });
+  [0, 1].forEach(i => app._updateRow_('Emails', e[members[i].ID]._row, { Status: 'replied' }));
+  app._updateRow_('Partners', members[0]._row, { Stage: 'Replied', Response: 'Replied' });
+  app._updateRow_('Partners', members[1]._row, { Stage: 'Replied', Response: 'Replied' });
+  app._updateRow_('Partners', members[2]._row, { Stage: 'Replied', Response: 'Not interested' });
+  // while Part 1 is open, nobody can be taken
+  const p2 = app.createCampaign({ name: 'Part 2', type: 'realtor', lists: [p1.id], versions: ['A'] });
+  let aud = app.campaignAudience(p2.id);
+  assert.equal(aud.excluded['in another campaign'], 27, 'silent ones are still Part 1\'s while it runs');
+  assert.equal(aud.matching, 0);
+  // Part 1 done → free, but the cooling-off holds them
+  app.saveCampaign(p1.id, { status: 'done' });
+  aud = app.campaignAudience(p2.id);
+  assert.equal(aud.excluded['emailed in the last 90 days'], 26);
+  assert.equal(aud.excluded['said no'], 1);
+  assert.ok(!aud.excluded['in another campaign']);
+  // cooling-off over
+  app.saveSettings({ reengage_days: '0' });
+  aud = app.campaignAudience(p2.id);
+  assert.equal(aud.matching, 26, 'the 29 minus 2 who replied minus 1 who said no');
+  assert.equal(app.getCampaign(p2.id).campaign.listNames[0], 'no reply to “Part 1”');
+  assert.equal(app.getCampaign(p2.id).earlier.find(x => x.id === p1.id).noReply, 27, 'pool counts everyone silent; said-no is cut by the exclusion');
+  const dealt = app.dealLetters(p2.id, { rng: seeded(3) });
+  assert.equal(dealt.dealt, 26);
+  assert.ok(app.$rows('Partners').filter(p => p['Campaign ID'] === p2.id).length === 26);
+  // Part 1 keeps its history and numbers
+  assert.equal(app.getCampaignStats(p1.id).rows.reduce((n, r) => n + r.sent, 0), 29);
+  assert.equal(app.campaignResults(p1.id).rows.length, 29);
+  // Part 2 sends to them fresh: a new first email, not blocked by the old one
+  app.saveVersion('A', { subject: 'Two', body: BODY, followUpBody: 'Hi {{first}}, one more thing.' }, p2.id);
+  app.saveCampaign(p2.id, { status: 'running' });
+  const b = app.buildTodayBatch({ now: new Date('2026-12-08T15:00:00Z'), campaignId: p2.id });
+  assert.equal(b.firsts.length, 26);
+  assert.ok(b.firsts.every(p => p['Campaign ID'] === p2.id));
 });

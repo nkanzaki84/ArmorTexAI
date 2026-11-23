@@ -31,6 +31,7 @@
       reply:    { icon: '💬', cls: 'warn', text: function (i) { return i.n + ' repl' + (i.n === 1 ? 'y' : 'ies'); } },
       call:     { icon: '📞', cls: '',     text: function (i) { return i.n + ' call' + (i.n === 1 ? '' : 's') + ' logged'; } },
       text:     { icon: '💬', cls: '',     text: function (i) { return i.n + ' text' + (i.n === 1 ? '' : 's'); } },
+      visit:    { icon: '🏢', cls: 'ok',   text: function (i) { return i.n + ' office visit' + (i.n === 1 ? '' : 's'); } },
       social:   { icon: '📱', cls: '',     text: function (i) { return (i.status === 'posted' ? 'posted: ' : 'post: ') + i.label; } },
     };
     function monthKey(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }

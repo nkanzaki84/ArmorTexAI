@@ -21,7 +21,7 @@ function doGet(e) {
   let tpl_section = 'partners';
   const params = (e && e.parameter) || {};
   const requested = String(params.page || '');
-  const validPages = PAGE_CATALOG.map(function (p) { return p.key; }).concat(['partner', 'home', 'campaign']);
+  const validPages = PAGE_CATALOG.map(function (p) { return p.key; }).concat(['partner', 'home', 'campaign', 'office']);
 
   let session = null;
   try { session = getCurrentUserSession(); } catch (err) { session = { denied: true, reason: 'lookup_failed', message: err.message }; }
@@ -33,7 +33,7 @@ function doGet(e) {
   if (!page) page = session.defaultLanding || 'today';
   if (validPages.indexOf(page) === -1) page = 'today';
   // Record pages sit under their list page for access purposes.
-  const accessKey = page === 'partner' ? 'partners' : page === 'home' ? 'homes' : page === 'campaign' ? 'campaigns' : page;
+  const accessKey = page === 'partner' ? 'partners' : page === 'home' ? 'homes' : page === 'campaign' ? 'campaigns' : page === 'office' ? 'offices' : page;
   tpl_section = (page === 'prospects' || page === 'marketing') ? page : 'partners';
   if (!noAccess && session.allowedPages.indexOf(accessKey) === -1) {
     noAccess = { kind: 'forbidden', requestedLabel: accessKey, roleLabel: session.roleLabel, landing: session.defaultLanding || 'today' };

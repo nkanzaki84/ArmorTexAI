@@ -65,6 +65,7 @@ function getCalendar(opts) {
     if (ev['Kind'] === 'reply') bump(k, 'reply', 'replies');
     else if (ev['Kind'] === 'call' || ev['Kind'] === 'voicemail') bump(k, 'call', 'calls');
     else if (ev['Kind'] === 'text') bump(k, 'text', 'texts');
+    else if (ev['Kind'] === 'visit') bump(k, 'visit', 'office visits');
   });
 
   // social posts: planned (not yet posted) and posted

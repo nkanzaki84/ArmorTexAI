@@ -419,7 +419,9 @@ function getTodayWork(opts) {
   const sampleRequests = events.filter(function (ev) { return ev['Kind'] === 'reply' && String(ev['AI Verdict']) === 'yes' && String(ev['AI Action']) === 'suggested' && partners[ev['Partner ID']] && !_yes_(partners[ev['Partner ID']]['Do Not Contact']); })
     .sort(function (a, b) { return new Date(b['At']) - new Date(a['At']); })
     .map(function (ev) { return { event: ev, partner: partners[ev['Partner ID']] }; });
-  return { replies: replies, calls: calls, needsReview: needsReview, sampleRequests: sampleRequests, scope: scope };
+  // the visit step: offices whose campaign members were emailed N business days ago and nobody has stopped by since
+  const visits = _visitsDue_(partners, new Date(nowMs));
+  return { replies: replies, calls: calls, needsReview: needsReview, sampleRequests: sampleRequests, visits: visits, scope: scope };
 }
 
 /** A person confirms or dismisses an automation's guess. */

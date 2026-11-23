@@ -66,6 +66,7 @@
         '<div>Last contact</div><div>' + (fmtDateTime(p['Last Contact']) || '—') + '</div>' +
         '<div>Notes</div><div>' + (canWrite ? '<textarea class="inline-input" name="notes" style="width:100%;max-width:420px;min-height:54px">' + esc(p.Notes || '') + '</textarea>' : esc(p.Notes || '—')) + '</div>' +
         '<div>Lists</div><div id="listsRow" class="sub">…</div>' +
+        (data.office ? '<div>Office</div><div><a href="#" onclick="go(\'office\', { id: \'' + esc(data.office.id) + '\' }); return false;">🏢 ' + esc(data.office.name) + '</a><span class="sub"> · ' + data.office.agents + ' agent' + (data.office.agents === 1 ? '' : 's') + (data.office.lastVisit ? ' · visited ' + fmtDate(data.office.lastVisit) : ' · never visited') + '</span></div>' : '') +
         (p['Quo Contact ID'] ? '<div>Quo</div><div class="sub">in Quo as contact ' + esc(p['Quo Contact ID']) + ' · edits here go to Quo on Save</div>' : '') +
         (canWrite ? '</form>' : '</div>') +
         (canWrite ? '<div class="ft"><form id="nsForm" class="row" style="flex:1"><input name="nextStep" type="text" placeholder="Next step, e.g. Call Tue" value="' + esc(p['Next Step'] || '') + '" class="inline-input" style="flex:1" title="Enter saves">' +

@@ -1,0 +1,66 @@
+<div class="title-row">
+  <button class="btn sm ghost" onclick="go('offices')">← Offices</button>
+  <h1 id="offName" style="margin:0">…</h1>
+  <span id="offPills"></span>
+  <div class="spacer"></div>
+  <span class="sub" id="savedStamp"></span>
+  <button class="btn primary" id="saveOffice" style="display:none">💾 Save</button>
+</div>
+<div id="rec"><div class="empty">Loading…</div></div>
+
+<script>
+  (function () {
+    var id = O.recordId, data = null;
+    var OUT = { met_manager: 'Met the manager', left_samples: 'Left sample reports', sales_meeting: 'Spoke at the sales meeting', nobody: 'Nobody there', other: 'Other' };
+    function tierPill(t) { return t === 'partners' ? '<span class="pill ok">🤝 partner</span>' : t === 'marketing' ? '<span class="pill warn">🌤️ warm</span>' : '<span class="pill navy">❄️ cold</span>'; }
+    function render() {
+      var o = data.office, canW = data.canWrite;
+      $('offName').textContent = o.name;
+      $('offPills').innerHTML = '<span class="pill">' + data.agents.length + ' agent' + (data.agents.length === 1 ? '' : 's') + '</span> ' + (o.lastVisit ? '<span class="pill ok">visited ' + fmtDate(o.lastVisit) + '</span>' : '<span class="pill warn">never visited</span>');
+      $('saveOffice').style.display = canW ? '' : 'none';
+      var box = function (name, val, extra) { return '<input class="inline-input" name="' + name + '" value="' + esc(val || '') + '"' + (extra || '') + '>'; };
+      var html = '<div class="grid2" style="align-items:start">';
+      html += '<div class="card" style="margin:0"><div class="hd"><h2>The office</h2>' + (o.address ? '<a class="btn sm" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(o.address) + '" target="_blank" rel="noopener">🗺️ Map</a>' : '') + (o.phone ? '<a class="btn sm" href="' + esc(callHref(o.phone)) + '">📞 Call</a>' : '') + '</div>' +
+        (canW ? '<form class="bd" id="offForm">' : '<div class="bd">') + '<div class="kv">' +
+        '<div>Name</div><div>' + (canW ? box('name', o.name, ' required') : esc(o.name)) + '</div>' +
+        '<div>Address</div><div>' + (canW ? box('address', o.address, ' placeholder="street, city"') : esc(o.address || '—')) + '</div>' +
+        '<div>Phone</div><div>' + (canW ? box('phone', fmtPhone(o.phone) || o.phone, ' type="tel"') : (fmtPhone(o.phone) || '—')) + '</div>' +
+        '<div>Manager</div><div>' + (canW ? box('manager', o.manager, ' placeholder="office manager or broker"') : esc(o.manager || '—')) + '</div>' +
+        '<div>Notes</div><div>' + (canW ? '<textarea class="inline-input" name="notes" style="width:100%;min-height:54px">' + esc(o.notes || '') + '</textarea>' : esc(o.notes || '—')) + '</div>' +
+        (o.aliases.length ? '<div>Also spelled</div><div class="sub">' + esc(o.aliases.join(', ')) + '</div>' : '') +
+        '</div>' + (canW ? '</form>' : '</div>') + '</div>';
+      html += '<div class="card" style="margin:0"><div class="hd"><h2>Visits</h2><span class="sub">' + data.visits.length + '</span><div class="spacer"></div>' + (canW ? '<button class="btn primary sm" id="visitBtn">+ Log a visit</button>' : '') + '</div>' +
+        '<div id="visitCard" style="display:none"><form class="bd" id="visitForm" style="border-bottom:1px solid var(--line)">' +
+          '<div class="grid2"><div class="f"><label>What happened</label><select name="outcome">' + data.outcomes.map(function (k) { return '<option value="' + k + '">' + (OUT[k] || k) + '</option>'; }).join('') + '</select></div><div class="f"><label>When</label><input name="at" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div></div>' +
+          '<div class="f"><label>Who you met</label><input name="met" placeholder="names, roles"></div>' +
+          '<div class="f"><label>Notes</label><input name="notes" placeholder="what they said, what to bring next time"></div>' +
+          '<div class="row"><button class="btn primary" type="submit">Save visit</button><button class="btn ghost" type="button" id="visitCancel">Cancel</button><span class="sub">Shows on every agent here; not a call to anyone.</span></div></form></div>' +
+        (data.visits.length ? '<ul class="timeline" style="padding:6px 16px">' + data.visits.map(function (v) { return '<li><span class="when">' + fmtDate(v.At) + '</span><span><b>' + esc(OUT[v.Outcome] || v.Outcome) + '</b> <span class="sub">· ' + esc(String(v.By || '').split('@')[0]) + '</span>' + (v.Snippet ? '<div class="sub">' + esc(v.Snippet) + '</div>' : '') + '</span></li>'; }).join('') + '</ul>' : '<div class="empty">Nobody has stopped by yet.</div>') + '</div>';
+      html += '</div>';
+      html += '<div class="card"><div class="hd"><h2>Agents here</h2><span class="sub">' + data.agents.length + '</span><div class="spacer"></div>' + (canW ? '<button class="btn sm" id="addAgentBtn">+ Add someone you met</button>' : '') + '</div>' +
+        (data.agents.length ? '<ul class="list" id="agentList">' + data.agents.map(function (a) {
+          return '<li class="link" data-id="' + esc(a.ID) + '" data-from="' + a.tier + '"><span style="min-width:84px;margin-right:10px;display:inline-block">' + tierPill(a.tier) + '</span><div style="flex:1;min-width:0"><div class="name">' + esc(a.Name) + (a.dnc ? ' <span class="pill bad">DNC</span>' : '') + '</div><div class="sub">' + esc(String(a.Rep || '').split('@')[0] || 'unassigned') + (a['Last Contact'] ? ' · last contact ' + fmtDate(a['Last Contact']) : ' · never contacted') + (a.calls ? ' · ' + a.calls + ' call' + (a.calls === 1 ? '' : 's') : '') + (a.referralsIn ? ' · ' + a.referralsIn + ' referral' + (a.referralsIn === 1 ? '' : 's') : '') + '</div></div>' + stagePill(a.Stage) + (a.Response && a.Response !== a.Stage ? ' ' + responsePill(a.Response) : '') + (a.Phone ? ' <a class="btn sm" href="' + esc(callHref(a.Phone)) + '" onclick="event.stopPropagation()">📞</a>' : '') + '</li>';
+        }).join('') + '</ul>' : '<div class="empty">No agents linked to this office.</div>') + '</div>';
+      $('rec').innerHTML = html;
+
+      on($('agentList'), 'click', function (e) { var li = e.target.closest('li[data-id]'); if (li) go('partner', { id: li.dataset.id, from: li.dataset.from }); });
+      on($('visitBtn'), 'click', function () { $('visitCard').style.display = ''; $('visitForm').met.focus(); });
+      on($('visitCancel'), 'click', function () { $('visitCard').style.display = 'none'; });
+      on($('visitForm'), 'submit', function (e) { e.preventDefault(); var f = e.target; api('logOfficeVisit', id, { outcome: f.outcome.value, at: f.at.value, met: f.met.value, notes: f.notes.value }).then(function () { toast('Visit logged', 'success'); load(); }).catch(fail); });
+      on($('addAgentBtn'), 'click', function () {
+        var name = prompt('Name of the person you met at ' + o.name + ':'); if (!name || !name.trim()) return;
+        var phone = prompt('Phone (optional):') || '';
+        var email = prompt('Email (optional):') || '';
+        api('addPartner', { type: 'realtor', name: name.trim(), company: o.name, phone: phone, email: email, notes: 'Met at the office' }).then(function (pid) { toast('Added', 'success'); go('partner', { id: pid, from: 'prospects' }); }).catch(fail);
+      });
+      on($('saveOffice'), 'click', function () {
+        var f = $('offForm'); if (!f) return;
+        busy($('saveOffice'), true, 'Saving…');
+        api('saveOffice', id, { name: f.name.value, address: f.address.value, phone: f.phone.value, manager: f.manager.value, notes: f.notes.value }).then(function () { toast('Saved', 'success'); stampSaved($('savedStamp')); load(); }).catch(fail).finally(function () { busy($('saveOffice'), false, '💾 Save'); });
+      });
+      if ($('offForm')) $('offForm').addEventListener('submit', function (e) { e.preventDefault(); $('saveOffice').click(); });
+    }
+    function load() { api('getOffice', id).then(function (d) { data = d; render(); }).catch(function (e) { $('rec').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }); }
+    load();
+  })();
+</script>

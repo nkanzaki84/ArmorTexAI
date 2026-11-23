@@ -2,6 +2,11 @@
 
 <div class="stats" id="todayStats"></div>
 
+<div class="card" id="visitCard" style="display:none">
+  <div class="hd"><h2>Visits</h2><span class="sub">offices due a stop-by · most agents first</span></div>
+  <ul class="list" id="visitList"></ul>
+</div>
+
 <div class="card" id="reviewCard" style="display:none">
   <div class="hd"><h2>Needs a human</h2><span class="sub">the app guessed; you confirm</span></div>
   <ul class="list" id="reviewList"></ul>
@@ -104,6 +109,12 @@
       $('callList').innerHTML = w.calls.length ? w.calls.map(function (p) {
         return partnerLine(p, '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span>' + (p.why === 'replied' ? '<span class="pill warn">replied</span>' : p.why === 'missed' ? '<span class="pill bad">missed their call</span>' : p.why === 'noreply' ? '<span class="pill navy">no reply to the email</span>' : '<span class="pill">emailed by hand' + (p['Last Contact'] ? ' ' + fmtDate(p['Last Contact']) : '') + '</span>') + ' ' + repChip(p) + (p.listingValue ? ' <span class="pill navy">' + fmt$(p.listingValue) + '</span>' : '') + '</span>' + callBtn(p) + '</div>');
       }).join('') : '<li class="empty">Nobody to call right now.</li>';
+      var vs = w.visits || [];
+      $('visitCard').style.display = vs.length ? '' : 'none';
+      $('visitList').innerHTML = vs.map(function (v) {
+        return '<li class="link" data-office="' + esc(v.officeId) + '"><span class="ver" style="background:#eef2f7;color:var(--navy)">🏢</span><div style="flex:1;min-width:0"><div class="name">' + esc(v.name) + '</div><div class="sub">' + (v.address ? esc(v.address) + ' · ' : '') + v.agents + ' agent' + (v.agents === 1 ? '' : 's') + ' · ' + v.members + ' emailed in ' + esc(v.campaign) + (v.lastVisit ? ' · last visit ' + fmtDate(v.lastVisit) : ' · never visited') + (v.manager ? ' · 👤 ' + esc(v.manager) : '') + '</div></div>' +
+          (v.address ? '<a class="btn sm" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(v.address) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Map</a>' : '') + '</li>';
+      }).join('');
       var sr = w.sampleRequests || [];
       $('sampleCard').style.display = sr.length ? '' : 'none';
       $('sampleList').innerHTML = sr.map(function (r) {
@@ -128,6 +139,7 @@
       renderStats();
     }
 
+    on($('visitList'), 'click', function (e) { var li = e.target.closest('li[data-office]'); if (li) go('office', { id: li.dataset.office }); });
     on($('sampleList'), 'click', function (e) {
       var b = e.target.closest('[data-sample], [data-sample-dismiss]');
       if (!b) { var li = e.target.closest('li[data-id]'); if (li) go('partner', { id: li.dataset.id, from: 'marketing' }); return; }
