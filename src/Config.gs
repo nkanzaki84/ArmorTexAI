@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.11.1';
+const APP_VERSION    = '0.11.2';
 const APP_BUILD_DATE = '2026-11-23';
 
 // ===== Script Property keys =====

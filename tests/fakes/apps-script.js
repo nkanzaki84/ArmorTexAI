@@ -206,13 +206,15 @@ function makeGlobals(ctx) {
         const f = { name, folders: [], files: [], id: 'fld' + (n++) };
         f.getId = () => f.id; f.getName = () => f.name;
         f.getFoldersByName = (nm) => { const hits = f.folders.filter(x => x.name === nm); let i = 0; return { hasNext: () => i < hits.length, next: () => hits[i++] }; };
-        f.createFolder = (nm) => { const c = folder(nm); f.folders.push(c); return c; };
+        f.createFolder = (nm) => { const c = folder(nm); f.folders.push(c); folders[c.id] = c; return c; };
+        f.getFilesByType = (mime) => { const hits = f.files.filter(x => x.getMimeType() === mime); let i = 0; return { hasNext: () => i < hits.length, next: () => hits[i++] }; };
         f.createFile = (blob) => { const id = 'file' + (n++); const file = { id, blob, getId: () => id, getUrl: () => 'https://drive.google.com/file/d/' + id, getName: () => blob.getName(), getMimeType: () => blob.getContentType(), getBlob: () => blob }; f.files.push(file); files[id] = file; return file; };
         return f;
       }
       const files = {};
-      const root = folder('root');
-      return { getRootFolder: () => root, getFolderById: () => root, getFileById: (id) => { if (!files[id]) throw new Error('no file ' + id); return files[id]; }, $root: root, $files: files };
+      const folders = {};
+      const root = folder('root'); folders[root.id] = root;
+      return { getRootFolder: () => root, getFolderById: (id) => { if (!folders[id]) throw new Error('no folder ' + id); return folders[id]; }, getFileById: (id) => { if (!files[id]) throw new Error('no file ' + id); return files[id]; }, $root: root, $files: files };
     })(),
     GmailApp: {
       sendEmail(to, subject, body, opts) { return g.GmailApp.createDraft(to, subject, body, opts).send(); },

@@ -9,10 +9,22 @@
 function _sampleReportFile_() {
   const raw = String(_setting_(SETTING.SAMPLE_REPORT_FILE) || '').trim();
   if (!raw) return null;
-  // a Drive link (…/d/<id>/… or ?id=<id>) or a bare file id
+  // a folder link: use the one PDF inside it
+  const fm = raw.match(/\/folders\/([-\w]+)/);
+  if (fm) {
+    let folder;
+    try { folder = DriveApp.getFolderById(fm[1]); } catch (err) { throw new Error('Cannot open that Drive folder. (' + err.message + ')'); }
+    const pdfs = [];
+    const it = folder.getFilesByType('application/pdf');
+    while (it.hasNext()) pdfs.push(it.next());
+    if (!pdfs.length) throw new Error('That folder has no PDF in it. Upload the report there, or paste the PDF\'s own link (right-click the file → Share → Copy link).');
+    if (pdfs.length > 1) throw new Error('That folder has ' + pdfs.length + ' PDFs (' + pdfs.map(function (f) { return f.getName(); }).join(', ') + '). Paste the link of the one to send: right-click it → Share → Copy link.');
+    return pdfs[0];
+  }
+  // a file link (…/d/<id>/… or ?id=<id>) or a bare file id
   const m = raw.match(/\/d\/([-\w]+)/) || raw.match(/[?&]id=([-\w]+)/) || (/^[-\w]+$/.test(raw) ? [null, raw] : null);
-  if (!m) throw new Error('The sample report link does not look like a Drive link.');
-  try { return DriveApp.getFileById(m[1]); } catch (err) { throw new Error('Cannot open the sample report in Drive. Is it shared with ' + OWNER_EMAIL + '? (' + err.message + ')'); }
+  if (!m) throw new Error('That does not look like a Drive link. In Drive, right-click the PDF → Share → Copy link, and paste that.');
+  try { return DriveApp.getFileById(m[1]); } catch (err) { throw new Error('Cannot open the sample report in Drive. Is it in ' + OWNER_EMAIL + '\'s Drive or shared with it? (' + err.message + ')'); }
 }
 
 /** Settings → "Check file": proves the link opens and shows what would go out. */

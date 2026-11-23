@@ -24,6 +24,16 @@ test('sample report: owner sets the file, record previews it, send replies in th
   assert.equal(chk.ok, true);
   assert.equal(chk.name, 'ArmorTex sample roof report.pdf');
   assert.equal(app.getSettings().sample_report_file, 'https://drive.google.com/file/d/' + file.getId() + '/view');
+  // a folder link works when the folder holds exactly one PDF
+  const g = app;
+  const fld = g.DriveApp.getRootFolder().createFolder('Reports');
+  assert.throws(() => app.checkSampleReport('https://drive.google.com/drive/folders/' + fld.getId()), /no PDF/);
+  fld.createFile(g.Utilities.newBlob('%PDF-1.4 a', 'application/pdf', 'only.pdf'));
+  assert.equal(app.checkSampleReport('https://drive.google.com/drive/folders/' + fld.getId()).name, 'only.pdf');
+  fld.createFile(g.Utilities.newBlob('%PDF-1.4 b', 'application/pdf', 'second.pdf'));
+  assert.throws(() => app.checkSampleReport('https://drive.google.com/drive/folders/' + fld.getId()), /2 PDFs/);
+  assert.throws(() => app.checkSampleReport('https://example.com/x'), /does not look like a Drive link/);
+  app.checkSampleReport('https://drive.google.com/file/d/' + file.getId() + '/view');
 
   const id = app.addPartner({ type: 'realtor', name: 'Loretta Nelson', email: 'loretta@example.com', company: 'KW' });
   // no thread yet → a fresh email with the default subject
