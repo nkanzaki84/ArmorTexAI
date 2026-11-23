@@ -354,6 +354,30 @@ function dealLetters(id, opts) {
   return { dealt: updates.length, counts: counts };
 }
 
+/**
+ * Drop a wording from a campaign (owner). Refused once any email went out with that letter.
+ * Members holding the letter lose it and are dealt again among the wordings that remain,
+ * so a four-letter campaign from before the simplification can become a one-email campaign.
+ */
+function removeWording(id, letter) {
+  _requireRole_(ADMIN_ROLES);
+  const c = _campaignById_(id);
+  const L = String(letter || '').trim();
+  const letters = _csvList_(c['Versions']);
+  if (letters.indexOf(L) === -1) throw new Error('This campaign has no wording ' + L + '.');
+  if (letters.length === 1) throw new Error('A campaign needs at least one wording.');
+  const used = _readTab_(TAB.EMAILS).some(function (e) { return String(e['Campaign ID']) === String(id) && String(e['Version']) === L; });
+  if (used) throw new Error('Emails already went out with wording ' + L + '; it has to stay so the results read right.');
+  const keep = letters.filter(function (l) { return l !== L; });
+  _updateRow_(TAB.CAMPAIGNS, c._row, { 'Versions': keep.join(',') });
+  const holders = _readTab_(TAB.PARTNERS).filter(function (p) { return String(p['Campaign ID']) === String(id) && String(p['Version']) === L; });
+  _updateRows_(TAB.PARTNERS, holders.map(function (p) { return { rowIndex: p._row, row: { 'Version': '' } }; }));
+  const vIdx = _findRowIndex_(TAB.VERSIONS, function (v) { return String(v['Campaign ID']) === String(id) && String(v['Letter']) === L; });
+  if (vIdx !== -1) _updateRow_(TAB.VERSIONS, vIdx, { 'Locked': '' });
+  const r = holders.length ? dealLetters(id, { versions: keep }) : { dealt: 0, counts: {} };
+  return { versions: keep, redealt: r.dealt };
+}
+
 /** Take someone out of a campaign (only if nothing was sent to them in it). Owner only. */
 function removeFromCampaign(id, partnerId) {
   _requireRole_(ADMIN_ROLES);

@@ -82,6 +82,20 @@ test('deal letters: joins the audience, deals in turn within brokerages, keeps e
   assert.equal(app.$rows('Partners').find(p => p.ID === m.ID)['Campaign ID'], '');
   app._appendRows_('Emails', [{ ID: 'E-1', 'Partner ID': members[1].ID, Version: members[1].Version, Step: 'first', 'Sent At': TUE, Status: 'sent', 'Campaign ID': id }]);
   assert.throws(() => app.removeFromCampaign(id, members[1].ID), /Already emailed/);
+  // dropping a wording: unused letters go, holders are re-dealt; a letter that went out stays
+  const before = app.$rows('Partners').filter(p => p['Campaign ID'] === id && p.Version === 'C').length;
+  assert.ok(before > 0);
+  let rw = app.removeWording(id, 'C');
+  assert.deepEqual(rw.versions, ['A', 'B']);
+  assert.ok(rw.redealt >= before, 'holders of C were dealt again (plus anyone free to join)');
+  assert.equal(app.$rows('Campaigns').find(c => c.ID === id).Versions, 'A,B');
+  assert.ok(app.$rows('Partners').filter(p => p['Campaign ID'] === id).every(p => 'AB'.indexOf(p.Version) !== -1 && p.Version));
+  assert.throws(() => app.removeWording(id, members[1].Version), /already went out/);
+  const otherLetter = members[1].Version === 'A' ? 'B' : 'A';
+  rw = app.removeWording(id, otherLetter);
+  assert.deepEqual(rw.versions, [members[1].Version]);
+  assert.throws(() => app.removeWording(id, members[1].Version), /at least one/);
+  assert.ok(app.getCampaign(id).campaign.versions.length === 1);
   // Tanner cannot deal
   const ctx = { user: TANNER };
   const asTanner = loadApp(ctx);

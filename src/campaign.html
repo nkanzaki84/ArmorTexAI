@@ -130,7 +130,7 @@
         (vs.length ? vs.map(function (v) {
           var locked = String(v.Locked).toLowerCase() === 'yes';
           var ro = (!isAdmin || locked) ? ' readonly' : '';
-          return (m ? '<details class="card" style="margin:10px 12px;box-shadow:none"><summary>' + verBadge(v.Letter) + '<span>' + esc(v.Angle || 'untitled') + '</span><span class="sub">' + esc(v.Subject || 'no subject yet') + '</span>' + (locked ? '<span class="pill">locked</span>' : (!String(v.Body || '').trim() ? '<span class="pill warn">empty</span>' : '')) + '</summary>' : '<div>') +
+          return (m ? '<details class="card" style="margin:10px 12px;box-shadow:none"><summary>' + verBadge(v.Letter) + '<span>' + esc(v.Angle || 'untitled') + '</span><span class="sub">' + esc(v.Subject || 'no subject yet') + '</span>' + (locked ? '<span class="pill">locked</span>' : (!String(v.Body || '').trim() ? '<span class="pill warn">empty</span>' : '')) + (isAdmin && !locked ? '<span class="spacer"></span><button type="button" class="btn sm ghost" data-remove-wording="' + esc(v.Letter) + '" title="Nobody was emailed with this wording yet">Remove</button>' : '') + '</summary>' : '<div>') +
             '<form class="bd verForm" data-letter="' + esc(v.Letter) + '">' +
             (m ? '<div class="grid2"><div class="f"><label>Angle</label><input name="angle" value="' + esc(v.Angle) + '"' + ro + '></div><div class="f"><label>Subject</label><input name="subject" value="' + esc(v.Subject) + '"' + ro + '></div></div>' : '<input type="hidden" name="angle" value="' + esc(v.Angle) + '"><div class="f"><label>Subject</label><input name="subject" value="' + esc(v.Subject) + '"' + ro + '></div>') +
             '<div class="f"><label>First email</label><textarea name="body" style="min-height:220px"' + ro + '>' + esc(v.Body) + '</textarea></div>' +
@@ -144,6 +144,14 @@
         e.preventDefault();
         if (!confirm('Add a second wording (B)? People added from now on are split evenly between A and B so you can compare reply rates.')) return;
         api('saveCampaign', id, { versions: data.campaign.versions.concat(['B']) }).then(function () { toast('Wording B added', 'success'); load(); }).catch(fail);
+      });
+      $('tab-copy').querySelectorAll('[data-remove-wording]').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.preventDefault(); e.stopPropagation();
+          var L = b.dataset.removeWording;
+          if (!confirm('Remove wording ' + L + '? Anyone holding it is dealt one of the other wordings instead.')) return;
+          api('removeWording', id, L).then(function (r) { toast('Wording ' + L + ' removed' + (r.redealt ? ' · ' + r.redealt + ' re-dealt' : ''), 'success'); load(); }).catch(fail);
+        });
       });
       $('tab-copy').querySelectorAll('.verForm').forEach(function (f) {
         f.addEventListener('submit', function (e) {

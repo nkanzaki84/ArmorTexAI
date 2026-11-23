@@ -87,7 +87,7 @@
 
       html += '<div class="card"><div class="hd"><h2>Emails</h2><span class="sub">' + data.emails.length + '</span></div>' +
         (data.emails.length ? '<ul class="timeline" style="padding:6px 16px">' + data.emails.map(function (e) {
-          return '<li><span class="when">' + (fmtDate(e['Sent At']) || fmtDate(e['Scheduled For']) || '') + '</span><span>' + letterBadge(e) + esc(e.Step) + ' · <span class="pill">' + esc(e.Status) + '</span> ' + esc(e.Subject || '') + '</span></li>';
+          return '<li><span class="when">' + (fmtDate(e['Sent At']) || fmtDate(e['Scheduled For']) || '') + '</span><span><b>' + esc(e.Subject || '(no subject)') + '</b> <span class="sub">· ' + esc(e.Step) + '</span> <span class="pill">' + esc(e.Status) + '</span></span></li>';
         }).join('') + '</ul>' : '<div class="empty">No emails yet.</div>') + '</div>';
 
       function fmtDur(sec) { sec = Number(sec) || 0; return sec >= 60 ? Math.floor(sec / 60) + 'm ' + (sec % 60) + 's' : sec + 's'; }
