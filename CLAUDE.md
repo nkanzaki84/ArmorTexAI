@@ -91,7 +91,7 @@ The SFM suite look: `src/ui_base.html` (Brian's portable base: palette, inputs, 
 
 ## Agreed, not built: campaigns as records (2026-11-22)
 
-Brian wants Marketing = the courting list and Campaign = start a campaign, plan the sending, upload the content. The app runs one unnamed campaign today. Plan in `docs/IDEAS.md` ("Campaigns as records"): a Campaigns tab with who / versions / start date / days / cap / status, stats per campaign, Today drawing from every running campaign, a person still pressing Send. Build it only after the five-address test batch and the first real Tyler batch have gone out; mock up first.
+Brian wants Marketing = the courting list and Campaign = start a campaign, plan the sending, upload the content. The app runs one unnamed campaign today. Plan in `docs/IDEAS.md` ("Campaigns as records"): a Campaigns tab with who / versions / start date / days / cap / status, stats per campaign, Today drawing from every running campaign, a person still pressing Send. Tabs per campaign agreed 2026-11-22: Overview · Audience (with Deal letters, which then leaves Settings) · Copy · Schedule · Results (per-person ledger + Export CSV). Build it only after the five-address test batch and the first real Tyler batch have gone out; mock up first.
 
 ## Parked: referral tracking by product (2026-11-19)
 

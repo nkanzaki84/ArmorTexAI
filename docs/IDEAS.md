@@ -153,6 +153,16 @@ campaign:
   lists, versions, start date, days, cap.
 - Marketing gets a campaign filter and shows "in <campaign>" on each row.
 - Today's batch draws from every running campaign; a person still presses Send.
+- **Tabs per campaign (nk, 2026-11-22: "assigning should live in the campaign,
+  not Settings; tabs for copy and audience")**: Overview (the ledger row,
+  expanded) · Audience (type + lists + stages, live count, **Deal letters**
+  with the A/B/C/E ticks, everyone with their letter, exclusions shown) ·
+  Copy (one card per letter, footer checks, lock note) · Schedule (start,
+  days, cap, follow-up gap, paused; the plan drawn out: "230 at 50/day
+  Tue–Thu finishes Dec 18"; Send still pressed on Today) · Results (per
+  person: letter, sent, follow-up, replied, response, calls since; filters;
+  Export CSV). No notes/files tab. Assign versions leaves Settings when this
+  ships.
 - Keep off the table: a timer that sends on its own (brief: v1 is hand-sent);
   drip sequences beyond the one follow-up; open tracking.
 - Sequence: send the five-address test batch first, start the Tyler campaign
