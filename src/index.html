@@ -53,6 +53,7 @@
     <?!= sideSwitch ?>
     <div class="links">
       <a href="<?= appUrl ?>?page=today&side=<?= side ?>" class="<?= page === 'today' ? 'active' : '' ?>"><i>☀️</i><span>Today</span></a>
+      <a href="<?= appUrl ?>?page=calendar&side=<?= side ?>" class="<?= page === 'calendar' ? 'active' : '' ?>"><i>📅</i><span>Calendar</span></a>
       <? if (side === 'homes') { ?>
       <a href="<?= appUrl ?>?page=homes&side=homes" class="<?= (page === 'homes' || page === 'home') ? 'active' : '' ?>"><i>🏠</i><span>Homes</span></a>
       <? } else { ?>
@@ -75,6 +76,7 @@
     <? if (session.role === 'owner') { ?>
     <div class="nav-tools">
       <? if (canComment) { ?><a href="#" onclick="if (window.openCommentMode) openCommentMode(); return false;" title="Pin a comment to anything on this page">💬 Comment<span class="cnt comment-count" style="display:none"></span></a><? } ?>
+      <a href="#" id="navViewAs" onclick="_pickViewAs(); return false;" title="See the app as Tanner or Caitlin see it">👁 View as…</a>
       <a href="#" id="navDevMode" onclick="_toggleDevMode(); return false;">🔧 Dev Mode</a>
       <a href="#" id="navDevLinks" onclick="_toggleDevLinks(); return false;" title="Which copy of the app the links point at. /dev = last clasp push (test bench). /exec = the deployed version Tanner uses.">🔗 Links: /exec</a>
     </div>
@@ -83,7 +85,11 @@
   </nav>
 
   <main class="content" id="content">
+    <? if (session.impersonating) { ?>
+    <div class="view-as-bar">👁 Viewing as <b><?= session.impersonating.name ?></b> (<?= session.impersonating.roleLabel ?>). Everything you do here is recorded as them. <a href="#" onclick="_clearViewAs(); return false;">Back to <?= session.impersonating.realName ?></a></div>
+    <? } ?>
     <? if (page === 'today') { ?><?!= include('today') ?>
+    <? } else if (page === 'calendar') { ?><?!= include('calendar') ?>
     <? } else if (page === 'partners') { ?><?!= include('partners', { section: 'partners', appUrl: appUrl }) ?>
     <? } else if (page === 'marketing') { ?><?!= include('partners', { section: 'marketing', appUrl: appUrl }) ?>
     <? } else if (page === 'prospects') { ?><?!= include('partners', { section: 'prospects', appUrl: appUrl }) ?>
@@ -98,11 +104,26 @@
   </main>
 </div>
 
+<script>
+  window._clearViewAs = function () { api('clearViewAs').then(function () { location.reload(); }).catch(fail); };
+  window._pickViewAs = function () {
+    api('listViewAsChoices').then(function (people) {
+      if (!people.length) { toast('Nobody else on the Users list yet (Settings → Team).', 'error'); return; }
+      var lines = people.map(function (p, i) { return (i + 1) + '. ' + p.name + ' (' + p.role + ')'; }).join('\n');
+      var pick = prompt('View the app as whom? Type a number.\n\n' + lines + '\n\nYou can switch back from the yellow bar.', '1');
+      if (pick === null) return;
+      var p = people[parseInt(pick, 10) - 1];
+      if (!p) { toast('No such number', 'error'); return; }
+      api('setViewAs', p.email).then(function () { location.reload(); }).catch(fail);
+    }).catch(fail);
+  };
+</script>
 <? if (session.role === 'owner') { ?>
 <!-- Owner tools on phones (desktop has them in the sidebar footer) -->
 <div id="ownerTools" class="owner-tools">
   <div class="ot-panel" id="otPanel">
     <? if (canComment) { ?><button type="button" onclick="if (window.openCommentMode) openCommentMode();">💬 Comment <span class="ot-count comment-count" style="display:none"></span></button><? } ?>
+    <button type="button" id="otViewAs" onclick="_pickViewAs()">👁 View as…</button>
     <button type="button" id="otDevMode" onclick="_toggleDevMode()">🔧 Dev Mode</button>
     <button type="button" id="otDevLinks" onclick="_toggleDevLinks()">🔗 Links: /exec</button>
     <div class="ot-foot">v<?= appVersion ?> · <?= isDev ? 'on /dev' : 'on /exec' ?></div>

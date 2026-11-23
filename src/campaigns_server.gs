@@ -414,6 +414,10 @@ function _campaignPlan_(c, partners, emails, now) {
   partners.forEach(function (p) { if (memberIds[p['ID']] && String(p['Version'] || '').trim() && !emailed[p['ID']] && !_yes_(p['Do Not Contact'])) firstsLeft++; });
   const days = [];
   if (!sending.cap || !sending.days.length) return { days: days, firstsLeft: firstsLeft, followUpsQueued: queuedFollowUps, cap: sending.cap, sendingDays: sending.daysLabel, finish: '' };
+  // today's room is what is left after what already went out today
+  const todayKey = _dateKey_(now);
+  let sentToday = 0;
+  emails.forEach(function (e) { if (e['Sent At'] && e['Status'] !== 'cancelled' && _dateKey_(new Date(e['Sent At'])) === todayKey && (String(e['Campaign ID']) === id || memberIds[e['Partner ID']])) sentToday++; });
   let d = new Date(now.getTime());
   const start = c['Start Date'] ? new Date(c['Start Date']) : null;
   if (start && start.getTime() > d.getTime()) d = new Date(start.getTime());
@@ -424,7 +428,7 @@ function _campaignPlan_(c, partners, emails, now) {
     const key = Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
     let firsts = 0, fu = 0;
     if (sending.days.indexOf(_weekday_(d).toLowerCase()) !== -1) {
-      let room = sending.cap;
+      let room = Math.max(0, sending.cap - (key === todayKey ? sentToday : 0));
       const dueFollow = pendingFollow.filter(function (f) { return f.getTime() <= d.getTime(); }).length;
       fu = Math.min(dueFollow, room); room -= fu;
       pendingFollow = pendingFollow.filter(function (f) { return f.getTime() > d.getTime(); }).concat(pendingFollow.filter(function (f) { return f.getTime() <= d.getTime(); }).slice(fu));

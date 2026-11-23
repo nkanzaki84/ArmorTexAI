@@ -1,0 +1,72 @@
+<div class="title-row" style="position:static">
+  <h1>Calendar</h1><span class="sub">emails, follow-ups, calls and posts, by day</span>
+  <div class="spacer"></div>
+  <button class="btn sm" id="calPrev">‹</button>
+  <b id="calTitle" style="min-width:150px;text-align:center"></b>
+  <button class="btn sm" id="calNext">›</button>
+  <button class="btn sm ghost" id="calToday">Today</button>
+</div>
+
+<div class="card">
+  <div class="cal" id="calGrid"></div>
+  <div class="ft sub">Shaded columns are sending days of a running campaign. Planned emails and calls are the campaign plan at today's pace; they move as sends happen.</div>
+</div>
+
+<div class="card" id="dayCard" style="display:none">
+  <div class="hd"><h2 id="dayTitle"></h2></div>
+  <ul class="list" id="dayList"></ul>
+</div>
+
+<script>
+  (function () {
+    var cur = new Date(); cur.setDate(1);
+    var data = null, picked = null;
+    var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    var KIND = {
+      sent:     { icon: '✉️', cls: 'ok',   text: function (i) { return i.n + ' sent' + (i.campaign ? ' · ' + i.campaign : ''); } },
+      plan:     { icon: '📨', cls: 'navy', text: function (i) { return i.n + ' to send' + (i.campaign ? ' · ' + i.campaign : ''); } },
+      followup: { icon: '↩️', cls: 'warn', text: function (i) { return i.n + ' follow-up' + (i.n === 1 ? '' : 's') + ' due'; } },
+      callplan: { icon: '📞', cls: 'navy', text: function (i) { return i.n + ' call' + (i.n === 1 ? '' : 's') + ' due' + (i.campaign ? ' · ' + i.campaign : ''); } },
+      sample:   { icon: '📎', cls: 'ok',   text: function (i) { return i.n + ' sample report' + (i.n === 1 ? '' : 's') + ' sent'; } },
+      reply:    { icon: '💬', cls: 'warn', text: function (i) { return i.n + ' repl' + (i.n === 1 ? 'y' : 'ies'); } },
+      call:     { icon: '📞', cls: '',     text: function (i) { return i.n + ' call' + (i.n === 1 ? '' : 's') + ' logged'; } },
+      text:     { icon: '💬', cls: '',     text: function (i) { return i.n + ' text' + (i.n === 1 ? '' : 's'); } },
+      social:   { icon: '📱', cls: '',     text: function (i) { return (i.status === 'posted' ? 'posted: ' : 'post: ') + i.label; } },
+    };
+    function monthKey(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }
+    function chip(i) { var k = KIND[i.kind] || { icon: '•', cls: '', text: function (x) { return x.label; } }; return '<span class="cchip ' + k.cls + '" title="' + esc(k.text(i)) + '">' + k.icon + ' ' + esc(k.text(i)) + '</span>'; }
+
+    function render() {
+      $('calTitle').textContent = cur.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      var first = new Date(cur.getFullYear(), cur.getMonth(), 1), last = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+      var html = WD.map(function (w) { return '<div class="cal-h' + (data && data.sendingDays.indexOf(w.toLowerCase()) !== -1 ? ' send' : '') + '">' + w + '</div>'; }).join('');
+      for (var i = 0; i < first.getDay(); i++) html += '<div class="cal-d pad"></div>';
+      for (var d = 1; d <= last.getDate(); d++) {
+        var key = monthKey(cur) + '-' + ('0' + d).slice(-2);
+        var items = (data && data.days[key]) || [];
+        var wd = WD[new Date(cur.getFullYear(), cur.getMonth(), d).getDay()].toLowerCase();
+        var cls = 'cal-d' + (data && key === data.today ? ' today' : '') + (data && data.sendingDays.indexOf(wd) !== -1 ? ' send' : '') + (picked === key ? ' on' : '') + (items.length ? ' has' : '');
+        html += '<div class="' + cls + '" data-day="' + key + '"><div class="n">' + d + '</div>' + items.slice(0, 3).map(chip).join('') + (items.length > 3 ? '<span class="cchip more">+' + (items.length - 3) + ' more</span>' : '') + '</div>';
+      }
+      $('calGrid').innerHTML = html;
+      renderDay();
+    }
+    function renderDay() {
+      var items = (data && picked && data.days[picked]) || [];
+      $('dayCard').style.display = picked ? '' : 'none';
+      if (!picked) return;
+      $('dayTitle').textContent = fmtDate(picked);
+      $('dayList').innerHTML = items.length ? items.map(function (i) {
+        var k = KIND[i.kind]; var go_ = i.kind === 'social' ? 'social' : (i.campaignId ? 'campaign' : '');
+        return '<li class="' + (go_ ? 'link' : '') + '" data-go="' + go_ + '" data-id="' + esc(i.id || i.campaignId || '') + '"><span class="pill ' + (k ? k.cls : '') + '">' + (k ? k.icon : '•') + '</span><div style="flex:1;min-width:0"><div class="name">' + esc(k ? k.text(i) : i.label) + '</div>' + (i.platforms && i.platforms.length ? '<div class="sub">' + esc(i.platforms.join(', ')) + '</div>' : '') + '</div>' + (go_ ? '<span class="sub">›</span>' : '') + '</li>';
+      }).join('') : '<li class="empty">Nothing on this day.</li>';
+    }
+    function load() { api('getCalendar', { month: monthKey(cur) }).then(function (r) { data = r; if (!picked && r.days[r.today]) picked = r.today; render(); }).catch(fail); }
+    on($('calPrev'), 'click', function () { cur.setMonth(cur.getMonth() - 1); picked = null; load(); });
+    on($('calNext'), 'click', function () { cur.setMonth(cur.getMonth() + 1); picked = null; load(); });
+    on($('calToday'), 'click', function () { cur = new Date(); cur.setDate(1); picked = null; load(); });
+    on($('calGrid'), 'click', function (e) { var d = e.target.closest('[data-day]'); if (!d) return; picked = picked === d.dataset.day ? null : d.dataset.day; render(); });
+    on($('dayList'), 'click', function (e) { var li = e.target.closest('li[data-go]'); if (!li || !li.dataset.go) return; if (li.dataset.go === 'social') go('social'); else go('campaign', { id: li.dataset.id }); });
+    load();
+  })();
+</script>

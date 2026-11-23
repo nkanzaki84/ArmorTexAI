@@ -14,8 +14,19 @@ function getCurrentUserSession() {
   if (!email) {
     return { denied: true, reason: 'unauthenticated', email: '', name: '', role: null, allowedPages: [], defaultLanding: '' };
   }
-  const u = _resolveUser_(email);
+  let u = _resolveUser_(email);
   if (u.denied) return Object.assign({ allowedPages: [], defaultLanding: '' }, u);
+  // View as (owner only, 2026-11-23): the owner sees the app exactly as another user does.
+  // Stored per Google account in user properties, so it follows Brian and nobody else.
+  let impersonating = null;
+  if (u.role === 'owner') {
+    const viewAs = _viewAsEmail_();
+    if (viewAs && viewAs !== u.email) {
+      const other = _resolveUser_(viewAs);
+      if (!other.denied) { impersonating = { realEmail: u.email, realName: u.name, email: other.email, name: other.name, roleLabel: other.roleLabel }; u = other; }
+      else _setViewAs_('');   // stale (user removed): drop it
+    }
+  }
   const allowed = (DEFAULT_ROLE_ACCESS[u.role] || []).slice();
   return {
     denied: false,
@@ -27,7 +38,38 @@ function getCurrentUserSession() {
     defaultLanding: 'today',
     canWrite: WRITE_ROLES.indexOf(u.role) !== -1,
     isAdmin: ADMIN_ROLES.indexOf(u.role) !== -1,
+    impersonating: impersonating,
   };
+}
+
+function _viewAsEmail_() {
+  try { return _normEmail_(PropertiesService.getUserProperties().getProperty(PROP_VIEW_AS) || ''); } catch (err) { return ''; }
+}
+function _setViewAs_(email) {
+  const props = PropertiesService.getUserProperties();
+  if (email) props.setProperty(PROP_VIEW_AS, email); else props.deleteProperty(PROP_VIEW_AS);
+}
+
+/** Owner tool: see the app as another user. Checked against the REAL signed-in user, so it works while already viewing as someone. */
+function setViewAs(email) {
+  const real = _resolveUser_(_userEmail_());
+  if (real.denied || real.role !== 'owner') throw new Error('Only the owner can view as someone else.');
+  email = _normEmail_(email);
+  if (!email || email === real.email) { _setViewAs_(''); return getCurrentUserSession(); }
+  const other = _resolveUser_(email);
+  if (other.denied) throw new Error('That person is not on the Users list.');
+  _setViewAs_(email);
+  return getCurrentUserSession();
+}
+
+function clearViewAs() { return setViewAs(''); }
+
+/** People the owner can view as (for the picker). Real owner only. */
+function listViewAsChoices() {
+  const real = _resolveUser_(_userEmail_());
+  if (real.denied || real.role !== 'owner') throw new Error('Only the owner can view as someone else.');
+  return _readTab_(TAB.USERS).filter(function (r) { return String(r['Active'] || 'Yes').trim().toLowerCase() !== 'no' && _normEmail_(r['Email']) !== real.email; })
+    .map(function (r) { return { email: _normEmail_(r['Email']), name: String(r['Name'] || '').trim() || _normEmail_(r['Email']).split('@')[0], role: String(r['Role'] || '').trim().toLowerCase() }; });
 }
 
 function _resolveUser_(emailLower) {

@@ -9,12 +9,13 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.13.0';
+const APP_VERSION    = '0.14.0';
 const APP_BUILD_DATE = '2026-11-23';
 
 // ===== Script Property keys =====
 const PROP_SHEET_ID = 'OUTREACH_SHEET_ID';
 const PROP_LAST_REPLY_CHECK = 'OUTREACH_LAST_REPLY_CHECK';   // unix seconds
+const PROP_VIEW_AS = 'OUTREACH_VIEW_AS';                    // user property (per Google account): email the owner is viewing the app as
 
 // ===== Sending behaviour =====
 const REPLY_CHECK_MINUTES = 15;          // time-driven trigger cadence
@@ -463,6 +464,7 @@ const ROLES = [
 
 const PAGE_CATALOG = [
   { key: 'today',     label: 'Today' },
+  { key: 'calendar',  label: 'Calendar' },    // month view of everything with a date
   { key: 'prospects', label: 'Prospects' },   // cold: never answered (Stage Prospect/Contacted, or a no)
   { key: 'marketing', label: 'Marketing' },   // warm: replied, being worked (Stage Replied)
   { key: 'partners',  label: 'Partners' },    // hot: the book (Stage Partner)
@@ -474,9 +476,9 @@ const PAGE_CATALOG = [
 ];
 
 const DEFAULT_ROLE_ACCESS = {
-  owner:    ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'settings'],
-  sales:    ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social'],
-  viewonly: ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social'],
+  owner:    ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'settings'],
+  sales:    ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social'],
+  viewonly: ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social'],
 };
 
 const WRITE_ROLES = ['owner', 'sales'];   // who may change data

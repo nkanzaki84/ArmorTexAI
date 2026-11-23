@@ -77,6 +77,21 @@
   body.dev-bench .nav .links a:hover{background:#ffedd5}
   body.dev-bench .nav .links a.active{background:#ffedd5;color:#9a3412;border-left-color:#ea580c}
   body.dev-bench .nav-foot{color:var(--dev);font-weight:700}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:10px 12px}
+  .cal-h{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:center;padding:4px 0}
+  .cal-h.send{color:var(--navy);font-weight:700}
+  .cal-d{min-height:86px;border:1px solid var(--line);border-radius:6px;padding:4px 5px;background:#fff;cursor:pointer;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+  .cal-d.pad{border:none;background:transparent;cursor:default}
+  .cal-d.send{background:#f6f9fd}
+  .cal-d.today{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+  .cal-d.on{background:#eef4fb}
+  .cal-d .n{font-size:12px;font-weight:700;color:var(--muted)}
+  .cal-d.today .n{color:var(--blue)}
+  .cchip{display:block;font-size:10.5px;line-height:1.3;padding:1px 5px;border-radius:4px;background:#f1f3f6;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cchip.ok{background:#e8f6ee;color:#17743d}.cchip.warn{background:#fff3e0;color:#b25e00}.cchip.navy{background:#e6edf8;color:var(--navy)}.cchip.more{color:var(--muted);background:transparent}
+  @media (max-width:760px){.cal-d{min-height:54px}.cchip{display:none}.cal-d.has::after{content:'•';color:var(--blue);font-size:16px;line-height:1}}
+  .view-as-bar{background:#fef3c7;border:1px solid #f59e0b;color:#78350f;border-radius:8px;padding:8px 14px;margin-bottom:14px;font-size:13px}
+  .view-as-bar a{color:#9a3412;font-weight:700;margin-left:8px}
 
   /* ---------- cards (34) ---------- */
   .card{background:var(--card);border:1px solid var(--line);border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:16px;padding:0}

@@ -307,9 +307,11 @@ function _stripQuoted_(text) {
     if (/^-{2,}\s*(Original Message|Forwarded message)/i.test(l.trim())) break;
     if (/^From:\s.+/.test(l) && i > 0) break;
     if (/^>/.test(l)) continue;
+    if (/^(Get Outlook for|Sent from my|Sent from Mail for)\b/i.test(l.trim())) continue;   // mail-app signatures
+    if (/^[_\-=]{6,}\s*$/.test(l.trim())) continue;                                        // separator rules
     out.push(l);
   }
-  return out.join('\n').trim();
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 // ============================================================
