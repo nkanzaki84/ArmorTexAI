@@ -63,6 +63,11 @@ function seed(app) {
   app.addMatchingToList(l1, { type: 'realtor', sourceList: 'realtors-gregg-nov-2026' });
   const l2 = app.createList({ name: 'Met at the TAR mixer', notes: 'Tanner shook hands with these on Nov 12' }).id;
   app.addToList(l2, app.$rows('Partners').filter(p => p.Type === 'realtor').slice(3, 15).map(p => p.ID));
+  // social drafts
+  app.createSocialPost({ title: 'Hail season reminder', platforms: ['Instagram', 'Facebook'], caption: 'Storm came through Tyler last night. If you heard hail on the roof, give it a week and then look for granules in the gutters. A roof check is free; message us.', hashtags: '#TylerTX #EastTexasRoofing #ArmorTexRoofs', plannedDate: '2026-11-25', status: 'ready', imageLink: 'https://drive.google.com/file/d/example/view' });
+  app.createSocialPost({ title: 'Before and after · Judson Rd', platforms: ['Instagram'], caption: 'Twenty-year-old three-tab, replaced in a day with architectural shingle. Swipe for the before.', hashtags: '#roofreplacement #TylerTX', status: 'draft' });
+  app.createSocialPost({ title: 'Meet Tanner', platforms: ['Facebook', 'LinkedIn'], caption: '', notes: 'Photo of Tanner in the truck. Keep it short.', status: 'idea' });
+  app.createSocialPost({ title: 'Thanksgiving', platforms: ['Instagram', 'Facebook', 'Google Business'], caption: 'Thankful for every family that trusted us with their roof this year. Happy Thanksgiving from all of us at ArmorTex.', status: 'posted', postUrl: 'https://instagram.com/p/example' });
   app.saveCampaign('CP-1', { name: 'Tyler realtors · email test', lists: [l1], stages: [], versions: ['A', 'B', 'C'], startDate: '2026-11-17', notes: 'The first email test. Letters A/B/C, no E until pay-at-closing is decided.', tags: ['realtors', 'gregg', 'november'] });
   app.createCampaign({ name: 'Home inspectors · January', type: 'inspector', versions: ['A', 'B'], startDate: '2027-01-06', tags: ['inspectors', 'january'] });
   const old = app.createCampaign({ name: 'Gladewater test · five addresses', type: 'realtor', tags: ['realtors', 'test'] });

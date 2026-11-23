@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.12.0';
+const APP_VERSION    = '0.13.0';
 const APP_BUILD_DATE = '2026-11-23';
 
 // ===== Script Property keys =====
@@ -42,6 +42,7 @@ const TAB = {
   EVENTS:    'Events',
   CAMPAIGNS: 'Campaigns',
   LISTS:     'Lists',
+  SOCIAL:    'Social Posts',
   REFERRALS: 'Referrals',
   VERSIONS:  'Versions',
   SETTINGS:  'Settings',
@@ -59,6 +60,7 @@ const ID_PREFIX = {
   'Comments':  'C',
   'Campaigns': 'CP',
   'Lists':     'L',
+  'Social Posts': 'SP',
 };
 
 // ===== Column headers per tab. Order matters for new tabs; existing tabs are
@@ -194,6 +196,23 @@ const HEADERS = {
     'Paid Amount',
     'Notes',
   ],
+  'Social Posts': [    // drafts only (2026-11-23): nothing posts from here; Caitlin copies the caption out
+    'ID',                // SP-1
+    'Title',
+    'Platforms',         // comma list from SOCIAL_PLATFORMS
+    'Caption',
+    'Hashtags',
+    'Image Link',        // Drive / Canva link to the picture or video
+    'Planned Date',
+    'Status',            // idea | draft | ready | posted
+    'Posted At',
+    'Post URL',
+    'Notes',
+    'Created At',
+    'Created By',
+    'Updated At',
+    'Updated By',
+  ],
   'Lists': [
     'ID',                // L-1
     'Name',
@@ -285,6 +304,12 @@ const PARTNER_STAGES = ['Prospect', 'Contacted', 'Replied', 'Partner'];
 const HOME_STAGES = ['Target', 'Mailed', 'Knocked', 'Talked', 'Roof check booked'];
 const RESPONSES = ['', 'Replied', 'Sent an address', 'Referred a job', 'Sent a claim', 'Sent a property', 'Not interested', 'Bounced', 'Opted out'];
 const COLD_RESPONSES = ['Not interested', 'Bounced', 'Opted out'];   // a reply that closes the door: back to cold
+// ===== Social media drafts =====
+const SOCIAL_PLATFORMS = ['Instagram', 'Facebook', 'Google Business', 'LinkedIn', 'TikTok', 'Nextdoor'];
+const SOCIAL_STATUSES = ['idea', 'draft', 'ready', 'posted'];
+const SOCIAL_CAPTION_LIMITS = { Instagram: 2200, Facebook: 63206, 'Google Business': 1500, LinkedIn: 3000, TikTok: 4000, Nextdoor: 10000 };
+const SOCIAL_WRITE_ROLES = ['owner', 'sales', 'viewonly'];   // Caitlin (view-only on the CRM) drafts the posts; everyone signed in can
+
 const WIN_RESPONSES = ['Sent an address', 'Referred a job', 'Sent a claim', 'Sent a property'];
 
 // "Sent", "sent 11/3", "Bilingual | sent" in an imported Notes column = already emailed by hand.
@@ -444,13 +469,14 @@ const PAGE_CATALOG = [
   { key: 'lists',     label: 'Lists' },       // curated groups of people, picked by hand or by filter; campaigns point at them
   { key: 'homes',    label: 'Homes' },
   { key: 'campaigns', label: 'Campaigns' },  // the ledger; page=campaign&id=CP-1 is one campaign's record
+  { key: 'social',    label: 'Social' },      // social media drafts; nothing posts from here
   { key: 'settings', label: 'Settings' },
 ];
 
 const DEFAULT_ROLE_ACCESS = {
-  owner:    ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'settings'],
-  sales:    ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns'],
-  viewonly: ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns'],
+  owner:    ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'settings'],
+  sales:    ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social'],
+  viewonly: ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social'],
 };
 
 const WRITE_ROLES = ['owner', 'sales'];   // who may change data

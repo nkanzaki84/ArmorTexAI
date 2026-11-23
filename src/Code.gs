@@ -52,6 +52,7 @@ function doGet(e) {
   tpl.profiles = PARTNER_TYPE_PROFILES;
   tpl.quo = _quoLinkConfig_();
   tpl.multiCampaigns = noAccess ? [] : _multiCampaignIds_();
+  tpl.social = { platforms: SOCIAL_PLATFORMS, statuses: SOCIAL_STATUSES, limits: SOCIAL_CAPTION_LIMITS, canWrite: !session.denied && SOCIAL_WRITE_ROLES.indexOf(session.role) !== -1 };
   tpl.winResponses = WIN_RESPONSES;
   tpl.appVersion = APP_VERSION;
   tpl.appBuildDate = APP_BUILD_DATE;

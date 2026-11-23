@@ -1,0 +1,149 @@
+<!-- Social media drafts. Nothing posts from here: write it, mark it ready, copy the
+     caption into the app by hand, mark it posted with the link. -->
+<div class="title-row" style="position:static">
+  <h1>Social</h1><span class="sub">drafts only · nothing posts from here</span>
+  <div class="spacer"></div>
+  <button class="btn primary" id="newPostBtn" style="display:none">+ New post</button>
+</div>
+
+<div class="row" style="margin-bottom:12px">
+  <div class="chips" id="statusChips">
+    <button class="chip on" data-status="">All <span class="n" id="n_all"></span></button>
+    <button class="chip" data-status="idea">💡 Ideas <span class="n" id="n_idea"></span></button>
+    <button class="chip" data-status="draft">✏️ Drafts <span class="n" id="n_draft"></span></button>
+    <button class="chip" data-status="ready">✅ Ready <span class="n" id="n_ready"></span></button>
+    <button class="chip" data-status="posted">📤 Posted <span class="n" id="n_posted"></span></button>
+  </div>
+  <div class="spacer"></div>
+  <div class="search">🔍 <input id="q" placeholder="Search titles, captions, hashtags…"></div>
+</div>
+
+<div class="grid2" style="grid-template-columns:320px 1fr;gap:16px;align-items:start">
+  <div class="card" style="margin:0">
+    <ul class="list" id="postIndex"><li class="empty">Loading…</li></ul>
+  </div>
+  <div id="postPane"><div class="card" style="margin:0"><div class="bd empty">Pick a post, or start one.</div></div></div>
+</div>
+
+<script>
+  (function () {
+    var S = O.social || { platforms: [], statuses: [], limits: {}, canWrite: false };
+    var canDraft = !!S.canWrite;
+    var posts = [], current = null, filter = { status: '', q: '' };
+    var STATUS_PILL = { idea: '', draft: 'navy', ready: 'ok', posted: '' };
+    var STATUS_LABEL = { idea: '💡 idea', draft: '✏️ draft', ready: '✅ ready', posted: '📤 posted' };
+    var PLAT_ICON = { Instagram: '📸', Facebook: '📘', 'Google Business': '📍', LinkedIn: '💼', TikTok: '🎵', Nextdoor: '🏘️' };
+    if (canDraft) $('newPostBtn').style.display = '';
+
+    function statusPillOf(s) { return '<span class="pill ' + (STATUS_PILL[s] || '') + '">' + (STATUS_LABEL[s] || esc(s)) + '</span>'; }
+    function platPills(list) { return (list || []).map(function (p) { return '<span class="pill" title="' + esc(p) + '">' + (PLAT_ICON[p] || '') + ' ' + esc(p) + '</span>'; }).join(' '); }
+
+    function visible() {
+      var q = filter.q.toLowerCase();
+      return posts.filter(function (p) {
+        if (filter.status && p.status !== filter.status) return false;
+        if (q && [p.title, p.caption, p.hashtags, p.notes, p.platforms.join(' ')].join(' ').toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      });
+    }
+    function renderCounts() {
+      var c = { '': posts.length };
+      posts.forEach(function (p) { c[p.status] = (c[p.status] || 0) + 1; });
+      ['', 'idea', 'draft', 'ready', 'posted'].forEach(function (s) { var el = $('n_' + (s || 'all')); if (el) el.textContent = c[s] || 0; });
+    }
+    function renderIndex() {
+      renderCounts();
+      var rows = visible();
+      $('postIndex').innerHTML = rows.length ? rows.map(function (p) {
+        return '<li class="link" data-id="' + esc(p.id) + '" style="' + (current === p.id ? 'background:#eef4fb' : '') + '"><div style="flex:1;min-width:0"><div class="name">' + esc(p.title || '(untitled)') + '</div><div class="sub">' + (p.plannedDate ? fmtDate(p.plannedDate) + ' · ' : '') + esc((p.caption || '').split('\n')[0].slice(0, 70)) + '</div><div style="margin-top:3px">' + platPills(p.platforms) + '</div></div>' + statusPillOf(p.status) + '</li>';
+      }).join('') : '<li class="empty">' + (posts.length ? 'Nothing matches.' : 'No posts yet.' + (canDraft ? ' Press + New post.' : '')) + '</li>';
+    }
+
+    function renderPane() {
+      var p = posts.filter(function (x) { return x.id === current; })[0];
+      if (!p) { $('postPane').innerHTML = '<div class="card" style="margin:0"><div class="bd empty">Pick a post, or start one.</div></div>'; return; }
+      var ro = canDraft ? '' : ' readonly';
+      var dis = canDraft ? '' : ' disabled';
+      var html = '<div class="card" style="margin:0"><div class="hd"><h2 id="paneTitle">' + esc(p.title || '(untitled)') + '</h2>' + statusPillOf(p.status) + '<div class="spacer"></div>' +
+        (canDraft ? '<span class="sub" id="savedStamp"></span> <button class="btn primary sm" id="savePost">💾 Save</button>' : '') + '</div>' +
+        '<form class="bd" id="postForm">' +
+        '<div class="f"><label>Title <span class="req">*</span></label><input name="title" value="' + esc(p.title) + '"' + ro + ' placeholder="e.g. Hail season reminder"></div>' +
+        '<div class="f"><label>Where it goes</label><div class="chips" id="platChips">' + S.platforms.map(function (pl) { return '<label class="chip ' + (p.platforms.indexOf(pl) !== -1 ? 'on' : '') + '"><input type="checkbox" value="' + esc(pl) + '" hidden' + (p.platforms.indexOf(pl) !== -1 ? ' checked' : '') + dis + '> ' + (PLAT_ICON[pl] || '') + ' ' + esc(pl) + '</label>'; }).join('') + '</div></div>' +
+        '<div class="f"><label>Caption</label><textarea name="caption" style="min-height:180px"' + ro + ' placeholder="What the post says. Put the point in the first line: Instagram shows about 125 characters before “more”.">' + esc(p.caption) + '</textarea><span class="sub" id="capCount"></span></div>' +
+        '<div class="f"><label>Hashtags</label><input name="hashtags" value="' + esc(p.hashtags) + '"' + ro + ' placeholder="#TylerTX #EastTexasRoofing #ArmorTexRoofs"></div>' +
+        '<div class="grid2">' +
+          '<div class="f"><label>Picture or video</label><div class="row"><input name="imageLink" value="' + esc(p.imageLink) + '"' + ro + ' placeholder="Drive or Canva link" style="flex:1">' + (p.imageLink ? '<a class="btn sm" href="' + esc(p.imageLink) + '" target="_blank" rel="noopener">Open</a>' : '') + '</div></div>' +
+          '<div class="f"><label>Planned for</label><input name="plannedDate" type="date" value="' + esc(p.plannedDate ? String(p.plannedDate).slice(0, 10) : '') + '"' + ro + '></div>' +
+        '</div>' +
+        '<div class="grid2">' +
+          '<div class="f"><label>Status</label><select name="status"' + dis + '>' + S.statuses.map(function (s) { return '<option value="' + esc(s) + '"' + (p.status === s ? ' selected' : '') + '>' + (STATUS_LABEL[s] || s) + '</option>'; }).join('') + '</select>' + (p.postedAt ? '<span class="sub">posted ' + fmtDateTime(p.postedAt) + '</span>' : '') + '</div>' +
+          '<div class="f"><label>Link to the live post</label><input name="postUrl" value="' + esc(p.postUrl) + '"' + ro + ' placeholder="paste after you post it"></div>' +
+        '</div>' +
+        '<div class="f"><label>Notes</label><textarea name="notes" style="min-height:60px"' + ro + ' placeholder="who it is for, what to photograph, anything to check">' + esc(p.notes) + '</textarea></div>' +
+        '<div class="row" style="flex-wrap:wrap;gap:8px">' +
+          '<button class="btn" type="button" id="copyBtn" title="Caption + hashtags, ready to paste into the app">📋 Copy caption</button>' +
+          (canDraft && p.status !== 'ready' && p.status !== 'posted' ? '<button class="btn" type="button" id="readyBtn">✅ Mark ready</button>' : '') +
+          (canDraft && p.status !== 'posted' ? '<button class="btn" type="button" id="postedBtn">📤 Mark posted</button>' : '') +
+          (canDraft ? '<button class="btn ghost" type="button" id="dupBtn">⧉ Duplicate</button>' : '') +
+          '<span class="spacer"></span>' +
+          (isAdmin ? '<button class="btn ghost danger sm" type="button" id="delBtn">Delete</button>' : '') +
+        '</div>' +
+        '<div class="sub" style="margin-top:8px">' + (p.updatedBy ? 'Last saved ' + fmtDateTime(p.updatedAt) + ' by ' + esc(p.updatedBy.split('@')[0]) + ' · ' : '') + 'started by ' + esc((p.createdBy || '').split('@')[0]) + '</div>' +
+        '</form></div>';
+      $('postPane').innerHTML = html;
+
+      var f = $('postForm');
+      function count() {
+        var n = f.caption.value.length, picked = Array.prototype.map.call($('platChips').querySelectorAll('input:checked'), function (i) { return i.value; });
+        var over = picked.filter(function (pl) { return S.limits[pl] && n > S.limits[pl]; });
+        $('capCount').innerHTML = n + ' characters' + (over.length ? ' <span class="pill bad">too long for ' + esc(over.join(', ')) + '</span>' : '') + (picked.indexOf('Instagram') !== -1 && n > 125 ? ' · <span class="sub">first 125 show in the Instagram feed</span>' : '');
+      }
+      count();
+      f.caption.addEventListener('input', count);
+      on($('platChips'), 'click', function (e) { var c = e.target.closest('label.chip'); if (c && c.querySelector('input') && !c.querySelector('input').disabled) setTimeout(function () { c.classList.toggle('on', c.querySelector('input').checked); count(); }, 0); });
+      function payload() {
+        return { title: f.title.value, platforms: Array.prototype.map.call($('platChips').querySelectorAll('input:checked'), function (i) { return i.value; }), caption: f.caption.value, hashtags: f.hashtags.value, imageLink: f.imageLink.value, plannedDate: f.plannedDate.value, status: f.status.value, postUrl: f.postUrl.value, notes: f.notes.value };
+      }
+      function save(extra, label) {
+        var btn = $('savePost'); busy(btn, true, 'Saving…');
+        return api('saveSocialPost', p.id, Object.assign(payload(), extra || {})).then(function () { toast(label || 'Saved', 'success'); stampSaved($('savedStamp')); return load(p.id); }).catch(fail).finally(function () { busy(btn, false, '💾 Save'); });
+      }
+      on($('savePost'), 'click', function (e) { e.preventDefault(); save(); });
+      on(f, 'submit', function (e) { e.preventDefault(); if (canDraft) save(); });
+      on($('readyBtn'), 'click', function () { save({ status: 'ready' }, 'Marked ready'); });
+      on($('postedBtn'), 'click', function () {
+        var url = prompt('Link to the live post (optional):', f.postUrl.value || '');
+        if (url === null) return;
+        save({ status: 'posted', postUrl: url }, 'Marked posted');
+      });
+      on($('dupBtn'), 'click', function () { api('duplicateSocialPost', p.id).then(function (r) { toast('Copied as a new idea', 'success'); return load(r.id); }).catch(fail); });
+      on($('delBtn'), 'click', function () { if (!confirm('Delete “' + (p.title || 'this post') + '”? This cannot be undone.')) return; api('deleteSocialPost', p.id).then(function () { toast('Deleted', 'success'); current = null; return load(); }).catch(fail); });
+      on($('copyBtn'), 'click', function () {
+        var text = f.caption.value.trim() + (f.hashtags.value.trim() ? '\n\n' + f.hashtags.value.trim() : '');
+        var done = function () { toast('Caption copied. Paste it into the app.', 'success'); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(function () { fallback(); });
+        else fallback();
+        function fallback() { var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Could not copy; select the caption and copy it yourself', 'error'); } document.body.removeChild(ta); }
+      });
+    }
+
+    function load(selectId) {
+      return api('listSocialPosts').then(function (rows) {
+        posts = rows;
+        if (selectId) current = selectId;
+        if (current && !posts.some(function (p) { return p.id === current; })) current = null;
+        renderIndex(); renderPane();
+      }).catch(function (e) { $('postIndex').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; });
+    }
+    on($('postIndex'), 'click', function (e) { var li = e.target.closest('li[data-id]'); if (!li) return; current = li.dataset.id; renderIndex(); renderPane(); });
+    on($('statusChips'), 'click', function (e) { var c = e.target.closest('.chip'); if (!c) return; $('statusChips').querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); }); c.classList.add('on'); filter.status = c.dataset.status; renderIndex(); });
+    on($('q'), 'input', function (e) { filter.q = e.target.value.trim(); renderIndex(); });
+    on($('newPostBtn'), 'click', function () {
+      var title = prompt('What is the post about? (a short title; you write the caption next)');
+      if (title === null) return;
+      if (!title.trim()) { toast('Give it a title', 'error'); return; }
+      api('createSocialPost', { title: title.trim(), status: 'idea' }).then(function (r) { toast('Started', 'success'); return load(r.id); }).catch(fail);
+    });
+    load();
+  })();
+</script>
