@@ -2,209 +2,156 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>ArmorTex Roofs · Sample Roof Report</title>
+<title>ArmorTex Roofs · Roof Inspection Report (sample)</title>
 <!--
   The stock sample sent to warm realtors from the partner record (Settings → Sample roof report).
-  Print this page to PDF (Letter, background graphics on) and upload the PDF to Drive.
-  Everything in [brackets] is a placeholder for Brian to fill. The property is fictional.
-  Photo boxes are placeholders: drop in six real photos from a past job before printing.
+  Print to PDF (Letter, background graphics on) and upload the PDF to Drive.
+  [brackets] are placeholders for Brian. The property and the numbers are made up for the sample;
+  swap in a real past job (with the owner's OK) and six real photos before this goes to anyone.
 -->
 <style>
-  @page { size: Letter; margin: 0.45in 0.5in; }
+  @page { size: Letter; margin: 0.6in 0.65in; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { font: 9.8pt/1.4 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #1b2430; }
-  :root { --navy: #1b365d; --blue: #2a6fdb; --ink: #1b2430; --muted: #5b6676; --line: #d9dee6; --soft: #f3f6fa; --ok: #17743d; --warn: #b25e00; --bad: #b3261e; }
-  h1, h2, h3 { margin: 0; color: var(--navy); }
-  h1 { font-size: 22pt; letter-spacing: .2px; }
-  h2 { font-size: 12.5pt; margin: 11px 0 5px; padding-bottom: 3px; border-bottom: 2px solid var(--navy); }
-  h3 { font-size: 10.5pt; }
-  p { margin: 0 0 6px; }
-  .muted { color: var(--muted); }
-  .small { font-size: 9pt; }
-  .page { position: relative; page-break-after: always; }
+  body { font: 10pt/1.38 Arial, Helvetica, sans-serif; color: #111; }
+  .page { position: relative; page-break-after: always; min-height: 9.3in; }
   .page:last-child { page-break-after: auto; }
-  .watermark { position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%) rotate(-28deg); font-size: 96pt; font-weight: 800; color: rgba(42,111,219,.07); letter-spacing: 12px; pointer-events: none; white-space: nowrap; }
-  .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--navy); padding-bottom: 10px; }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .logo { width: 44px; height: 44px; border-radius: 8px; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22pt; font-weight: 800; }
-  .brand b { font-size: 15pt; color: var(--navy); display: block; line-height: 1.1; }
-  .brand span { color: var(--muted); font-size: 9pt; }
-  .sample { background: #fff3e0; color: var(--warn); border: 1px solid #f0c38e; border-radius: 6px; padding: 4px 10px; font-weight: 700; font-size: 9.5pt; letter-spacing: .5px; }
-  .meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px 16px; margin: 9px 0; }
-  .meta div b { display: block; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
-  .summary { display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr; gap: 8px; margin: 6px 0 2px; }
-  .tile { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 7px 11px; }
-  .tile b { display: block; font-size: 16pt; color: var(--navy); line-height: 1.1; }
-  .tile span { color: var(--muted); font-size: 9pt; }
-  .tile.warn b { color: var(--warn); }
-  .tile.bad b { color: var(--bad); }
-  .callout { border-left: 4px solid var(--blue); background: #eef4fd; padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; }
+  h1, h2, h3, p { margin: 0; }
+  .lh { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 8px; }
+  .lh .co { font-size: 17pt; font-weight: 700; letter-spacing: .5px; }
+  .lh .addr { font-size: 8.5pt; color: #333; margin-top: 2px; }
+  .stamp { border: 2px solid #b3261e; color: #b3261e; font-weight: 700; font-size: 9pt; letter-spacing: 1.5px; padding: 4px 10px; transform: rotate(-4deg); margin-top: 4px; }
+  h1 { font-size: 13pt; text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 6px; }
+  h2 { font-size: 10.5pt; text-transform: uppercase; letter-spacing: .6px; margin: 13px 0 4px; border-bottom: 1px solid #111; padding-bottom: 2px; }
   table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
-  th, td { text-align: left; padding: 4px 7px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { background: var(--soft); color: var(--muted); font-size: 8.5pt; text-transform: uppercase; letter-spacing: .5px; }
-  td.num, th.num { text-align: right; white-space: nowrap; }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 8.5pt; font-weight: 700; }
-  .pill.ok { background: #e8f6ee; color: var(--ok); }
-  .pill.warn { background: #fff3e0; color: var(--warn); }
-  .pill.bad { background: #fdecea; color: var(--bad); }
-  .findings { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-  .finding { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .photo { height: 44px; background: repeating-linear-gradient(135deg, #e9edf3 0 10px, #f3f6fa 10px 20px); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 8.5pt; }
-  .finding .bd { padding: 5px 9px; }
-  .finding p { margin: 0; line-height: 1.35; }
-  .p2 { font-size: 9.3pt; }
-  .p2 .finding p { font-size: 8.6pt; }
-  .p2 h2 { margin: 8px 0 4px; }
-  .p2 table { font-size: 8.8pt; }
-  .p2 th, .p2 td { padding: 4px 7px; }
-  .p2 .finding h3 { font-size: 9.5pt; }
-  .finding h3 { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  ul { margin: 4px 0 6px; padding-left: 18px; }
-  li { margin: 2px 0; }
-  .foot { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 8px; font-size: 8.5pt; color: var(--muted); display: flex; justify-content: space-between; }
-  .next { background: var(--navy); color: #fff; border-radius: 8px; padding: 12px 16px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-  .next b { font-size: 12pt; display: block; }
-  .next .cta { background: #fff; color: var(--navy); border-radius: 6px; padding: 8px 14px; font-weight: 700; white-space: nowrap; }
+  td, th { padding: 3px 6px; vertical-align: top; text-align: left; }
+  table.form td { border-bottom: 1px solid #999; }
+  table.form td.k { width: 17%; color: #444; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .4px; border-bottom: none; padding-left: 0; }
+  table.grid th, table.grid td { border: 1px solid #777; }
+  table.grid th { background: #eee; font-weight: 700; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .4px; }
+  table.grid td.c, table.grid th.c { text-align: center; }
+  table.grid td.r, table.grid th.r { text-align: right; white-space: nowrap; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
+  .photos { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .ph { border: 1px solid #777; }
+  .ph .img { height: 150px; background: #ddd; display: flex; align-items: center; justify-content: center; color: #555; font-size: 8pt; text-align: center; padding: 4px; }
+  .ph .cap { font-size: 8.3pt; padding: 3px 5px; border-top: 1px solid #777; }
+  .note { font-size: 9.5pt; margin: 4px 0; }
+  .sig { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 18px; }
+  .sig div { border-top: 1px solid #111; padding-top: 3px; font-size: 8.5pt; color: #333; }
+  .foot { position: absolute; bottom: -0.35in; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8pt; color: #555; }
+  .fine { font-size: 8pt; color: #444; margin-top: 10px; line-height: 1.3; }
+  .box { border: 1px solid #111; padding: 6px 9px; margin-top: 8px; font-size: 9.5pt; }
 </style>
 </head>
 <body>
 
-<!-- ===================== PAGE 1 ===================== -->
 <section class="page">
-  <div class="watermark">SAMPLE</div>
-
-  <div class="head">
-    <div class="brand">
-      <div class="logo">A</div>
-      <div><b>ArmorTex Roofs</b><span>Residential roofing · Tyler & East Texas</span></div>
+  <div class="lh">
+    <div>
+      <div class="co">ARMORTEX ROOFS</div>
+      <div class="addr">3310 South Broadway Ave, Ste 225A · Tyler, TX 75701 · [phone] · [email] · armortexroofs.com</div>
     </div>
-    <div style="text-align:right">
-      <h1>Roof Report</h1>
-      <span class="sample">SAMPLE · what your listing report looks like</span>
-    </div>
+    <div class="stamp">SAMPLE REPORT</div>
   </div>
 
-  <div class="meta">
-    <div><b>Property</b>1234 Sample Lane<br>Tyler, TX 75703 <span class="muted small">(fictional)</span></div>
-    <div><b>Prepared for</b>[Realtor name]<br>[Brokerage]</div>
-    <div><b>Inspected</b>Nov 20, 2026 · 9:40 AM<br>by Tanner Fought, ArmorTex Roofs</div>
-    <div><b>Report #</b>RR-SAMPLE-001</div>
-    <div><b>Turnaround</b>Requested Nov 19 · delivered Nov 20 <span class="pill ok">under 48 hrs</span></div>
-    <div><b>Cost to the listing</b>$0 · no obligation</div>
-  </div>
-
-  <h2>The short version</h2>
-  <div class="summary">
-    <div class="tile warn"><b>Fair</b><span>overall condition</span></div>
-    <div class="tile"><b>~14 yrs</b><span>roof age (2012 shingle date)</span></div>
-    <div class="tile warn"><b>3–5 yrs</b><span>remaining life if left as is</span></div>
-    <div class="tile bad"><b>Yes</b><span>storm damage present</span></div>
-  </div>
-
-  <div class="callout">
-    <b>What this means for the listing.</b> The roof is sound today and not leaking, but it has hail damage from the May 2026 storm on the north and west slopes, plus two small items that will leak within a year or two. A buyer's inspector will find all of it. Your seller has three clean choices, priced on page 2: fix the small items now and disclose the hail, file an insurance claim before listing, or replace and list with a new roof. Any of the three beats a surprise at option period.
-  </div>
-
+  <h1>Roof Inspection Report</h1>
   <div class="two">
-    <div>
-      <h2>Roof facts</h2>
-      <table>
-        <tr><th>Material</th><td>30-year architectural asphalt shingle, charcoal</td></tr>
-        <tr><th>Size</th><td>About 32 squares (3,200 sq ft), 6/12 pitch, one layer</td></tr>
-        <tr><th>Decking</th><td>OSB, solid underfoot, no soft spots found</td></tr>
-        <tr><th>Underlayment</th><td>15 lb felt (seen at the ridge vent cut)</td></tr>
-        <tr><th>Ventilation</th><td>Ridge vent + soffit vents, working</td></tr>
-        <tr><th>Flashing</th><td>Step flashing good; chimney counter-flashing sealant failed</td></tr>
-        <tr><th>Penetrations</th><td>4 pipe boots (1 cracked), 2 attic vents, 1 chimney</td></tr>
-        <tr><th>Gutters</th><td>5" aluminum, secure, debris on the north side</td></tr>
-        <tr><th>Attic</th><td>No stains or daylight seen from inside</td></tr>
-      </table>
-    </div>
-    <div>
-      <h2>How we looked</h2>
-      <ul>
-        <li>Walked every slope; drone photos of the whole roof for the record.</li>
-        <li>Checked each penetration, valley, ridge and edge by hand.</li>
-        <li>Looked at the attic from the access hatch for stains and daylight.</li>
-        <li>Pulled the county permit history and the shingle lot date.</li>
-        <li>Compared the hail pattern against the May 2026 storm track.</li>
-      </ul>
-      <h2 style="margin-top:10px">Severity key</h2>
-      <p class="small"><span class="pill bad">Fix soon</span> will leak or fail within about a year · <span class="pill warn">Plan for it</span> fine today, needs a decision before sale · <span class="pill ok">Note</span> for the record, no action needed.</p>
-    </div>
+    <table class="form">
+      <tr><td class="k">Property</td><td>1234 Sample Lane, Tyler, TX 75703</td></tr>
+      <tr><td class="k">Requested by</td><td>[Realtor name], [Brokerage] · listing agent</td></tr>
+      <tr><td class="k">Homeowner</td><td>[Seller name] · present at inspection</td></tr>
+      <tr><td class="k">Purpose</td><td>Pre-listing roof condition and estimate</td></tr>
+    </table>
+    <table class="form">
+      <tr><td class="k">Report no.</td><td>26-1120-03</td></tr>
+      <tr><td class="k">Inspected</td><td>Thu, Nov 20, 2026 · 9:40 AM – 10:55 AM</td></tr>
+      <tr><td class="k">Inspector</td><td>Tanner Fought</td></tr>
+      <tr><td class="k">Weather</td><td>Clear, 58°F, dry roof, wind 5 mph</td></tr>
+    </table>
   </div>
 
-  <div class="foot">
-    <span>ArmorTex Roofs · 3310 South Broadway Ave, Ste 225A, Tyler, TX 75701 · [phone] · [email]</span>
-    <span>Page 1 of 2</span>
+  <h2>Roof data</h2>
+  <div class="two">
+    <table class="form">
+      <tr><td class="k">Covering</td><td>Architectural (laminated) asphalt shingle, charcoal</td></tr>
+      <tr><td class="k">Age</td><td>Approx. 14 yrs. Manufacturer stamp on cap shingle reads 2012; no re-roof permit on file since.</td></tr>
+      <tr><td class="k">Layers</td><td>1</td></tr>
+      <tr><td class="k">Area</td><td>32.4 squares (3,240 sq ft) by drone measurement, 6 facets</td></tr>
+      <tr><td class="k">Pitch</td><td>6/12 main, 4/12 rear porch</td></tr>
+      <tr><td class="k">Deck</td><td>7/16" OSB. Walked all facets; no soft spots.</td></tr>
+    </table>
+    <table class="form">
+      <tr><td class="k">Underlayment</td><td>#15 felt, seen at ridge vent cut</td></tr>
+      <tr><td class="k">Ventilation</td><td>Ridge vent 38 lf + continuous soffit. Adequate.</td></tr>
+      <tr><td class="k">Flashing</td><td>Galvanized step and apron. Chimney counter-flashing sealed, not let into mortar.</td></tr>
+      <tr><td class="k">Penetrations</td><td>4 plumbing boots, 2 box vents, 1 masonry chimney 30"×54"</td></tr>
+      <tr><td class="k">Drip edge / gutters</td><td>Drip edge present. 5" K-style aluminum, 2 downspouts, secure.</td></tr>
+      <tr><td class="k">Attic</td><td>Viewed from hall hatch. No staining, no daylight, insulation dry.</td></tr>
+    </table>
   </div>
+
+  <h2>Storm damage test</h2>
+  <p class="note">Hail test squares (10' × 10') chalked on each facet. Counted bruises with granule loss and soft mat. Collateral: dents on the north gutter run, the box vent caps, and the AC condenser fins on the north side. Consistent with the May 14, 2026 storm (1.25" hail reported in this zip).</p>
+  <table class="grid" style="margin-top:4px">
+    <tr><th>Facet</th><th class="c">North</th><th class="c">West</th><th class="c">South</th><th class="c">East</th><th class="c">Rear porch (N)</th><th class="c">Rear porch (S)</th></tr>
+    <tr><td>Hail hits per test square</td><td class="c">11</td><td class="c">9</td><td class="c">2</td><td class="c">1</td><td class="c">8</td><td class="c">1</td></tr>
+    <tr><td>Wind-lifted or creased shingles</td><td class="c">0</td><td class="c">2</td><td class="c">0</td><td class="c">3 (ridge)</td><td class="c">0</td><td class="c">0</td></tr>
+  </table>
+  <p class="note" style="margin-top:5px">Eight or more hits per square on a facet is the threshold most carriers in this area use for facet replacement. Three of six facets are over it. In my experience a claim on this roof would be approved for full replacement; the adjuster makes that call, not us.</p>
+
+  <div class="foot"><span>ArmorTex Roofs · Report 26-1120-03 · 1234 Sample Lane, Tyler</span><span>Page 1 of 3</span></div>
 </section>
 
-<!-- ===================== PAGE 2 ===================== -->
-<section class="page p2">
-  <div class="watermark">SAMPLE</div>
-
-  <h2 style="margin-top:0">What we found</h2>
-  <div class="findings">
-    <div class="finding"><div class="photo">[photo: hail bruising, north slope]</div><div class="bd">
-      <h3>1. Hail bruising, north and west slopes <span class="pill warn">Plan for it</span></h3>
-      <p class="small">Soft spots and granule loss in a storm pattern, 8 to 12 hits per test square. Matches the May 2026 storm. Not leaking today. This is what an adjuster looks for; a claim is likely to be approved.</p>
-    </div></div>
-    <div class="finding"><div class="photo">[photo: cracked pipe boot]</div><div class="bd">
-      <h3>2. Cracked pipe boot, rear bathroom vent <span class="pill bad">Fix soon</span></h3>
-      <p class="small">The rubber collar has split. Water gets in on the next heavy rain and shows up as a ceiling stain in the hall bath. A 20-minute repair.</p>
-    </div></div>
-    <div class="finding"><div class="photo">[photo: chimney counter-flashing]</div><div class="bd">
-      <h3>3. Chimney counter-flashing sealant failed <span class="pill bad">Fix soon</span></h3>
-      <p class="small">Sealant has pulled away on the uphill side. No stain in the attic yet. Re-seal and re-set the counter-flashing.</p>
-    </div></div>
-    <div class="finding"><div class="photo">[photo: lifted ridge cap]</div><div class="bd">
-      <h3>4. Lifted ridge caps, east end <span class="pill warn">Plan for it</span></h3>
-      <p class="small">Three ridge caps have lost their seal and lift in wind. Hand-seal now, or they go with a replacement.</p>
-    </div></div>
-    <div class="finding"><div class="photo">[photo: south slope, good condition]</div><div class="bd">
-      <h3>5. South and east slopes <span class="pill ok">Note</span></h3>
-      <p class="small">Good condition for the age. Even wear, no hail pattern, seals intact. These slopes are not the problem.</p>
-    </div></div>
-    <div class="finding"><div class="photo">[photo: gutter debris]</div><div class="bd">
-      <h3>6. Gutter debris, north side <span class="pill ok">Note</span></h3>
-      <p class="small">Leaves and shingle grit in the north run. Clean before photos for the listing. No damage underneath.</p>
-    </div></div>
-  </div>
-
-  <h2>Your seller's three options</h2>
-  <table>
-    <tr><th>Option</th><th>What happens</th><th class="num">Estimated cost to seller</th><th>Best when</th></tr>
-    <tr><td><b>A. Fix the small items, disclose the hail</b></td><td>Repair items 2, 3 and 4 this week. Hail goes on the Seller's Disclosure with this report attached.</td><td class="num">$450 – $700</td><td>Seller wants to list now and negotiate the roof.</td></tr>
-    <tr><td><b>B. File a claim before listing</b></td><td>We meet the adjuster, document the storm damage, replace under the policy. 3 to 6 weeks.</td><td class="num">Deductible only<br><span class="muted small">typically 1–2% of dwelling coverage</span></td><td>There is time, and the seller wants "new roof" in the MLS.</td></tr>
-    <tr><td><b>C. Replace out of pocket</b></td><td>New 30-year architectural roof, new flashing and boots, transferable workmanship warranty.</td><td class="num">$14,500 – $17,800</td><td>No claim possible; seller wants top of market, no roof objections.</td></tr>
+<section class="page">
+  <h2 style="margin-top:0">Findings</h2>
+  <table class="grid">
+    <tr><th class="c" style="width:4%">#</th><th style="width:22%">Location</th><th>Observation</th><th style="width:24%">Action</th><th class="c" style="width:7%">Photo</th></tr>
+    <tr><td class="c">1</td><td>North and west facets, rear porch N</td><td>Hail bruising, 8–11 hits per square, granules displaced, mat soft under thumb. No leak at this time.</td><td>Insurance claim or replacement. See estimate.</td><td class="c">1, 2</td></tr>
+    <tr><td class="c">2</td><td>Rear bath vent, south facet</td><td>Neoprene pipe boot split 3" at the collar. Will leak at the next heavy rain; stain would show in the hall bath ceiling.</td><td>Replace boot. Repair within 30 days.</td><td class="c">3</td></tr>
+    <tr><td class="c">3</td><td>Chimney, uphill side</td><td>Counter-flashing sealant separated 14". Flashing itself sound. No staining in attic.</td><td>Clean and re-seal. Repair within 30 days.</td><td class="c">4</td></tr>
+    <tr><td class="c">4</td><td>Ridge, east end</td><td>Three cap shingles unsealed, lift by hand. One creased.</td><td>Replace 3 caps, hand-seal. Included in repair.</td><td class="c">5</td></tr>
+    <tr><td class="c">5</td><td>South and east facets</td><td>Normal wear for age. Seals intact. No action.</td><td>None</td><td class="c">6</td></tr>
+    <tr><td class="c">6</td><td>North gutter</td><td>Leaf debris and shingle grit 2" deep. Hail dents on the face (collateral, see above).</td><td>Clean. No repair needed.</td><td class="c">—</td></tr>
   </table>
-  <p class="small muted" style="margin-top:6px">Ranges are for this sample property at today's material prices. A real report carries a firm written estimate for each option, valid 30 days.</p>
 
-  <div class="two" style="margin-top:6px">
-    <div>
-      <h2>For the Seller's Disclosure</h2>
-      <p class="small">The Texas Seller's Disclosure Notice asks about the roof's condition, age and known damage. This report gives your seller the facts to answer it in one line, with the report attached. Buyers' inspectors respect a seller who got ahead of it.</p>
-    </div>
-    <div>
-      <h2>What a real report includes</h2>
-      <p class="small">Labeled drone photos of every slope · a firm written estimate for each option · a one-page summary for the buyer's agent · delivered as a PDF within 48 hours of the address, at no cost.</p>
-    </div>
+  <h2>Photo log</h2>
+  <div class="photos">
+    <div class="ph"><div class="img">[photo 1]</div><div class="cap"><b>1.</b> North facet, test square. Hail bruises chalked, 11 in square.</div></div>
+    <div class="ph"><div class="img">[photo 2]</div><div class="cap"><b>2.</b> Close-up, north facet. Bruise with granule loss, mat exposed.</div></div>
+    <div class="ph"><div class="img">[photo 3]</div><div class="cap"><b>3.</b> Rear bath vent. Pipe boot split at collar, 3".</div></div>
+    <div class="ph"><div class="img">[photo 4]</div><div class="cap"><b>4.</b> Chimney, uphill side. Counter-flashing sealant separated.</div></div>
+    <div class="ph"><div class="img">[photo 5]</div><div class="cap"><b>5.</b> Ridge, east end. Three unsealed caps, one creased.</div></div>
+    <div class="ph"><div class="img">[photo 6]</div><div class="cap"><b>6.</b> South facet overview. Normal wear, seals intact.</div></div>
   </div>
 
-  <div class="next" style="margin-top:8px;padding:9px 14px">
-    <div><b>Have a listing that needs this?</b>Reply with the address. We'll be on the roof within two days and the report in your inbox the day after. No cost, no obligation, no pressure on your seller.</div>
-    <div class="cta">[phone] · [email]</div>
+  <div class="foot"><span>ArmorTex Roofs · Report 26-1120-03 · 1234 Sample Lane, Tyler</span><span>Page 2 of 3</span></div>
+</section>
+
+<section class="page">
+  <h2 style="margin-top:0">Summary</h2>
+  <p class="note">The roof is not leaking today and the deck and attic are dry. It has two small items that will leak within the year (findings 2 and 3) and storm damage on three facets that a buyer's inspector and any adjuster will find. The shingle is 14 years into a 30-year rating and the south and east facets have life left; the north and west do not. Left alone, I would put remaining life at 3 to 5 years before it needs replacement regardless of the hail.</p>
+
+  <h2>Estimate</h2>
+  <table class="grid">
+    <tr><th>Item</th><th>Scope</th><th class="r">Amount</th></tr>
+    <tr><td><b>Repair</b> (findings 2, 3, 4)</td><td>Replace 1 pipe boot; clean and re-seal chimney counter-flashing 14 lf; replace 3 ridge caps and hand-seal; clean north gutter. 1 crew, half day. 2-year workmanship warranty on the repair.</td><td class="r">$585.00</td></tr>
+    <tr><td><b>Full replacement</b></td><td>Tear off 1 layer, 32.4 sq. Inspect deck, replace damaged OSB at $85/sheet if found (none expected). Synthetic underlayment, ice-and-water at valleys and penetrations, new drip edge, new pipe boots and box vents, re-flash chimney with new counter-flashing let into mortar, architectural shingle (owner's color choice), ridge vent. Haul-off and magnet sweep. Manufacturer's limited lifetime material warranty, 10-year ArmorTex workmanship warranty, transferable once.</td><td class="r">$16,240.00</td></tr>
+    <tr><td><b>Replacement under insurance</b></td><td>Same scope as above, billed to the carrier at the adjuster's approved amount. Homeowner's cost is the policy deductible. We meet the adjuster on site, supply this report and the photo log, and handle supplements.</td><td class="r">Deductible</td></tr>
+  </table>
+  <p class="fine">Estimate valid 30 days from the inspection date. Material prices are current as of the report date. Repair and replacement work requires a signed agreement; no deposit is taken until materials are ordered.</p>
+
+  <div class="box"><b>Recommendation.</b> File a claim with the homeowner's carrier before listing and replace under the policy. If the seller would rather not open a claim, do the $585 repair now and attach this report to the Seller's Disclosure so the hail is on the record before the option period. Either way the roof should not be a surprise to the buyer.</div>
+
+  <div class="sig">
+    <div>Inspector: Tanner Fought, ArmorTex Roofs &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Signature on file</div>
+    <div>Date: Nov 20, 2026</div>
   </div>
 
-  <p class="small muted" style="margin-top:6px;font-size:8pt">This sample describes a fictional property and is for illustration. A roof report is a visual inspection on the day of the visit, not a warranty or an insurance determination. Condition can change with weather. Any repair or replacement estimate is subject to a signed agreement.</p>
+  <p class="fine">This report is a visual inspection on the date shown and reflects the condition of the roof at that time. It is not a warranty, a guarantee against future leaks, or an insurance determination. Hidden conditions under the shingle or inside walls cannot be seen without removal. Hail counts are the inspector's measurements and may differ from an adjuster's. Roof inspection reports for listing agents are provided at no charge; there is no obligation to use ArmorTex Roofs for any repair or replacement.</p>
+  <p class="fine" style="margin-top:4px">This sample describes a made-up property for illustration. [Replace with a real past job, with the owner's permission, before sending.]</p>
 
-  <div class="foot">
-    <span>ArmorTex Roofs · 3310 South Broadway Ave, Ste 225A, Tyler, TX 75701 · [phone] · [email]</span>
-    <span>Page 2 of 2</span>
-  </div>
+  <div class="foot"><span>ArmorTex Roofs · Report 26-1120-03 · 1234 Sample Lane, Tyler</span><span>Page 3 of 3</span></div>
 </section>
 
 </body>
