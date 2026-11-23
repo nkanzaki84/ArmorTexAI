@@ -4,7 +4,7 @@ const { loadApp } = require('./fakes/apps-script');
 
 const OWNER = 'brian@armortexroofs.com';
 const PAGES = [
-  { page: 'today' }, { page: 'calendar' }, { page: 'prospects' }, { page: 'marketing' }, { page: 'social' }, { page: 'partners' }, { page: 'partner', id: 'P-1' }, { page: 'partner', id: 'P-1', from: 'marketing' },
+  { page: 'today' }, { page: 'calendar' }, { page: 'prospects' }, { page: 'marketing' }, { page: 'social' }, { page: 'content' }, { page: 'partners' }, { page: 'partner', id: 'P-1' }, { page: 'partner', id: 'P-1', from: 'marketing' },
   { page: 'homes' }, { page: 'home', id: 'H-1' }, { page: 'lists' }, { page: 'campaigns' }, { page: 'campaign' }, { page: 'campaign', id: 'CP-1' }, { page: 'settings' }, { page: 'nope' },
 ];
 const USERS = [

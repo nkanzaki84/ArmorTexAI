@@ -1,0 +1,114 @@
+<!-- Content library: reusable pieces for posts and emails. Files live in Drive/Canva; this holds links, text and tags. -->
+<div class="title-row" style="position:static">
+  <h1>Content</h1><span class="sub">the library · photos, videos, captions, documents, testimonials</span>
+  <div class="spacer"></div>
+  <button class="btn primary" id="newItemBtn" style="display:none">+ Add to library</button>
+</div>
+
+<div class="row" style="margin-bottom:8px;flex-wrap:wrap">
+  <div class="chips" id="kindChips"></div>
+  <div class="spacer"></div>
+  <div class="search">🔍 <input id="q" placeholder="Search titles, text, tags…"></div>
+</div>
+<div class="row" style="margin-bottom:12px"><span class="chips" id="tagChips"></span></div>
+
+<div class="content-grid" id="grid"><div class="empty">Loading…</div></div>
+
+<div class="modal-backdrop" id="itemModal">
+  <div class="modal" style="max-width:640px">
+    <h2 style="margin-top:0" id="itemModalTitle">Add to library</h2>
+    <form id="itemForm">
+      <div class="grid2">
+        <div class="f"><label>Title <span class="req">*</span></label><input name="title" required placeholder="e.g. Judson Rd before/after"></div>
+        <div class="f"><label>Kind</label><select name="kind" id="itemKind"></select></div>
+      </div>
+      <div class="f"><label>Link</label><input name="link" placeholder="Drive, Canva, YouTube, a web page…"><span class="hint">Where the file lives. Upload photos and videos to Drive (or design in Canva) and paste the link.</span></div>
+      <div class="f"><label>Text</label><textarea name="text" style="min-height:120px" placeholder="A caption, an email paragraph, a testimonial in their words, a description of the photo…"></textarea></div>
+      <div class="f"><label>Tags</label><div id="itemTags"></div><span class="hint">Type one and press Enter: hail, before-after, testimonial, tyler, winter…</span></div>
+      <div class="f"><label>Notes</label><input name="notes" placeholder="who took it, when, permission to use, anything to remember"></div>
+      <div class="row" style="justify-content:flex-end;margin-top:12px"><button type="button" class="btn ghost danger" id="itemDelete" style="display:none;margin-right:auto">Delete</button><button type="button" class="btn" id="itemCancel">Cancel</button><button type="submit" class="btn primary">Save</button></div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var S = O.social || { canWrite: false }, KINDS = O.contentKinds || [];
+    var canAdd = !!S.canWrite;
+    var items = [], filter = { kind: '', tag: '', q: '' }, editing = null, tagsEd = null;
+    var ICON = { photo: '📷', video: '🎬', graphic: '🎨', caption: '✍️', email: '✉️', document: '📄', testimonial: '⭐', link: '🔗' };
+    var LABEL = { photo: 'Photos', video: 'Videos', graphic: 'Graphics', caption: 'Captions', email: 'Email text', document: 'Documents', testimonial: 'Testimonials', link: 'Links' };
+    if (canAdd) $('newItemBtn').style.display = '';
+    $('itemKind').innerHTML = KINDS.map(function (k) { return '<option value="' + esc(k) + '">' + (ICON[k] || '') + ' ' + esc(LABEL[k] || k) + '</option>'; }).join('');
+
+    function visible() {
+      var q = filter.q.toLowerCase();
+      return items.filter(function (i) {
+        if (filter.kind && i.kind !== filter.kind) return false;
+        if (filter.tag && i.tags.indexOf(filter.tag) === -1) return false;
+        if (q && [i.title, i.text, i.notes, i.tags.join(' '), i.kind].join(' ').toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      });
+    }
+    function renderChips() {
+      var kc = { '': items.length }, tc = {};
+      items.forEach(function (i) { kc[i.kind] = (kc[i.kind] || 0) + 1; i.tags.forEach(function (t) { tc[t] = (tc[t] || 0) + 1; }); });
+      $('kindChips').innerHTML = [''].concat(KINDS).filter(function (k) { return !k || kc[k]; }).map(function (k) { return '<button class="chip ' + (filter.kind === k ? 'on' : '') + '" data-kind="' + esc(k) + '">' + (k ? (ICON[k] || '') + ' ' + (LABEL[k] || k) : 'Everything') + ' <span class="n">' + (kc[k] || 0) + '</span></button>'; }).join('');
+      $('tagChips').innerHTML = Object.keys(tc).sort().map(function (t) { return '<button class="chip ' + (filter.tag === t ? 'on' : '') + '" data-tag="' + esc(t) + '">' + esc(t) + ' · ' + tc[t] + '</button>'; }).join('');
+    }
+    function card(i) {
+      var visual = i.kind === 'photo' || i.kind === 'video' || i.kind === 'graphic';
+      return '<div class="citem" data-id="' + esc(i.id) + '">' +
+        '<div class="ck">' + (ICON[i.kind] || '📁') + ' <span class="sub">' + esc(LABEL[i.kind] || i.kind) + '</span><span class="spacer"></span>' + (i.uses ? '<span class="sub" title="times used">used ' + i.uses + '×</span>' : '') + '</div>' +
+        '<div class="name">' + esc(i.title) + '</div>' +
+        (i.text ? '<div class="sub ctext">' + esc(i.text.slice(0, 220)) + (i.text.length > 220 ? '…' : '') + '</div>' : '') +
+        (i.tags.length ? '<div style="margin-top:4px">' + i.tags.map(function (t) { return '<span class="pill" style="font-size:11px;margin-right:3px">' + esc(t) + '</span>'; }).join('') + '</div>' : '') +
+        '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">' +
+          (i.link ? '<a class="btn sm" href="' + esc(i.link) + '" target="_blank" rel="noopener">Open</a>' : '') +
+          (i.text ? '<button class="btn sm" data-copy="' + esc(i.id) + '">📋 Copy text</button>' : '') +
+          (canAdd ? '<button class="btn sm navy" data-use="' + esc(i.id) + '" title="Starts a social draft from this">📱 Use in a post</button>' : '') +
+          (canAdd ? '<button class="btn sm ghost" data-edit="' + esc(i.id) + '">Edit</button>' : '') +
+        '</div>' +
+        '<div class="sub" style="margin-top:6px">' + esc((i.createdBy || '').split('@')[0]) + (i.createdAt ? ' · ' + fmtDate(i.createdAt) : '') + '</div>' +
+      '</div>';
+    }
+    function render() {
+      renderChips();
+      var rows = visible();
+      $('grid').innerHTML = rows.length ? rows.map(card).join('') : '<div class="empty">' + (items.length ? 'Nothing matches.' : 'The library is empty.' + (canAdd ? ' Press + Add to library.' : '')) + '</div>';
+    }
+    function load() { return api('listContent').then(function (rows) { items = rows; render(); }).catch(function (e) { $('grid').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; }); }
+
+    function openModal(item) {
+      editing = item || null;
+      var f = $('itemForm');
+      $('itemModalTitle').textContent = item ? 'Edit' : 'Add to library';
+      f.title.value = item ? item.title : ''; f.kind.value = item ? item.kind : (filter.kind || 'photo'); f.link.value = item ? item.link : ''; f.text.value = item ? item.text : ''; f.notes.value = item ? item.notes : '';
+      tagsEd = tagEditor($('itemTags'), item ? item.tags : (filter.tag ? [filter.tag] : []));
+      $('itemDelete').style.display = item && isAdmin ? '' : 'none';
+      $('itemModal').classList.add('show');
+      f.title.focus();
+    }
+    on($('newItemBtn'), 'click', function () { openModal(null); });
+    on($('itemCancel'), 'click', function () { $('itemModal').classList.remove('show'); });
+    on($('itemForm'), 'submit', function (e) {
+      e.preventDefault();
+      var f = e.target, payload = { title: f.title.value, kind: f.kind.value, link: f.link.value, text: f.text.value, tags: tagsEd ? tagsEd.get() : [], notes: f.notes.value };
+      var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Saving…');
+      (editing ? api('saveContent', editing.id, payload) : api('createContent', payload)).then(function () { toast('Saved', 'success'); $('itemModal').classList.remove('show'); return load(); }).catch(fail).finally(function () { busy(btn, false, 'Save'); });
+    });
+    on($('itemDelete'), 'click', function () { if (!editing || !confirm('Delete “' + editing.title + '” from the library?')) return; api('deleteContent', editing.id).then(function () { toast('Deleted', 'success'); $('itemModal').classList.remove('show'); return load(); }).catch(fail); });
+    on($('kindChips'), 'click', function (e) { var b = e.target.closest('[data-kind]'); if (!b) return; filter.kind = b.dataset.kind; render(); });
+    on($('tagChips'), 'click', function (e) { var b = e.target.closest('[data-tag]'); if (!b) return; filter.tag = filter.tag === b.dataset.tag ? '' : b.dataset.tag; render(); });
+    on($('q'), 'input', function (e) { filter.q = e.target.value.trim(); render(); });
+    on($('grid'), 'click', function (e) {
+      var b = e.target.closest('[data-copy], [data-use], [data-edit]'); if (!b) return;
+      var it = items.filter(function (i) { return i.id === (b.dataset.copy || b.dataset.use || b.dataset.edit); })[0]; if (!it) return;
+      if (b.dataset.edit) return openModal(it);
+      if (b.dataset.use) { busy(b, true, '…'); api('useContentInPost', it.id).then(function (r) { toast('Draft started', 'success'); go('social'); }).catch(fail).finally(function () { busy(b, false, '📱 Use in a post'); }); return; }
+      var text = it.text, done = function () { toast('Copied', 'success'); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(function () { toast('Could not copy', 'error'); }); else toast('Could not copy', 'error');
+    });
+    load();
+  })();
+</script>

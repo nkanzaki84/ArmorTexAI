@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.14.0';
+const APP_VERSION    = '0.15.0';
 const APP_BUILD_DATE = '2026-11-23';
 
 // ===== Script Property keys =====
@@ -44,6 +44,7 @@ const TAB = {
   CAMPAIGNS: 'Campaigns',
   LISTS:     'Lists',
   SOCIAL:    'Social Posts',
+  CONTENT:   'Content',
   REFERRALS: 'Referrals',
   VERSIONS:  'Versions',
   SETTINGS:  'Settings',
@@ -62,6 +63,7 @@ const ID_PREFIX = {
   'Campaigns': 'CP',
   'Lists':     'L',
   'Social Posts': 'SP',
+  'Content':   'CT',
 };
 
 // ===== Column headers per tab. Order matters for new tabs; existing tabs are
@@ -197,6 +199,20 @@ const HEADERS = {
     'Paid Amount',
     'Notes',
   ],
+  'Content': [         // the content library (2026-11-23): links + text + tags; files stay in Drive/Canva
+    'ID',                // CT-1
+    'Title',
+    'Kind',              // CONTENT_KINDS
+    'Link',
+    'Text',
+    'Tags',
+    'Notes',
+    'Uses',              // how many times it was pulled into a post
+    'Created At',
+    'Created By',
+    'Updated At',
+    'Updated By',
+  ],
   'Social Posts': [    // drafts only (2026-11-23): nothing posts from here; Caitlin copies the caption out
     'ID',                // SP-1
     'Title',
@@ -308,6 +324,7 @@ const COLD_RESPONSES = ['Not interested', 'Bounced', 'Opted out'];   // a reply 
 // ===== Social media drafts =====
 const SOCIAL_PLATFORMS = ['Instagram', 'Facebook', 'Google Business', 'LinkedIn', 'TikTok', 'Nextdoor'];
 const SOCIAL_STATUSES = ['idea', 'draft', 'ready', 'posted'];
+const CONTENT_KINDS = ['photo', 'video', 'graphic', 'caption', 'email', 'document', 'testimonial', 'link'];
 const SOCIAL_CAPTION_LIMITS = { Instagram: 2200, Facebook: 63206, 'Google Business': 1500, LinkedIn: 3000, TikTok: 4000, Nextdoor: 10000 };
 const SOCIAL_WRITE_ROLES = ['owner', 'sales', 'viewonly'];   // Caitlin (view-only on the CRM) drafts the posts; everyone signed in can
 
@@ -472,13 +489,14 @@ const PAGE_CATALOG = [
   { key: 'homes',    label: 'Homes' },
   { key: 'campaigns', label: 'Campaigns' },  // the ledger; page=campaign&id=CP-1 is one campaign's record
   { key: 'social',    label: 'Social' },      // social media drafts; nothing posts from here
+  { key: 'content',   label: 'Content' },     // the content library
   { key: 'settings', label: 'Settings' },
 ];
 
 const DEFAULT_ROLE_ACCESS = {
-  owner:    ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'settings'],
-  sales:    ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social'],
-  viewonly: ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social'],
+  owner:    ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'content', 'settings'],
+  sales:    ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'content'],
+  viewonly: ['today', 'calendar', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'social', 'content'],
 };
 
 const WRITE_ROLES = ['owner', 'sales'];   // who may change data

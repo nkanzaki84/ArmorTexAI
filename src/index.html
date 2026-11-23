@@ -25,6 +25,7 @@
     quo: <?!= JSON.stringify(quo || {}) ?>,
     multiCampaigns: <?!= JSON.stringify(multiCampaigns || []) ?>,
     social: <?!= JSON.stringify(social || {}) ?>,
+    contentKinds: <?!= JSON.stringify(contentKinds || []) ?>,
     winResponses: <?!= JSON.stringify(winResponses || []) ?>,
     noAccess: <?!= JSON.stringify(noAccess || null) ?>
   };
@@ -64,6 +65,7 @@
       <? } ?>
       <a href="<?= appUrl ?>?page=campaigns&side=<?= side ?>" class="<?= (page === 'campaigns' || page === 'campaign') ? 'active' : '' ?>"><i>📊</i><span>Campaigns</span></a>
       <a href="<?= appUrl ?>?page=social&side=<?= side ?>" class="<?= page === 'social' ? 'active' : '' ?>" title="Drafts only; nothing posts from here"><i>📱</i><span>Social</span></a>
+      <a href="<?= appUrl ?>?page=content&side=<?= side ?>" class="<?= page === 'content' ? 'active' : '' ?>" title="Photos, videos, captions, documents to reuse"><i>🗂️</i><span>Content</span></a>
       <? if (session.allowedPages.indexOf('settings') !== -1) { ?>
       <a href="<?= appUrl ?>?page=settings&side=<?= side ?>" class="own <?= page === 'settings' ? 'active' : '' ?>" title="Owner only"><i>⚙️</i><span>Settings</span></a>
       <? } ?>
@@ -97,6 +99,7 @@
     <? } else if (page === 'homes' || page === 'home') { ?><?!= include('homes') ?>
     <? } else if (page === 'lists') { ?><?!= include('lists') ?>
     <? } else if (page === 'social') { ?><?!= include('social') ?>
+    <? } else if (page === 'content') { ?><?!= include('content') ?>
     <? } else if (page === 'campaigns') { ?><?!= include('campaigns') ?>
     <? } else if (page === 'campaign') { ?><?!= include('campaign') ?>
     <? } else if (page === 'settings') { ?><?!= include('settings') ?>

@@ -63,6 +63,12 @@ function seed(app) {
   app.addMatchingToList(l1, { type: 'realtor', sourceList: 'realtors-gregg-nov-2026' });
   const l2 = app.createList({ name: 'Met at the TAR mixer', notes: 'Tanner shook hands with these on Nov 12' }).id;
   app.addToList(l2, app.$rows('Partners').filter(p => p.Type === 'realtor').slice(3, 15).map(p => p.ID));
+  // content library
+  app.createContent({ title: 'Judson Rd before/after', kind: 'photo', link: 'https://drive.google.com/file/d/example1/view', text: 'Twenty-year-old three-tab replaced with architectural shingle, one day.', tags: ['before-after', 'tyler'] });
+  app.createContent({ title: 'Hail check caption', kind: 'caption', text: 'Storm came through last night. Give it a week, then look for granules in the gutters. A roof check is free; message us.', tags: ['hail', 'storm'] });
+  app.createContent({ title: 'Sample roof report', kind: 'document', link: 'https://drive.google.com/file/d/example2/view', tags: ['realtors', 'sample'] });
+  app.createContent({ title: 'The Carters, Longview', kind: 'testimonial', text: '“They had the report in my inbox the next morning and the buyer never raised the roof again.” — Dana C., listing agent', tags: ['testimonial', 'realtors'] });
+  app.createContent({ title: 'Drone flyover, Gladewater', kind: 'video', link: 'https://drive.google.com/file/d/example3/view', tags: ['drone', 'gladewater'] });
   // social drafts
   app.createSocialPost({ title: 'Hail season reminder', platforms: ['Instagram', 'Facebook'], caption: 'Storm came through Tyler last night. If you heard hail on the roof, give it a week and then look for granules in the gutters. A roof check is free; message us.', hashtags: '#TylerTX #EastTexasRoofing #ArmorTexRoofs', plannedDate: '2026-11-25', status: 'ready', imageLink: 'https://drive.google.com/file/d/example/view' });
   app.createSocialPost({ title: 'Before and after · Judson Rd', platforms: ['Instagram'], caption: 'Twenty-year-old three-tab, replaced in a day with architectural shingle. Swipe for the before.', hashtags: '#roofreplacement #TylerTX', status: 'draft' });

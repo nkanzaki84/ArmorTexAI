@@ -69,10 +69,10 @@
         '<form class="bd" id="postForm">' +
         '<div class="f"><label>Title <span class="req">*</span></label><input name="title" value="' + esc(p.title) + '"' + ro + ' placeholder="e.g. Hail season reminder"></div>' +
         '<div class="f"><label>Where it goes</label><div class="chips" id="platChips">' + S.platforms.map(function (pl) { return '<label class="chip ' + (p.platforms.indexOf(pl) !== -1 ? 'on' : '') + '"><input type="checkbox" value="' + esc(pl) + '" hidden' + (p.platforms.indexOf(pl) !== -1 ? ' checked' : '') + dis + '> ' + (PLAT_ICON[pl] || '') + ' ' + esc(pl) + '</label>'; }).join('') + '</div></div>' +
-        '<div class="f"><label>Caption</label><textarea name="caption" style="min-height:180px"' + ro + ' placeholder="What the post says. Put the point in the first line: Instagram shows about 125 characters before “more”.">' + esc(p.caption) + '</textarea><span class="sub" id="capCount"></span></div>' +
+        '<div class="f"><label>Caption' + (canDraft ? ' <button type="button" class="btn sm ghost" data-lib="text" style="margin-left:8px">📚 From library</button>' : '') + '</label><textarea name="caption" style="min-height:180px"' + ro + ' placeholder="What the post says. Put the point in the first line: Instagram shows about 125 characters before “more”.">' + esc(p.caption) + '</textarea><span class="sub" id="capCount"></span></div>' +
         '<div class="f"><label>Hashtags</label><input name="hashtags" value="' + esc(p.hashtags) + '"' + ro + ' placeholder="#TylerTX #EastTexasRoofing #ArmorTexRoofs"></div>' +
         '<div class="grid2">' +
-          '<div class="f"><label>Picture or video</label><div class="row"><input name="imageLink" value="' + esc(p.imageLink) + '"' + ro + ' placeholder="Drive or Canva link" style="flex:1">' + (p.imageLink ? '<a class="btn sm" href="' + esc(p.imageLink) + '" target="_blank" rel="noopener">Open</a>' : '') + '</div></div>' +
+          '<div class="f"><label>Picture or video' + (canDraft ? ' <button type="button" class="btn sm ghost" data-lib="visual" style="margin-left:8px">📚 From library</button>' : '') + '</label><div class="row"><input name="imageLink" value="' + esc(p.imageLink) + '"' + ro + ' placeholder="Drive or Canva link" style="flex:1">' + (p.imageLink ? '<a class="btn sm" href="' + esc(p.imageLink) + '" target="_blank" rel="noopener">Open</a>' : '') + '</div></div>' +
           '<div class="f"><label>Planned for</label><input name="plannedDate" type="date" value="' + esc(p.plannedDate ? String(p.plannedDate).slice(0, 10) : '') + '"' + ro + '></div>' +
         '</div>' +
         '<div class="grid2">' +
@@ -108,6 +108,21 @@
         var btn = $('savePost'); busy(btn, true, 'Saving…');
         return api('saveSocialPost', p.id, Object.assign(payload(), extra || {})).then(function () { toast(label || 'Saved', 'success'); stampSaved($('savedStamp')); return load(p.id); }).catch(fail).finally(function () { busy(btn, false, '💾 Save'); });
       }
+      f.querySelectorAll('[data-lib]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var want = b.dataset.lib;   // 'visual' → photo/video/graphic, 'text' → anything with text
+          api('listContent').then(function (all) {
+            var pool = all.filter(function (i) { return want === 'visual' ? (['photo', 'video', 'graphic'].indexOf(i.kind) !== -1 && i.link) : !!i.text; });
+            if (!pool.length) { toast('Nothing in the library yet for this. Add some under Content.', 'error'); return; }
+            var pick = prompt('Pick one (type the number):\n\n' + pool.map(function (i, n) { return (n + 1) + '. ' + i.title + (i.tags.length ? '  [' + i.tags.join(', ') + ']' : ''); }).join('\n'), '1');
+            if (pick === null) return;
+            var it = pool[parseInt(pick, 10) - 1]; if (!it) { toast('No such number', 'error'); return; }
+            if (want === 'visual') f.imageLink.value = it.link; else { f.caption.value = (f.caption.value.trim() ? f.caption.value.trim() + '\n\n' : '') + it.text; count(); }
+            api('markContentUsed', it.id).catch(function () {});
+            toast('Pulled in “' + it.title + '”. Save when ready.', 'success');
+          }).catch(fail);
+        });
+      });
       on($('savePost'), 'click', function (e) { e.preventDefault(); save(); });
       on(f, 'submit', function (e) { e.preventDefault(); if (canDraft) save(); });
       on($('readyBtn'), 'click', function () { save({ status: 'ready' }, 'Marked ready'); });
