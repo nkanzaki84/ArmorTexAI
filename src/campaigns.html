@@ -29,7 +29,7 @@
         <div class="f"><label>Partner type</label><select name="type" id="newType"></select></div>
         <div class="f"><label>Start date</label><input name="startDate" type="date"></div>
       </div>
-      <div class="f"><label>Tags</label><input name="tags" placeholder="e.g. realtors, tyler, december"><span class="sub">Words to find it by later. Comma-separated.</span></div>
+      <div class="f"><label>Tags</label><div id="newTags"></div><span class="sub">Words to find it by later. Type one and press Enter.</span></div>
       <div class="f"><label>Lists</label><div class="row" id="newLists"></div><span class="sub">Ticked lists add up. None ticked = everyone of this type. The Partners book, hand-emailed and opted-out people are never emailed.</span></div>
       <div id="newStages" style="display:none"></div>
       <div id="newLetters" style="display:none"></div>
@@ -89,7 +89,9 @@
       function chips(el, items, onByDefault) {
         el.innerHTML = items.map(function (it) { return '<label class="chip ' + (onByDefault.indexOf(it.value) !== -1 ? 'on' : '') + '"><input type="checkbox" value="' + esc(it.value) + '" hidden' + (onByDefault.indexOf(it.value) !== -1 ? ' checked' : '') + '> ' + esc(it.label) + '</label>'; }).join('') || '<span class="sub">none yet</span>';
       }
+      var newTags = null;
       on($('newBtn'), 'click', function () {
+        newTags = tagEditor($('newTags'), [String($('newType').value || 'realtor')].filter(Boolean));
         $('newType').innerHTML = Object.keys(profiles).map(function (k) { return '<option value="' + esc(k) + '">' + esc(profiles[k].plural || profiles[k].label) + '</option>'; }).join('');
         chips($('newStages'), ['Prospect', 'Contacted', 'Replied'].map(function (s) { return { value: s, label: s }; }), []);
         chips($('newLetters'), ['A', 'B', 'C', 'E'].map(function (l) { return { value: l, label: l }; }), ['A']);
@@ -102,7 +104,7 @@
         e.preventDefault();
         var f = e.target;
         var picked = function (box) { return Array.prototype.map.call(box.querySelectorAll('input:checked'), function (i) { return i.value; }); };
-        var payload = { name: f.name.value, type: f.type.value, startDate: f.startDate.value, tags: f.tags.value, lists: picked($('newLists')), stages: picked($('newStages')), versions: picked($('newLetters')) };
+        var payload = { name: f.name.value, type: f.type.value, startDate: f.startDate.value, tags: newTags ? newTags.get() : [], lists: picked($('newLists')), stages: picked($('newStages')), versions: picked($('newLetters')) };
         var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Creating…');
         api('createCampaign', payload).then(function (r) { toast('Campaign created', 'success'); go('campaign', { id: r.id }); }).catch(fail).finally(function () { busy(btn, false, 'Create'); });
       });

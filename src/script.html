@@ -101,6 +101,29 @@ function textHref(phone) {
   if (q.viaApp && onAPhone()) return 'openphone://message?number=' + encodeURIComponent(d.length === 10 ? '+1' + d : '+' + d) + (q.from ? '&from=' + encodeURIComponent(q.from) : '');
   return 'sms:' + d;
 }
+/**
+ * Tag editor: type a word, press Enter or comma, it becomes a pill below the
+ * box with an ✕. tagEditor(el, ['a','b']) renders into el and returns
+ * { get: () => [...], set: (tags) => {} }. Tags are lowercase, hyphenated.
+ */
+function tagEditor(el, initial, onChange) {
+  var tags = (initial || []).slice();
+  var norm = function (t) { return String(t || '').trim().toLowerCase().replace(/\s+/g, '-'); };
+  el.innerHTML = '<input class="inline-input tag-input" placeholder="type a tag and press Enter" style="max-width:320px"><div class="tag-pills chips" style="margin-top:6px"></div>';
+  var input = el.querySelector('.tag-input'), pills = el.querySelector('.tag-pills');
+  function render() {
+    pills.innerHTML = tags.length ? tags.map(function (t) { return '<span class="chip on" style="margin:0 4px 4px 0">' + esc(t) + ' <a href="#" data-untag="' + esc(t) + '" style="color:inherit;text-decoration:none;margin-left:2px" title="Remove">✕</a></span>'; }).join('') : '<span class="sub">no tags yet</span>';
+  }
+  function add(raw) {
+    String(raw || '').split(/[,\n]+/).map(norm).filter(Boolean).forEach(function (t) { if (tags.indexOf(t) === -1) tags.push(t); });
+    input.value = ''; render(); if (onChange) onChange(tags);
+  }
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(input.value); } else if (e.key === 'Backspace' && !input.value && tags.length) { tags.pop(); render(); if (onChange) onChange(tags); } });
+  input.addEventListener('blur', function () { if (input.value.trim()) add(input.value); });
+  pills.addEventListener('click', function (e) { var a = e.target.closest('[data-untag]'); if (!a) return; e.preventDefault(); tags = tags.filter(function (t) { return t !== a.dataset.untag; }); render(); if (onChange) onChange(tags); });
+  render();
+  return { get: function () { if (input.value.trim()) add(input.value); return tags.slice(); }, set: function (t) { tags = (t || []).slice(); render(); } };
+}
 /** Gmail compose in a new tab, in the signed-in Workspace account (not the Mac's default mail app). */
 function gmailComposeUrl(to, subject) {
   var me = (window.OUTREACH && OUTREACH.session && OUTREACH.session.email) || '';
