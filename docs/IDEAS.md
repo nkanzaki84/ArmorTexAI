@@ -136,7 +136,7 @@ Options for "really" calling from the app, pick by which number should show:
 - [ ] Parked 2026-11-22: run the Tyler list first. When ready: decide who fills the roster (an afternoon for the top brokerages, or ask the established partners for office intros) or whether to buy a list
 - [ ] Import with list name `realtors-gregg-2026-11` once Phone/Email are filled; rows with neither are skipped
 
-## Campaigns as records (nk, 2026-11-22) — agreed, build after the first real batch
+## Campaigns as records (nk, 2026-11-22) — BUILT 2026-11-23 (v0.7.0), Brian playing with it
 
 Brian: Marketing = the list of people we are courting; Campaign = where you
 start a campaign, plan the sending and upload the content. Agreed. The app

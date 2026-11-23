@@ -87,12 +87,16 @@ URL from the deploy output for Tanner. Then on **Settings**:
    until both exist), sender name, signature.
 3. **Reply check**: press *Install / repair trigger* once. It runs
    `checkReplies` every 15 minutes as you.
-4. **Test batch**: paste five of your own addresses → *Create test partners*.
-   On **Campaign** write versions A/B/C (saving checks the footer rules). On
+4. **Campaigns**: open the first campaign ("Realtor email test") → Copy tab,
+   write letters A/B/C (saving checks the footer rules). Then Settings →
+   **Test batch**: paste five of your own addresses → *Create test campaign*.
+   It makes a small running campaign of its own with those letters. On
    **Today** press *Send anyway (test)* if it isn't a Tue–Thu. Reply from each
    inbox; within 15 minutes (or *Check replies now*) each shows under New
-   replies against the right version. That is the version-1 done test.
-5. Import the real realtor list, *Assign versions*, and Dec 1 is a normal Tuesday.
+   replies against the right letter. That is the version-1 done test.
+5. Import the real realtor list, then on the campaign's **Audience** tab tick
+   the list and press *Deal letters*; *Start sending* when the copy is ready,
+   and Dec 1 is a normal Tuesday.
 6. **Developer**: paste the /dev URL (editor → Deploy → Test deployments) so the
    🛠 owner tools can flip every link between /dev and /exec. On /dev the app
    turns amber with a DEV tag.
@@ -180,6 +184,7 @@ ArmorTexAI/
 │   ├── Code.gs           # doGet routing, include(), setup()
 │   ├── sheet.gs          # read/write helpers
 │   ├── quo.gs            # phone system: key, webhook, doPost receiver → Events
+│   ├── campaigns_server.gs # campaigns: audience, deal letters, plan, results
 │   ├── users.gs          # roles + permission checks
 │   ├── partners_server.gs       # import, version assignment, partner record
 │   ├── campaign_server.gs       # versions, daily batch, stats, settings

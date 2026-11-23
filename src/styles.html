@@ -118,6 +118,9 @@
   /* chips (filters) and tabs (33) */
   .chips{display:flex;gap:6px;flex-wrap:wrap}
   .chip{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:500;color:var(--text);cursor:pointer;font-family:inherit}
+  label.chip{display:inline-flex;align-items:center;gap:4px;margin:0}
+  .chips{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
+  table.tight td{padding-top:6px;padding-bottom:6px}
   .chip:hover{background:var(--bg);color:var(--ink)}
   .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
   select.chip{padding:5px 8px;display:inline-block;width:auto;margin:0;font-size:12px}
@@ -150,6 +153,7 @@
   table{font-size:13px}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   .scroll-x{overflow-x:auto}
+  tr.link{cursor:pointer} tr.link:hover td{background:#fafbfc}
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
   .stat{display:flex;flex-direction:column;gap:2px;padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:6px}
   .stat b{font-size:22px;line-height:1;color:var(--ink)}

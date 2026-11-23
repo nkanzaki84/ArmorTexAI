@@ -110,7 +110,7 @@ test('today batch refuses a version that fails validation', () => {
   const app = readyApp(8);
   app.saveVersion('C', { subject: 'oops', body: 'no address or opt out here' });
   const b = app.buildTodayBatch({ now: TUE });
-  assert.ok(b.problems.some(p => /^Version C:/.test(p)));
+  assert.ok(b.problems.some(p => /letter C:/.test(p)));
 });
 
 test('stats recount from Emails + Events, counts beside rates', () => {

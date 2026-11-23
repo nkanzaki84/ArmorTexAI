@@ -42,7 +42,7 @@
   <div class="hd"><h2>Test batch</h2><span class="sub">five of your own addresses before Dec 1</span></div>
   <div class="bd">
     <div class="f"><label>Your test addresses (one per line)</label><textarea id="testEmails" style="min-height:80px" placeholder="brian+test1@armortexroofs.com&#10;brian+test2@armortexroofs.com"></textarea></div>
-    <div class="row"><button class="btn" id="testBtn">Create test partners</button><span class="sub">They get versions assigned and appear in today's batch. Use "Send anyway (test)" on Today if it isn't a sending day. Reply from each inbox and watch them match.</span></div>
+    <div class="row"><button class="btn" id="testBtn">Create test campaign</button><span class="sub">Makes a small campaign of its own ("Five-address test") with these people, borrowing the letters from your first campaign, and starts it. Use "Send anyway (test)" on Today if it isn't a sending day. Reply from each inbox and watch them match.</span></div>
     <div id="testResult" style="margin-top:10px"></div>
   </div>
 </div>
@@ -79,21 +79,6 @@
       <button class="btn" id="listHandSentBtn" title="Rows whose Notes say 'sent …' → Contacted, call list, out of the email test">✉️ Apply the hand-sent rule</button>
     </div>
     <div id="listResult" style="margin-top:10px"></div>
-  </div>
-</div>
-
-<div class="card">
-  <div class="hd"><h2>Assign versions</h2><span class="sub">once per partner, never changed</span></div>
-  <div class="bd">
-    <div class="row" style="margin-bottom:10px">
-      <span class="sub">Deal unassigned realtors across:</span>
-      <label class="chip on"><input type="checkbox" value="A" checked hidden> A</label>
-      <label class="chip on"><input type="checkbox" value="B" checked hidden> B</label>
-      <label class="chip on"><input type="checkbox" value="C" checked hidden> C</label>
-      <label class="chip on"><input type="checkbox" value="E" checked hidden> E</label>
-    </div>
-    <div class="row"><button class="btn navy" id="assignBtn">Assign now</button><span class="sub">Shuffled within each brokerage, dealt out in turn. Uncheck E if pay-at-closing isn't ready.</span></div>
-    <div id="assignResult" style="margin-top:10px"></div>
   </div>
 </div>
 
@@ -197,18 +182,8 @@
       if (isExcel) reader.readAsArrayBuffer(file); else reader.readAsText(file);
     });
 
-    document.querySelectorAll('#assignBtn').forEach(function () {});
     document.querySelectorAll('.bd label.chip input').forEach(function (cb) {
       cb.parentElement.addEventListener('click', function (e) { e.preventDefault(); cb.checked = !cb.checked; cb.parentElement.classList.toggle('on', cb.checked); });
-    });
-    on($('assignBtn'), 'click', function () {
-      var versions = Array.prototype.map.call(document.querySelectorAll('.bd label.chip input:checked'), function (cb) { return cb.value; });
-      if (!versions.length) return toast('Pick at least one version', 'error');
-      if (!confirm('Assign ' + versions.join('/') + ' to every unassigned realtor? This cannot be undone.')) return;
-      busy($('assignBtn'), true, 'Assigning…');
-      api('assignVersions', { type: 'realtor', versions: versions }).then(function (r) {
-        $('assignResult').innerHTML = '<div class="ok-box">Assigned <b>' + r.assigned + '</b>: ' + Object.keys(r.counts).map(function (v) { return v + ' ' + r.counts[v]; }).join(' · ') + '</div>';
-      }).catch(fail).finally(function () { busy($('assignBtn'), false, 'Assign now'); });
     });
 
     function fillReps(rows) {
@@ -285,15 +260,12 @@
       }).catch(fail).finally(function () { busy($('runCheck'), false, 'Check replies now'); });
     });
     on($('testBtn'), 'click', function () {
-      var emails = $('testEmails').value.split(/[\n,;]+/).map(function (e) { return e.trim(); }).filter(Boolean);
-      if (!emails.length) return toast('Add at least one address', 'error');
-      var csv = 'Name,Email,Company\n' + emails.map(function (e, i) { return 'Test ' + (i + 1) + ',' + e + ',TEST'; }).join('\n');
+      var text = $('testEmails').value;
+      if (!text.trim()) return toast('Add at least one address', 'error');
       busy($('testBtn'), true, 'Creating…');
-      api('importPartners', csv, { type: 'realtor', sourceList: 'test' }).then(function (r) {
-        return api('assignVersions', { type: 'realtor', versions: ['A', 'B', 'C'] }).then(function (a) {
-          $('testResult').innerHTML = '<div class="ok-box">Created ' + r.added + ' test partners (' + r.skipped.duplicate + ' already existed). Versions assigned to ' + a.assigned + ' unassigned realtors. Now open Today.</div>';
-        });
-      }).catch(fail).finally(function () { busy($('testBtn'), false, 'Create test partners'); });
+      api('createTestCampaign', text).then(function (r) {
+        $('testResult').innerHTML = '<div class="' + (r.running ? 'ok-box' : 'problem') + '">Test campaign <b>' + esc(r.campaignId) + '</b>: ' + r.added + ' test partners created (' + r.existed + ' already existed), ' + r.dealt + ' dealt a letter. ' + (r.running ? 'It is running: open Today.' : 'Not started: ' + esc(r.problem || '') + ' <a href="#" onclick="go(\'campaign\', { id: \'' + esc(r.campaignId) + '\' }); return false;">Open the campaign</a> to fix the letters, then press Start sending.') + '</div>';
+      }).catch(fail).finally(function () { busy($('testBtn'), false, 'Create test campaign'); });
     });
 
     // ---- Quo ----

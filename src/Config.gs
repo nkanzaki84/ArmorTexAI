@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.6.1';
+const APP_VERSION    = '0.7.0';
 const APP_BUILD_DATE = '2026-11-22';
 
 // ===== Script Property keys =====
@@ -40,6 +40,7 @@ const TAB = {
   HOMES:     'Homes',
   EMAILS:    'Emails',
   EVENTS:    'Events',
+  CAMPAIGNS: 'Campaigns',
   REFERRALS: 'Referrals',
   VERSIONS:  'Versions',
   SETTINGS:  'Settings',
@@ -55,6 +56,7 @@ const ID_PREFIX = {
   'Events':    'EV',
   'Referrals': 'R',
   'Comments':  'C',
+  'Campaigns': 'CP',
 };
 
 // ===== Column headers per tab. Order matters for new tabs; existing tabs are
@@ -94,6 +96,7 @@ const HEADERS = {
     'Skip Email Test',       // Yes = never gets a version or a batch slot (e.g. already emailed by hand)
     'Call Queue',            // Yes = on the call list until a call is logged after Last Contact
     'Quo Contact ID',        // the contact Quo holds for this person (pushed from here; the app is the source of truth)
+    'Campaign ID',           // the email campaign this person was dealt into (one at a time)
   ],
   'Homes': [
     'ID',
@@ -134,6 +137,7 @@ const HEADERS = {
     'Status',            // queued | sent | replied | bounced | cancelled
     'Subject',
     'Sent By',
+    'Campaign ID',       // appended 2026-11-23
   ],
   'Events': [
     'ID',
@@ -183,6 +187,22 @@ const HEADERS = {
     'Paid Amount',
     'Notes',
   ],
+  'Campaigns': [
+    'ID',                // CP-1
+    'Name',
+    'Status',            // draft | running | paused | done
+    'Partner Type',      // realtor | inspector | insurance | property_manager
+    'Lists',             // Source List names, comma-separated; blank = every list
+    'Stages',            // Prospect,Contacted,Replied; blank = every pipeline stage (never Partner)
+    'Versions',          // letters in play, e.g. A,B,C
+    'Start Date',
+    'Sending Days',      // blank = Settings
+    'Daily Cap',         // blank = Settings
+    'Follow Up Days',    // blank = Settings
+    'Created At',
+    'Created By',
+    'Notes',
+  ],
   'Versions': [
     'Letter',            // A | B | C | E  (postcards: P1, P2, …)
     'Channel',           // email | postcard
@@ -194,6 +214,7 @@ const HEADERS = {
     'QR Code URL',       // postcards only: which roof-check page URL this version carries
     'Locked',            // Yes once sending has started
     'Updated At',
+    'Campaign ID',       // which campaign this wording belongs to (appended 2026-11-23)
   ],
   'Settings': [
     'Name',
@@ -307,6 +328,8 @@ const PARTNER_TYPE_PROFILES = {
   },
 };
 const EMAIL_VERSIONS = ['A', 'B', 'C', 'E'];
+const CAMPAIGN_STATUSES = ['draft', 'running', 'paused', 'done'];
+const DEFAULT_CAMPAIGN = { Name: 'Realtor email test', 'Partner Type': 'realtor', Versions: 'A,B,C,E', Status: 'running' };   // seeded once; the one campaign the app ran before campaigns existed
 const EMAIL_STATUSES = ['queued', 'sent', 'replied', 'bounced', 'cancelled'];
 const EVENT_KINDS = ['reply', 'bounce', 'opt-out', 'call', 'text', 'voicemail', 'postcard', 'knock', 'note'];
 const CALL_OUTCOMES = ['talked', 'voicemail', 'no_answer', 'missed'];   // Quo maps to these; a person may type anything
@@ -382,14 +405,14 @@ const PAGE_CATALOG = [
   { key: 'marketing', label: 'Marketing' },   // the pipeline: prospects we are still courting
   { key: 'partners',  label: 'Partners' },    // established relationships
   { key: 'homes',    label: 'Homes' },
-  { key: 'campaign', label: 'Campaign' },
+  { key: 'campaigns', label: 'Campaigns' },  // the ledger; page=campaign&id=CP-1 is one campaign's record
   { key: 'settings', label: 'Settings' },
 ];
 
 const DEFAULT_ROLE_ACCESS = {
-  owner:    ['today', 'marketing', 'partners', 'homes', 'campaign', 'settings'],
-  sales:    ['today', 'marketing', 'partners', 'homes', 'campaign'],
-  viewonly: ['today', 'marketing', 'partners', 'homes', 'campaign'],
+  owner:    ['today', 'marketing', 'partners', 'homes', 'campaigns', 'settings'],
+  sales:    ['today', 'marketing', 'partners', 'homes', 'campaigns'],
+  viewonly: ['today', 'marketing', 'partners', 'homes', 'campaigns'],
 };
 
 const WRITE_ROLES = ['owner', 'sales'];   // who may change data

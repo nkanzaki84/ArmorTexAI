@@ -56,8 +56,11 @@ function sendTodayBatch(opts) {
     if (blocking.length) return { sent: 0, followUps: 0, skipped: { dnc: 0, quota: 0 }, errors: [], problems: blocking };
 
     const settings = _settings_();
-    const versions = {};
-    _readTab_(TAB.VERSIONS).forEach(function (v) { versions[String(v['Letter'])] = v; });
+    const versions = {};   // keyed campaign|letter
+    _readTab_(TAB.VERSIONS).forEach(function (v) { versions[String(v['Campaign ID']) + '|' + String(v['Letter'])] = v; });
+    const campaigns = {};
+    _readTab_(TAB.CAMPAIGNS).forEach(function (c) { campaigns[String(c['ID'])] = c; });
+    const followDaysFor = function (cid) { const c = campaigns[cid]; return c ? _campaignSending_(c).followUpDays : (parseInt(settings[SETTING.FOLLOW_UP_DAYS], 10) || 4); };
     const dnc = {};
     _doNotContactEmails_().forEach(function (e) { dnc[e] = true; });
 
@@ -70,14 +73,14 @@ function sendTodayBatch(opts) {
     const partnerUpdates = [];
     const touchedVersions = {};
     const senderName = String(settings[SETTING.SENDER_NAME] || '').trim();
-    const followDays = parseInt(settings[SETTING.FOLLOW_UP_DAYS], 10) || 4;
 
     // 1. Due follow-ups (already queued rows), replying in the same thread.
     batch.followUps.forEach(function (e) {
       const p = e.partner;
       if (dnc[_normEmail_(p['Email'])]) { report.skipped.dnc++; emailUpdates.push({ rowIndex: e._row, row: { 'Status': 'cancelled' } }); return; }
       if (quota <= 0) { report.skipped.quota++; return; }
-      const v = versions[String(e['Version'])];
+      const cid = String(e.campaignId || e['Campaign ID'] || p['Campaign ID'] || '');
+      const v = versions[cid + '|' + String(e['Version'])];
       const first = _readTab_(TAB.EMAILS).filter(function (x) { return String(x['Partner ID']) === String(p['ID']) && x['Step'] === 'first' && x['Gmail Thread ID']; })[0];
       if (!v || !first) { report.errors.push(p['Name'] + ': no first email thread to follow up in'); emailUpdates.push({ rowIndex: e._row, row: { 'Status': 'cancelled' } }); return; }
       try {
@@ -97,7 +100,8 @@ function sendTodayBatch(opts) {
       const to = _normEmail_(p['Email']);
       if (dnc[to]) { report.skipped.dnc++; return; }
       if (quota <= 0) { report.skipped.quota++; return; }
-      const v = versions[String(p['Version'])];
+      const cid = String(p['Campaign ID'] || '');
+      const v = versions[cid + '|' + String(p['Version'])];
       if (!v) { report.errors.push(p['Name'] + ': version ' + p['Version'] + ' missing'); return; }
       const subject = _fill_(v['Subject'], p);
       const body = _fill_(v['Body'], p);
@@ -108,18 +112,18 @@ function sendTodayBatch(opts) {
         newEmails.push({
           'ID': ids[idIdx++], 'Partner ID': p['ID'], 'Version': p['Version'], 'Step': 'first',
           'Scheduled For': sentAt, 'Sent At': sentAt, 'Gmail Thread ID': threadId, 'Gmail Message ID': msg.getId(),
-          'Status': 'sent', 'Subject': subject, 'Sent By': me.email,
+          'Status': 'sent', 'Subject': subject, 'Sent By': me.email, 'Campaign ID': cid,
         });
         // Queue the one follow-up now; the reply check cancels it on any reply.
         if (String(v['Follow Up Body'] || '').trim()) {
           newEmails.push({
             'ID': ids[idIdx++], 'Partner ID': p['ID'], 'Version': p['Version'], 'Step': 'followup',
-            'Scheduled For': _addBusinessDays_(sentAt, followDays), 'Sent At': '', 'Gmail Thread ID': '', 'Gmail Message ID': '',
-            'Status': 'queued', 'Subject': '', 'Sent By': '',
+            'Scheduled For': _addBusinessDays_(sentAt, followDaysFor(cid)), 'Sent At': '', 'Gmail Thread ID': '', 'Gmail Message ID': '',
+            'Status': 'queued', 'Subject': '', 'Sent By': '', 'Campaign ID': cid,
           });
         }
         partnerUpdates.push({ rowIndex: p._row, row: { 'Stage': 'Contacted', 'Last Contact': sentAt } });
-        touchedVersions[p['Version']] = true;
+        touchedVersions[cid + '|' + p['Version']] = true;
         report.sent++; quota--;
         _pause_();
       } catch (err) { report.errors.push(p['Name'] + ': ' + err.message); }
@@ -129,7 +133,7 @@ function sendTodayBatch(opts) {
     _appendRows_(TAB.EMAILS, newEmails);
     _updateRows_(TAB.EMAILS, emailUpdates);
     _updateRows_(TAB.PARTNERS, partnerUpdates);
-    Object.keys(touchedVersions).forEach(_lockVersion_);
+    Object.keys(touchedVersions).forEach(function (k) { const parts = k.split('|'); _lockVersion_(parts[1], parts[0]); });
     return report;
   } finally {
     lock.releaseLock();

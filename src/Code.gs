@@ -21,7 +21,7 @@ function doGet(e) {
   let tpl_section = 'partners';
   const params = (e && e.parameter) || {};
   const requested = String(params.page || '');
-  const validPages = PAGE_CATALOG.map(function (p) { return p.key; }).concat(['partner', 'home']);
+  const validPages = PAGE_CATALOG.map(function (p) { return p.key; }).concat(['partner', 'home', 'campaign']);
 
   let session = null;
   try { session = getCurrentUserSession(); } catch (err) { session = { denied: true, reason: 'lookup_failed', message: err.message }; }
@@ -33,7 +33,7 @@ function doGet(e) {
   if (!page) page = session.defaultLanding || 'today';
   if (validPages.indexOf(page) === -1) page = 'today';
   // Record pages sit under their list page for access purposes.
-  const accessKey = page === 'partner' ? 'partners' : page === 'home' ? 'homes' : page;
+  const accessKey = page === 'partner' ? 'partners' : page === 'home' ? 'homes' : page === 'campaign' ? 'campaigns' : page;
   tpl_section = page === 'marketing' ? 'marketing' : 'partners';
   if (!noAccess && session.allowedPages.indexOf(accessKey) === -1) {
     noAccess = { kind: 'forbidden', requestedLabel: accessKey, roleLabel: session.roleLabel, landing: session.defaultLanding || 'today' };
@@ -155,6 +155,7 @@ function setup() {
   _seedSettings_();
   _seedVersions_();
   _seedUsers_();
+  _seedCampaigns_();
   return report;
 }
 
@@ -180,6 +181,28 @@ function _seedVersions_() {
     .filter(function (v) { return !have[v.Letter]; })
     .map(function (v) { return Object.assign({ Subject: '', Body: '', 'Follow Up Body': '', Locked: '', 'Updated At': new Date() }, v); });
   _appendRows_(TAB.VERSIONS, rows);
+}
+
+/**
+ * The first campaign: the realtor email test the app ran before campaigns
+ * had records. Created once; then every version, partner with a letter and
+ * email that has no Campaign ID is stamped with it (a one-time migration).
+ */
+function _seedCampaigns_() {
+  let first = _readTab_(TAB.CAMPAIGNS)[0];
+  if (!first) {
+    const s = _settings_();
+    const row = Object.assign({
+      'ID': _nextId_(TAB.CAMPAIGNS), 'Lists': '', 'Stages': '', 'Start Date': '', 'Sending Days': '', 'Daily Cap': '', 'Follow Up Days': '',
+      'Created At': new Date(), 'Created By': OWNER_EMAIL, 'Notes': 'Created by setup() for the versions and letters that existed before campaigns.',
+    }, DEFAULT_CAMPAIGN);
+    _appendRows_(TAB.CAMPAIGNS, [row]);
+    first = row;
+  }
+  const id = String(first['ID']);
+  _updateRows_(TAB.VERSIONS, _readTab_(TAB.VERSIONS).filter(function (v) { return !String(v['Campaign ID'] || '').trim(); }).map(function (v) { return { rowIndex: v._row, row: { 'Campaign ID': id } }; }));
+  _updateRows_(TAB.PARTNERS, _readTab_(TAB.PARTNERS).filter(function (p) { return String(p['Version'] || '').trim() && !String(p['Campaign ID'] || '').trim(); }).map(function (p) { return { rowIndex: p._row, row: { 'Campaign ID': id } }; }));
+  _updateRows_(TAB.EMAILS, _readTab_(TAB.EMAILS).filter(function (e) { return !String(e['Campaign ID'] || '').trim(); }).map(function (e) { return { rowIndex: e._row, row: { 'Campaign ID': id } }; }));
 }
 
 /** For the Settings page: where the Sheet lives. */

@@ -3,7 +3,7 @@
   "private": true,
   "description": "ArmorTex Outreach App — Apps Script web app + Google Sheet. Tests run in a Node fake runtime.",
   "scripts": {
-    "test": "node --test tests/*.test.js",
-    "preview": "node tests/preview-server.js"
+    "test": "TZ=America/Chicago node --test tests/*.test.js",
+    "preview": "TZ=America/Chicago node tests/preview-server.js"
   }
 }

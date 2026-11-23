@@ -226,39 +226,10 @@ function _parsePartnerCsv_(csvText) {
 function assignVersions(opts) {
   _requireRole_(ADMIN_ROLES);
   opts = opts || {};
-  const type = String(opts.type || 'realtor').toLowerCase();
-  const versions = opts.versions || EMAIL_VERSIONS;
-  const rng = opts.rng || Math.random;
-  const partners = _readTab_(TAB.PARTNERS);
-  const todo = partners.filter(function (p) {
-    return String(p['Type']).toLowerCase() === type && !String(p['Version'] || '').trim() && !_yes_(p['Do Not Contact'])
-      && String(p['Stage']) !== 'Partner' && !p['Partner Since']    // established partners are never in the email test
-      && !_yes_(p['Skip Email Test']);                              // nor anyone already emailed by hand
-  });
-  // group by company (blank company = each on their own)
-  const groups = {};
-  todo.forEach(function (p) {
-    const key = String(p['Company'] || '').trim().toLowerCase() || ('solo:' + p['ID']);
-    (groups[key] = groups[key] || []).push(p);
-  });
-  // Deal: rotate the starting version from group to group so small groups
-  // don't all land on A.
-  const counts = {};
-  versions.forEach(function (v) { counts[v] = 0; });
-  // Start each group where the global deal left off, so totals stay even.
-  let cursor = 0;
-  const updates = [];
-  const groupKeys = _shuffle_(Object.keys(groups), rng);
-  groupKeys.forEach(function (key) {
-    _shuffle_(groups[key], rng).forEach(function (p) {
-      const v = versions[cursor % versions.length];
-      cursor++;
-      counts[v]++;
-      updates.push({ rowIndex: p._row, row: { 'Version': v } });
-    });
-  });
-  _updateRows_(TAB.PARTNERS, updates);
-  return { assigned: updates.length, counts: counts };
+  // Kept for the tests and the first campaign: dealing letters now lives on a campaign (campaigns_server.gs).
+  const cid = String(opts.campaignId || _defaultCampaignId_());
+  const r = dealLetters(cid, { versions: opts.versions, rng: opts.rng });
+  return { assigned: r.dealt, counts: r.counts, campaignId: cid };
 }
 
 // ============================================================

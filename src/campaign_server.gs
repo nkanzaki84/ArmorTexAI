@@ -8,19 +8,29 @@
 // Versions
 // ============================================================
 
-function listVersions() {
+/** The letters of one campaign (the first campaign when none is named). */
+function listVersions(campaignId) {
   _requireRole_(ROLES.map(function (r) { return r.key; }));
-  return _readTab_(TAB.VERSIONS);
+  const id = String(campaignId || _defaultCampaignId_());
+  return _readTab_(TAB.VERSIONS).filter(function (v) { return String(v['Campaign ID']) === id; });
+}
+
+/** A campaign's wording for one letter, or null. */
+function _versionFor_(campaignId, letter) {
+  const id = String(campaignId || '');
+  return _readTab_(TAB.VERSIONS).filter(function (v) { return String(v['Campaign ID']) === id && String(v['Letter']) === String(letter); })[0] || null;
 }
 
 /** Edit a version. Refused once it is locked (sending has started). */
-function saveVersion(letter, payload) {
+function saveVersion(letter, payload, campaignId) {
   _requireRole_(ADMIN_ROLES);
-  const idx = _findRowIndex_(TAB.VERSIONS, function (v) { return String(v['Letter']) === String(letter); });
+  const cid = String(campaignId || _defaultCampaignId_());
+  const idx = _findRowIndex_(TAB.VERSIONS, function (v) { return String(v['Letter']) === String(letter) && String(v['Campaign ID']) === cid; });
   const existing = idx === -1 ? null : _readTab_(TAB.VERSIONS).filter(function (v) { return v._row === idx; })[0];
   if (existing && _yes_(existing['Locked'])) throw new Error('Version ' + letter + ' is locked because sending has started.');
   const row = {
     'Letter': String(letter).trim(),
+    'Campaign ID': cid,
     'Channel': String(payload.channel || (existing && existing['Channel']) || 'email'),
     'Partner Type': String(payload.partnerType || (existing && existing['Partner Type']) || 'realtor'),
     'Angle': String(payload.angle || ''),
@@ -62,8 +72,9 @@ function validateVersion(v) {
   return problems;
 }
 
-function _lockVersion_(letter) {
-  const idx = _findRowIndex_(TAB.VERSIONS, function (v) { return String(v['Letter']) === String(letter); });
+function _lockVersion_(letter, campaignId) {
+  const cid = String(campaignId || _defaultCampaignId_());
+  const idx = _findRowIndex_(TAB.VERSIONS, function (v) { return String(v['Letter']) === String(letter) && String(v['Campaign ID']) === cid; });
   if (idx !== -1) _updateRow_(TAB.VERSIONS, idx, { 'Locked': 'Yes' });
 }
 
@@ -72,88 +83,104 @@ function _lockVersion_(letter) {
 // ============================================================
 
 /**
- * Who gets emailed today. Pure selection — nothing is written.
- *   - only on sending days, unless opts.force
- *   - up to daily_cap minus what has already been sent today
- *   - due follow-ups first (they are already queued in Emails), then new
- *     first emails spread evenly across versions
+ * Who gets emailed today, across every RUNNING campaign. Pure selection,
+ * nothing is written. Per campaign:
+ *   - only on its sending days (Settings' days when the campaign has none), unless opts.force
+ *   - up to its daily cap minus what that campaign already sent today
+ *   - due follow-ups first (already queued in Emails), then first emails
+ *     spread evenly across its letters
  *   - never anyone on do-not-contact, never anyone already emailed
  *
  * @param {{now?: Date, force?: boolean}} opts
- * @return {{sendingDay:boolean, paused:boolean, cap:number, sentToday:number,
- *           room:number, followUps:Object[], firsts:Object[], problems:string[]}}
+ * @return {{sendingDay:boolean, paused:boolean, cap:number, sentToday:number, room:number,
+ *           followUps:Object[], firsts:Object[], problems:string[], campaigns:Object[]}}
  */
 function buildTodayBatch(opts) {
   _requireRole_(ROLES.map(function (r) { return r.key; }));
   opts = opts || {};
   const now = opts.now || new Date();
   const s = _settings_();
-  const cap = Math.max(0, parseInt(s[SETTING.DAILY_CAP], 10) || 0);
-  const days = String(s[SETTING.SENDING_DAYS] || '').split(',').map(function (d) { return d.trim().slice(0, 3).toLowerCase(); }).filter(Boolean);
-  const sendingDay = days.indexOf(_weekday_(now).toLowerCase()) !== -1;
   const paused = _yes_(s[SETTING.PAUSE_SENDING]);
   const todayKey = _dateKey_(now);
-
   const emails = _readTab_(TAB.EMAILS);
-  const sentToday = emails.filter(function (e) { return e['Status'] !== 'cancelled' && e['Sent At'] && _dateKey_(new Date(e['Sent At'])) === todayKey; }).length;
-  const room = Math.max(0, cap - sentToday);
-
-  const dnc = {};
-  _doNotContactEmails_().forEach(function (e) { dnc[e] = true; });
   const partners = _readTab_(TAB.PARTNERS);
   const byId = {};
   partners.forEach(function (p) { byId[p['ID']] = p; });
-
-  // Follow-ups already queued and due.
-  const followUps = emails.filter(function (e) {
-    if (e['Status'] !== 'queued' || e['Step'] !== 'followup') return false;
-    if (e['Scheduled For'] && _dateKey_(new Date(e['Scheduled For'])) > todayKey) return false;
-    const p = byId[e['Partner ID']];
-    return p && !dnc[_normEmail_(p['Email'])] && !_yes_(p['Do Not Contact']);
-  }).map(function (e) {
-    const o = Object.assign({ partner: byId[e['Partner ID']] }, e);
-    Object.defineProperty(o, '_row', { value: e._row, enumerable: false });   // Object.assign drops it
-    return o;
-  });
-
-  // First emails: partners with a version, no email ever, not DNC.
+  const dnc = {};
+  _doNotContactEmails_().forEach(function (e) { dnc[e] = true; });
   const emailed = {};
   emails.forEach(function (e) { if (e['Status'] !== 'cancelled') emailed[e['Partner ID']] = true; });
-  const candidates = partners.filter(function (p) {
-    if (String(p['Stage']) === 'Partner' || p['Partner Since'] || _yes_(p['Skip Email Test'])) return false;   // the book and hand-emailed people are never in the email test
-    return String(p['Version'] || '').trim() && !emailed[p['ID']] && !_yes_(p['Do Not Contact']) && !dnc[_normEmail_(p['Email'])] && _normEmail_(p['Email']);
-  });
-  // Round-robin across versions so each day's batch is balanced.
-  const buckets = {};
-  EMAIL_VERSIONS.forEach(function (v) { buckets[v] = []; });
-  candidates.forEach(function (p) { (buckets[p['Version']] = buckets[p['Version']] || []).push(p); });
-  const versions = Object.keys(buckets).filter(function (v) { return buckets[v].length; });
-  const firsts = [];
-  const firstRoom = Math.max(0, room - followUps.length);
-  let i = 0;
-  while (firsts.length < firstRoom && versions.some(function (v) { return buckets[v].length; })) {
-    const v = versions[i % versions.length];
-    if (buckets[v].length) firsts.push(buckets[v].shift());
-    i++;
-  }
-
-  const problems = [];
-  if (paused) problems.push('Sending is paused (Settings).');
-  if (!sendingDay && !opts.force) problems.push('Today (' + _weekday_(now) + ') is not a sending day (' + s[SETTING.SENDING_DAYS] + ').');
   const versionRows = _readTab_(TAB.VERSIONS);
-  const needed = {};
-  firsts.forEach(function (p) { needed[p['Version']] = true; });
-  Object.keys(needed).forEach(function (letter) {
-    const v = versionRows.filter(function (r) { return String(r['Letter']) === letter; })[0];
-    if (!v) { problems.push('Version ' + letter + ' does not exist.'); return; }
-    validateVersion(v).forEach(function (pr) { problems.push('Version ' + letter + ': ' + pr); });
-  });
 
-  return {
-    date: todayKey, weekday: _weekday_(now), sendingDay: sendingDay, paused: paused,
-    cap: cap, sentToday: sentToday, room: room,
-    followUps: followUps.slice(0, room), firsts: firsts, problems: problems,
-  };
+  const campaigns = _readTab_(TAB.CAMPAIGNS).filter(function (c) { return String(c['Status']) === 'running'; });
+  const out = { date: todayKey, weekday: _weekday_(now), sendingDay: false, paused: paused, cap: 0, sentToday: 0, room: 0, followUps: [], firsts: [], problems: [], campaigns: [] };
+  if (paused) out.problems.push('Sending is paused (Settings).');
+  if (!campaigns.length) out.problems.push('No campaign is running. Start one under Campaigns.');
+
+  campaigns.forEach(function (c) {
+    const cid = String(c['ID']);
+    const sending = _campaignSending_(c);
+    const sendingDay = sending.days.indexOf(_weekday_(now).toLowerCase()) !== -1;
+    const started = !c['Start Date'] || _dateKey_(new Date(c['Start Date'])) <= todayKey;
+    const isMember = _campaignMemberTest_(cid);
+    const memberIds = {};
+    partners.forEach(function (p) { if (isMember(p)) memberIds[p['ID']] = true; });
+    const mine = emails.filter(function (e) { return String(e['Campaign ID']) === cid || (!String(e['Campaign ID'] || '').trim() && memberIds[e['Partner ID']]); });
+    const sentToday = mine.filter(function (e) { return e['Status'] !== 'cancelled' && e['Sent At'] && _dateKey_(new Date(e['Sent At'])) === todayKey; }).length;
+    const room = Math.max(0, sending.cap - sentToday);
+
+    const followUps = mine.filter(function (e) {
+      if (e['Status'] !== 'queued' || e['Step'] !== 'followup') return false;
+      if (e['Scheduled For'] && _dateKey_(new Date(e['Scheduled For'])) > todayKey) return false;
+      const p = byId[e['Partner ID']];
+      return p && !dnc[_normEmail_(p['Email'])] && !_yes_(p['Do Not Contact']);
+    }).map(function (e) {
+      const o = Object.assign({ partner: byId[e['Partner ID']], campaignId: cid }, e);
+      Object.defineProperty(o, '_row', { value: e._row, enumerable: false });   // Object.assign drops it
+      return o;
+    });
+
+    const letters = _csvList_(c['Versions']);
+    const candidates = partners.filter(function (p) {
+      if (!memberIds[p['ID']]) return false;
+      if (String(p['Stage']) === 'Partner' || p['Partner Since'] || _yes_(p['Skip Email Test'])) return false;   // the book and hand-emailed people are never in the email test
+      return String(p['Version'] || '').trim() && !emailed[p['ID']] && !_yes_(p['Do Not Contact']) && !dnc[_normEmail_(p['Email'])] && _normEmail_(p['Email']);
+    });
+    const buckets = {};
+    (letters.length ? letters : EMAIL_VERSIONS).forEach(function (v) { buckets[v] = []; });
+    candidates.forEach(function (p) { (buckets[p['Version']] = buckets[p['Version']] || []).push(p); });
+    const versions = Object.keys(buckets).filter(function (v) { return buckets[v].length; });
+    const firsts = [];
+    const firstRoom = Math.max(0, room - followUps.length);
+    let i = 0;
+    while (firsts.length < firstRoom && versions.some(function (v) { return buckets[v].length; })) {
+      const v = versions[i % versions.length];
+      if (buckets[v].length) firsts.push(buckets[v].shift());
+      i++;
+    }
+
+    const problems = [];
+    if (!started) problems.push(c['Name'] + ' starts ' + _dateKey_(new Date(c['Start Date'])) + '.');
+    if (!sendingDay && !opts.force) problems.push('Today (' + _weekday_(now) + ') is not a sending day for ' + c['Name'] + ' (' + sending.daysLabel + ').');
+    const needed = {};
+    firsts.forEach(function (p) { needed[p['Version']] = true; });
+    Object.keys(needed).forEach(function (letter) {
+      const v = versionRows.filter(function (r) { return String(r['Campaign ID']) === cid && String(r['Letter']) === letter; })[0];
+      if (!v) { problems.push(c['Name'] + ': letter ' + letter + ' has no wording.'); return; }
+      validateVersion(v).forEach(function (pr) { problems.push(c['Name'] + ', letter ' + letter + ': ' + pr); });
+    });
+
+    // The list is always previewable; the problems say why it cannot go out yet.
+    const takenFollow = followUps.slice(0, room);
+    out.campaigns.push({ id: cid, name: String(c['Name'] || ''), sendingDay: sendingDay, started: started, cap: sending.cap, sentToday: sentToday, room: room, followUps: takenFollow.length, firsts: firsts.length, problems: problems });
+    out.cap += sending.cap; out.sentToday += sentToday; out.room += room;
+    if (sendingDay && started) out.sendingDay = true;
+    takenFollow.forEach(function (e) { out.followUps.push(e); });
+    firsts.forEach(function (p) { out.firsts.push(p); });
+    // a campaign with nothing to send today does not block the others
+    if (takenFollow.length || firsts.length) problems.forEach(function (pr) { out.problems.push(pr); });
+  });
+  return out;
 }
 
 /** Cancel queued (unsent) emails for a partner — used by opt-out and reply. */
@@ -173,10 +200,13 @@ function _cancelQueuedEmails_(partnerId) {
  * Per-version table for the Campaign screen. Counts sit beside every rate.
  * @return {{rows:Object[], note:string}}
  */
-function getCampaignStats() {
+function getCampaignStats(campaignId) {
   _requireRole_(ROLES.map(function (r) { return r.key; }));
-  const partners = _readTab_(TAB.PARTNERS);
-  const emails = _readTab_(TAB.EMAILS);
+  const cid = String(campaignId || _defaultCampaignId_());
+  const partners = _readTab_(TAB.PARTNERS).filter(_campaignMemberTest_(cid));
+  const memberIds = {};
+  partners.forEach(function (p) { memberIds[p['ID']] = true; });
+  const emails = _readTab_(TAB.EMAILS).filter(function (e) { return String(e['Campaign ID']) === cid || (!String(e['Campaign ID'] || '').trim() && memberIds[e['Partner ID']]); });
   const events = _readTab_(TAB.EVENTS);
   const referrals = _readTab_(TAB.REFERRALS);
   const versionOf = {};
@@ -184,7 +214,7 @@ function getCampaignStats() {
 
   const rows = {};
   function row(v) {
-    if (!rows[v]) rows[v] = { version: v, assigned: 0, sent: 0, followUps: 0, bounced: 0, replied: 0, talked: 0, addresses: 0, optedOut: 0, referrals: 0, reportsSent: 0, estimates: 0, signed: 0, paid: 0 };
+    if (!rows[v]) rows[v] = { version: v, assigned: 0, sent: 0, followUps: 0, bounced: 0, replied: 0, talked: 0, addresses: 0, notInterested: 0, optedOut: 0, referrals: 0, reportsSent: 0, estimates: 0, signed: 0, paid: 0 };
     return rows[v];
   }
   partners.forEach(function (p) { const v = versionOf[p['ID']]; if (v) row(v).assigned++; });
@@ -196,14 +226,16 @@ function getCampaignStats() {
     if (e['Sent At'] && e['Status'] !== 'cancelled') { if (e['Step'] === 'followup') row(v).followUps++; else row(v).sent++; }
     if (e['Status'] === 'bounced') row(v).bounced++;
   });
+  const sentTo = {};
+  emails.forEach(function (e) { if (e['Step'] === 'first' && e['Sent At'] && e['Status'] !== 'cancelled') sentTo[e['Partner ID']] = true; });
   events.forEach(function (ev) {
     const v = versionOf[ev['Partner ID']];
     if (!v) return;
-    if (ev['Kind'] === 'reply' && !repliedPartners[ev['Partner ID']]) { repliedPartners[ev['Partner ID']] = true; row(v).replied++; }
+    if ((ev['Kind'] === 'reply' || (ev['Kind'] === 'text' && ev['Direction'] === 'in')) && sentTo[ev['Partner ID']] && !repliedPartners[ev['Partner ID']]) { repliedPartners[ev['Partner ID']] = true; row(v).replied++; }
     if (ev['Kind'] === 'opt-out') row(v).optedOut++;
     if (ev['Kind'] === 'call' && String(ev['Outcome']).toLowerCase() === 'talked' && !talkedPartners[ev['Partner ID']]) { talkedPartners[ev['Partner ID']] = true; row(v).talked++; }
   });
-  partners.forEach(function (p) { if (WIN_RESPONSES.indexOf(String(p['Response'])) !== -1 && versionOf[p['ID']]) row(versionOf[p['ID']]).addresses++; });
+  partners.forEach(function (p) { if (WIN_RESPONSES.indexOf(String(p['Response'])) !== -1 && versionOf[p['ID']]) row(versionOf[p['ID']]).addresses++; if (String(p['Response']) === 'Not interested' && versionOf[p['ID']]) row(versionOf[p['ID']]).notInterested++; });
   referrals.forEach(function (r) {
     const v = versionOf[r['Partner ID']];
     if (!v || r['Direction'] !== 'in') return;

@@ -69,13 +69,14 @@
 
     function renderBatch(b) {
       batch = b;
-      $('batchSub').textContent = b.sendingDay ? 'sending day · cap ' + b.cap : b.weekday + ' is not a sending day';
+      var running = (b.campaigns || []).map(function (c) { return c.name + ' (' + (c.followUps + c.firsts) + ')'; }).join(' · ');
+      $('batchSub').textContent = (b.sendingDay ? 'sending day · cap ' + b.cap : b.weekday + ' is not a sending day') + (running ? ' · ' + running : '');
       var all = (b.followUps || []).map(function (e) { return { kind: 'follow-up', p: e.partner, v: e.Version }; })
         .concat((b.firsts || []).map(function (p) { return { kind: 'first', p: p, v: p.Version }; }));
       $('batchList').innerHTML = all.length ? all.map(function (x) {
         var p = x.p || {};
         return '<li>' + verBadge(x.v) + '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.Email ? ' · ' + esc(p.Email) : '') + '</div></div><span class="pill ' + (x.kind === 'follow-up' ? 'warn' : '') + '">' + x.kind + '</span></li>';
-      }).join('') : '<li class="empty">' + (b.cap ? 'No one to email today. Import partners and assign versions under Settings.' : 'Daily cap is 0.') + '</li>';
+      }).join('') : '<li class="empty">' + (b.cap ? 'No one to email today. Start a campaign under Campaigns and deal letters.' : 'Daily cap is 0.') + '</li>';
       var probs = $('batchProblems');
       var onlyDay = b.problems.length && b.problems.every(function (p) { return /not a sending day/.test(p); });
       probs.style.display = b.problems.length ? '' : 'none';

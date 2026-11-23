@@ -58,13 +58,15 @@ function seed(app) {
   app.savePartner(app.$rows('Partners').find(p => p.Name === 'Carl Dawson').ID, { response: 'Referred a job', nextStep: 'Drop off report samples Fri' });
   let s = 11; const rng = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
   app.assignVersions({ versions: ['A', 'B', 'C'], rng });
+  app.saveCampaign('CP-1', { name: 'Tyler realtors · email test', lists: ['realtors-gregg-nov-2026'], stages: ['Prospect'], versions: ['A', 'B', 'C'], startDate: '2026-11-17', notes: 'The first email test. Letters A/B/C, no E until pay-at-closing is decided.' });
+  app.createCampaign({ name: 'Home inspectors · January', type: 'inspector', versions: ['A', 'B'], startDate: '2027-01-06' });
   // a little history so Campaign and records have something to show
   const ps = app.$rows('Partners');
   const day = 86400000; const now = Date.now();
   const emails = []; const events = [];
   ps.slice(0, 60).forEach((p, i) => {
     const sentAt = new Date(now - day * (7 - (i % 5)));
-    emails.push({ ID: 'E-' + (i + 1), 'Partner ID': p.ID, Version: p.Version, Step: 'first', 'Scheduled For': sentAt, 'Sent At': sentAt, 'Gmail Thread ID': 'thr' + i, 'Gmail Message ID': 'msg' + i, Status: i % 17 === 3 ? 'bounced' : 'sent', Subject: 'Free roof report on your listings, 48 hours', 'Sent By': 'tanner@armortexroofs.com' });
+    emails.push({ ID: 'E-' + (i + 1), 'Campaign ID': 'CP-1', 'Partner ID': p.ID, Version: p.Version, Step: 'first', 'Scheduled For': sentAt, 'Sent At': sentAt, 'Gmail Thread ID': 'thr' + i, 'Gmail Message ID': 'msg' + i, Status: i % 17 === 3 ? 'bounced' : 'sent', Subject: 'Free roof report on your listings, 48 hours', 'Sent By': 'tanner@armortexroofs.com' });
     if (i % 6 === 1) events.push({ ID: 'EV-' + events.length, 'Partner ID': p.ID, 'Email ID': 'E-' + (i + 1), Kind: 'reply', At: new Date(sentAt.getTime() + day), Snippet: i % 12 === 1 ? 'Sure, can you look at 214 Bayhills Dr, Hideaway? Listing goes live Friday.' : 'Send the sample over, thanks.', By: 'trigger' });
     if (i % 9 === 2) events.push({ ID: 'EV-' + events.length, 'Partner ID': p.ID, Kind: 'call', Outcome: 'talked', At: new Date(sentAt.getTime() + day * 2), Snippet: 'Wants the sample. Has two listings in Fairway Oaks.', By: 'tanner@armortexroofs.com' });
   });
