@@ -51,8 +51,12 @@ Options for "really" calling from the app, pick by which number should show:
   day (v0.5.0, quo.gs)**: Settings → Quo card, doPost receiver, Events rows,
   record Activity, Today's call list + review queue. 2026-11-22 evening: webhook
   registered, Quo's test event reached the app, so Quo does follow Apps
-  Script's 302. Gotcha hit on the way: the /exec address is not the /dev
-  address with the suffix swapped (different deployment ids).
+  Script's 302. Gotchas hit on the way: the /exec address is not the /dev
+  address with the suffix swapped (different deployment ids); and re-writing
+  whole rows shifted untouched Date cells a day per update (fixed v0.5.6).
+  Real calls verified on Brian's record: outcome, duration, recording,
+  transcript, summary. Next: Tanner's number + the carrier registration Quo
+  asks for before texting.
   What the docs say (read 2026-11-22, api.quo.com, header `Quo-Api-Version:
   2026-03-30`, auth `Authorization: <key>` no Bearer, 10 req/s):
   - Webhooks (`POST /webhooks`, events `call.completed`, `call.recording.completed`,

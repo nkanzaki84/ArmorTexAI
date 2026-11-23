@@ -77,7 +77,7 @@ The SFM suite look: `src/ui_base.html` (Brian's portable base: palette, inputs, 
 - **Hand-sent rule** (`HAND_SENT_RE`, `_handSentDate_`): on import, a Notes cell like "sent 11/3" → Stage Contacted, Last Contact = that date, Skip Email Test, Call Queue. Default on for prospect imports; `applyHandSentRule(sourceList)` retrofits an already-imported list and cancels queued emails.
 - Still parked: a rep profile page, per-rep funnel on Campaign, commissions (job manager; CRM supplies attribution via the hand-off), per-rep sending mailboxes. See `docs/IDEAS.md`.
 
-## Quo, the phone system (built 2026-11-22, v0.5.0; webhook live and test event received 2026-11-22)
+## Quo, the phone system (built 2026-11-22, v0.5.0; live and verified with real calls the same evening)
 
 `src/quo.gs`. Tanner calls and texts from Quo; Quo posts every `call.completed`, recording, transcript, summary, voicemail, `message.received` and `message.delivered` to this web app; `doPost` (Code.gs) → `_quoReceive_` → `_quoHandleEvent_` writes or updates ONE Events row per call/message (`Source = quo`, `Source ID` = Quo's id), matched to a partner by the last 10 digits of the phone (then Homes), else `Needs Review = Yes` with a blank Partner ID (Today's review queue, owner scope only). Facts that shape it:
 - Apps Script `doPost` cannot read headers, so Quo's signature is not checked. The gate is a random token in the webhook URL (`?src=quo&token=…`, Script Property `QUO_HOOK_TOKEN`), and every delivery is only a nudge: the call/message is **re-fetched from Quo's API with our key** before anything is stored. No key, nothing stored.
@@ -105,7 +105,7 @@ One function, one package, destination swappable (Zapier → Roofr now; ArmorTex
 | Version | Scope | Status |
 |---|---|---|
 | 1. Send and match | Sheet + import + versions + Today batch + Send + reply check + stats | **code complete, untested against real Gmail**: `emails.gs` sends (createDraft().send()), queues the one follow-up (+4 business days, sent in-thread via the Gmail advanced service with In-Reply-To), `checkReplies` trigger (search `after:… -from:me`, dedupe by Gmail message id), bounce + opt-out + address detection with a review queue on Today. Done when the five-address test batch sends and replies match. |
-| 2. Work the replies | partner record, call list, follow-up, bounce/opt-out, address flag | partly: the Quo phone log (calls + texts on the record, missed calls on the call list) is built; the webhook is registered and Quo's test event reached the app on 2026-11-22; first real call still to be seen on a record |
+| 2. Work the replies | partner record, call list, follow-up, bounce/opt-out, address flag | partly: the **Quo phone log works for real** (2026-11-22 evening: Brian's calls landed on his test record with recording, transcript and summary; the shifting-date bug in `_updateRows_` found and fixed in v0.5.6). Rest not started. |
 | 3. Homes | import, neighborhood view, roof-age review, mailing file, knock list, knock outcomes | not started |
 | 4. Referral network | referrals log, more partner types, hand-off via Zapier | not started |
 
