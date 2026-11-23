@@ -32,7 +32,8 @@
       <div class="f"><label>Tags</label><input name="tags" placeholder="e.g. realtors, tyler, december"><span class="sub">Words to find it by later. Comma-separated.</span></div>
       <div class="f"><label>Lists</label><div class="row" id="newLists"></div><span class="sub">Ticked lists add up. None ticked = everyone of this type. The Partners book, hand-emailed and opted-out people are never emailed.</span></div>
       <div id="newStages" style="display:none"></div>
-      <details class="f"><summary class="sub" style="cursor:pointer">Compare wordings? (optional)</summary><div class="row" id="newLetters" style="margin-top:6px"></div><span class="sub">One letter (A) is the norm. Tick B or C only to test a second wording on the same people. Wording is copied from your last campaign of this type.</span></details>
+      <div id="newLetters" style="display:none"></div>
+      <div class="sub">The email text starts as a copy of your last campaign of this type; edit it on the Email tab before sending.</div>
       <div class="row" style="justify-content:flex-end;margin-top:12px"><button type="button" class="btn" id="newCancel">Cancel</button><button type="submit" class="btn primary">Create</button></div>
     </form>
   </div>
@@ -66,7 +67,7 @@
       all = list; renderTags(); list = view();
       $('rows').innerHTML = list.length ? list.map(function (c) {
         var runs = c.firstSentAt ? fmtDate(c.firstSentAt) + (c.lastSentAt && fmtDate(c.lastSentAt) !== fmtDate(c.firstSentAt) ? ' → ' + fmtDate(c.lastSentAt) : '') : (c.startDate ? 'starts ' + fmtDate(c.startDate) : 'not started');
-        return '<tr class="link" data-id="' + esc(c.id) + '"><td><b>' + esc(c.name) + '</b><div class="sub">' + esc(c.typeLabel) + ' · letters ' + esc(c.versions.join(', ') || '—') + (c.listNames && c.listNames.length ? ' · ' + esc(c.listNames.join(', ')) : '') + '</div>' + (c.tags.length ? '<div style="margin-top:3px">' + c.tags.map(function (t) { return '<span class="pill" style="font-size:11px;margin-right:4px">' + esc(t) + '</span>'; }).join('') + '</div>' : '') + '</td>' +
+        return '<tr class="link" data-id="' + esc(c.id) + '"><td><b>' + esc(c.name) + '</b><div class="sub">' + esc(c.typeLabel) + (c.versions.length > 1 ? ' · comparing ' + esc(c.versions.join('/')) : '') + (c.listNames && c.listNames.length ? ' · ' + esc(c.listNames.join(', ')) : '') + '</div>' + (c.tags.length ? '<div style="margin-top:3px">' + c.tags.map(function (t) { return '<span class="pill" style="font-size:11px;margin-right:4px">' + esc(t) + '</span>'; }).join('') + '</div>' : '') + '</td>' +
           '<td>' + statusPill(c.status) + '</td>' +
           '<td class="num">' + c.audience + (c.dealt < c.audience ? ' <span class="sub">' + (c.audience - c.dealt) + ' undealt</span>' : '') + '</td>' +
           '<td class="num">' + c.sent + (c.audience ? ' <span class="sub">of ' + c.audience + '</span>' : '') + '</td>' +

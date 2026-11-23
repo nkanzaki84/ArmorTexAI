@@ -14,7 +14,7 @@
 <div class="ptabs" id="tabs">
   <button class="on" data-tab="overview">Overview</button>
   <button data-tab="audience">Audience <span class="n" id="nAud">–</span></button>
-  <button data-tab="copy">Copy <span class="n" id="nCopy">–</span></button>
+  <button data-tab="copy">Email <span class="n" id="nCopy" style="display:none">–</span></button>
   <button data-tab="schedule">Schedule</button>
   <button data-tab="results">Results <span class="n" id="nRes">–</span></button>
 </div>
@@ -32,6 +32,7 @@
     var data = null, results = null, resultFilter = 'all';
     var DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+    function multi() { return data && data.campaign.versions.length > 1; }   // comparing wordings? letters only show then
     function statusPill(s) { return '<span class="pill ' + ({ running: 'ok', paused: 'warn', done: 'navy', draft: '' }[s] || '') + '">' + esc(s) + '</span>'; }
     function nextStatus(s) { return s === 'running' ? { to: 'paused', label: '⏸ Pause' } : s === 'done' ? null : { to: 'running', label: '▶ ' + (s === 'paused' ? 'Resume' : 'Start sending') }; }
 
@@ -56,12 +57,13 @@
         '<div class="stat"><b>' + plan.followUpsQueued + '</b><span>follow-ups queued</span></div>' +
         '<div class="stat"><b>' + plan.days.length + '</b><span>sending days left</span></div></div>';
       var cell = function (n, rate) { return '<td class="num">' + n + (rate !== undefined ? ' <span class="sub">' + pct(rate) + '</span>' : '') + '</td>'; };
-      html += '<div class="card"><div class="hd"><h2>By letter</h2><span class="sub">counts beside every rate</span></div>' +
-        (s.rows.length ? '<div class="scroll-x"><table><thead><tr><th>Letter</th><th class="num">Dealt</th><th class="num">Sent</th><th class="num">Follow-ups</th><th class="num">Replied</th><th class="num">' + esc(c.winNoun) + '</th><th class="num">Not interested</th><th class="num">Bounced</th><th class="num">Opted out</th></tr></thead><tbody>' +
-          s.rows.map(function (r) { var ni = 0; return '<tr><td>' + verBadge(r.version) + '</td>' + cell(r.assigned) + cell(r.sent) + cell(r.followUps) + cell(r.replied, r.replyRate) + cell(r.addresses, r.addressRate) + cell(r.notInterested || 0) + cell(r.bounced) + cell(r.optedOut) + '</tr>'; }).join('') + '</tbody></table></div>' : '<div class="empty">No letters dealt yet. See the Audience tab.</div>') +
-        '<div class="ft"><span class="sub">' + esc(s.note) + '</span></div></div>';
+      var m = multi();
+      html += '<div class="card"><div class="hd"><h2>' + (m ? 'By wording' : 'Results') + '</h2><span class="sub">counts beside every rate</span></div>' +
+        (s.rows.length ? '<div class="scroll-x"><table><thead><tr>' + (m ? '<th>Wording</th>' : '') + '<th class="num">In</th><th class="num">Sent</th><th class="num">Follow-ups</th><th class="num">Replied</th><th class="num">' + esc(c.winNoun) + '</th><th class="num">Not interested</th><th class="num">Bounced</th><th class="num">Opted out</th></tr></thead><tbody>' +
+          s.rows.map(function (r) { return '<tr>' + (m ? '<td>' + verBadge(r.version) + '</td>' : '') + cell(r.assigned) + cell(r.sent) + cell(r.followUps) + cell(r.replied, r.replyRate) + cell(r.addresses, r.addressRate) + cell(r.notInterested || 0) + cell(r.bounced) + cell(r.optedOut) + '</tr>'; }).join('') + '</tbody></table></div>' : '<div class="empty">Nobody in the campaign yet. See the Audience tab.</div>') +
+        (m ? '<div class="ft"><span class="sub">' + esc(s.note) + '</span></div>' : '') + '</div>';
       html += '<div class="grid2"><div class="card"><div class="hd"><h2>Next send</h2></div><div class="bd">' +
-        (c.status !== 'running' ? '<div class="sub">Not running. ' + (c.status === 'draft' ? 'Deal letters, write the copy, then press Start sending.' : c.status === 'paused' ? 'Press Resume to put it back on Today.' : 'This campaign is finished.') + '</div>' :
+        (c.status !== 'running' ? '<div class="sub">Not running. ' + (c.status === 'draft' ? 'Add people on Audience, write the email on Copy, then press Start sending.' : c.status === 'paused' ? 'Press Resume to put it back on Today.' : 'This campaign is finished.') + '</div>' :
           due ? '<b>' + esc(due.weekday) + ' ' + fmtDate(due.date) + '</b> · ' + due.firsts + ' first email' + (due.firsts === 1 ? '' : 's') + (due.followUps ? ' + ' + due.followUps + ' follow-up' + (due.followUps === 1 ? '' : 's') : '') + '<div class="sub" style="margin-top:6px">Shows on Today. A person presses Send; nothing goes out on its own.' + (isAdmin ? ' Or press Send now in the title row to send this campaign\'s batch today.' : '') + '</div>' : '<div class="sub">Nothing left to send. ' + (plan.followUpsQueued ? plan.followUpsQueued + ' follow-ups are still queued.' : 'Everyone has been emailed.') + '</div>') +
         '<div class="row" style="margin-top:10px"><a class="btn sm" href="#" onclick="go(\'today\'); return false;">☀️ Open Today</a></div></div></div>' +
         '<div class="card"><div class="hd"><h2>Plan</h2></div><div class="bd"><div>' + c.cap + ' a day · ' + esc(c.days) + '</div><div class="sub">Email → follow-up email after ' + c.followUpDays + ' business days → ' + (c.callAfterDays ? 'call after ' + c.callAfterDays + ' business days if no reply' : 'no call step (set one on Schedule)') + '. Anyone who replies gets a call right away.</div>' +
@@ -83,13 +85,14 @@
         '<div class="ok-box"><b>' + a.members.length + ' in this campaign</b>' + (a.undealt ? ' · <b>' + a.undealt + '</b> match the filters and are not in yet' : '') + (ex ? '<div class="sub" style="margin-top:4px">Left out: ' + esc(ex) + '</div>' : '') + '</div>' +
         '</div></div>';
       var counts = Object.keys(a.counts).filter(function (k) { return k !== 'none'; }).map(function (k) { return '<span class="pill">' + esc(k) + ' · ' + a.counts[k] + '</span>'; }).join(' ');
-      html += '<div class="card"><div class="hd"><h2>Letters</h2><span class="sub">dealt once per person, never changed</span><div class="spacer"></div><span class="pill ' + (a.undealt || a.counts.none ? 'warn' : 'ok') + '">' + (a.members.length - (a.counts.none || 0)) + ' of ' + (a.members.length + a.undealt) + ' dealt</span></div><div class="bd">' +
-        '<div class="row"><span class="sub">Deal across:</span><span id="audLetters" class="chips">' + data.letterOptions.map(function (l) { return chip(l, l, c.versions.indexOf(l) !== -1); }).join('') + '</span>' +
-        (isAdmin ? '<button class="btn navy" id="dealBtn"' + (a.undealt || a.counts.none ? '' : ' disabled') + '>Deal letters</button>' : '') + '</div>' +
-        '<div class="sub" style="margin:6px 0">Everyone who matches and is not in a campaign yet joins this one. One letter is normal. Tick a second or third only to compare wordings; then people are shuffled within each brokerage and dealt in turn.</div>' +
-        (counts ? '<div class="row">' + counts + '</div>' : '') + '<div id="dealResult"></div></div>' +
+      var m = multi();
+      html += '<div class="card"><div class="hd"><h2>People in it</h2><span class="sub">once in, they stay in; the email goes to each of them once</span><div class="spacer"></div><span class="pill ' + (a.undealt || a.counts.none ? 'warn' : 'ok') + '">' + (a.members.length - (a.counts.none || 0)) + ' of ' + (a.members.length + a.undealt) + ' in</span></div><div class="bd">' +
+        '<div class="row">' + (isAdmin ? '<button class="btn navy" id="dealBtn"' + (a.undealt || a.counts.none ? '' : ' disabled') + '>' + (a.undealt ? 'Add the ' + a.undealt + ' who match' : 'Everyone who matches is in') + '</button>' : '') +
+        '<span id="audLetters" class="chips" style="' + (m ? '' : 'display:none') + '"><span class="sub">Wordings:</span>' + data.letterOptions.map(function (l) { return chip(l, l, c.versions.indexOf(l) !== -1); }).join('') + '</span></div>' +
+        '<div class="sub" style="margin:6px 0">' + (m ? 'People are shuffled within each brokerage and dealt across the wordings in turn, so the comparison is fair. A wording is permanent once dealt.' : 'Everyone on the ticked lists who is not already in a campaign, not in the Partners book, not emailed by hand and not opted out.') + '</div>' +
+        (m && counts ? '<div class="row">' + counts + '</div>' : '') + '<div id="dealResult"></div></div>' +
         '<div class="hd" style="border-top:1px solid var(--line)"><input class="inline-input" id="audSearch" placeholder="🔍 Search name, brokerage…" style="max-width:320px"><div class="spacer"></div><span class="sub">' + a.members.length + ' people</span></div>' +
-        '<div class="scroll-x"><table class="tight"><thead><tr><th>Letter</th><th>Name</th><th>' + esc((O.profiles[c.type] || {}).companyLabel || 'Company') + '</th><th>Area</th><th>Stage</th><th>Rep</th><th></th></tr></thead><tbody id="audRows"></tbody></table></div></div>';
+        '<div class="scroll-x"><table class="tight"><thead><tr>' + (m ? '<th>Wording</th>' : '') + '<th>Name</th><th>' + esc((O.profiles[c.type] || {}).companyLabel || 'Company') + '</th><th>Area</th><th>Stage</th><th>Rep</th><th></th></tr></thead><tbody id="audRows"></tbody></table></div></div>';
       $('tab-audience').innerHTML = html;
       renderAudRows('');
       on($('audSearch'), 'input', function () { renderAudRows($('audSearch').value); });
@@ -100,21 +103,21 @@
       });
       if ($('dealBtn')) on($('dealBtn'), 'click', function () {
         var letters = picked($('audLetters'));
-        if (!letters.length) return toast('Pick at least one letter', 'error');
-        if (!confirm('Deal ' + letters.join('/') + ' to everyone who matches and is not in a campaign yet? Letters are permanent.')) return;
-        busy($('dealBtn'), true, 'Dealing…');
+        if (!letters.length) return toast('Pick at least one wording', 'error');
+        if (!confirm('Add everyone who matches and is not in a campaign yet? Once in, they stay in.')) return;
+        busy($('dealBtn'), true, 'Adding…');
         saveFilters().then(function () { return api('dealLetters', id, { versions: letters }); }).then(function (r) {
-          $('dealResult').innerHTML = '<div class="ok-box">Dealt <b>' + r.dealt + '</b>: ' + Object.keys(r.counts).map(function (v) { return v + ' ' + r.counts[v]; }).join(' · ') + '</div>';
-          toast('Letters dealt', 'success'); load();
-        }).catch(fail).finally(function () { busy($('dealBtn'), false, 'Deal letters'); });
+          $('dealResult').innerHTML = '<div class="ok-box">Added <b>' + r.dealt + '</b>' + (multi() ? ': ' + Object.keys(r.counts).map(function (v) { return v + ' ' + r.counts[v]; }).join(' · ') : '') + '.</div>';
+          toast('Added ' + r.dealt, 'success'); load();
+        }).catch(fail).finally(function () { busy($('dealBtn'), false, 'Add the people who match'); });
       });
     }
     function renderAudRows(q) {
       q = String(q || '').toLowerCase();
       var rows = data.audience.members.filter(function (m) { return !q || [m.Name, m.Company, m.Area, m.Email].join(' ').toLowerCase().indexOf(q) !== -1; });
       $('audRows').innerHTML = rows.length ? rows.slice(0, 300).map(function (m) {
-        return '<tr class="link" data-id="' + esc(m.ID) + '"><td>' + verBadge(m.Version) + '</td><td>' + esc(m.Name) + '</td><td>' + esc(m.Company || '') + '</td><td>' + esc(m.Area || '') + '</td><td>' + stagePill(m.Stage) + '</td><td class="sub">' + esc(String(m.Rep || '').split('@')[0]) + '</td><td>' + (isAdmin ? '<button class="btn sm ghost" data-remove="' + esc(m.ID) + '" title="Only possible before anything is sent">✕</button>' : '') + '</td></tr>';
-      }).join('') + (rows.length > 300 ? '<tr><td colspan="7" class="sub">… ' + (rows.length - 300) + ' more; narrow the search</td></tr>' : '') : '<tr><td colspan="7" class="empty">' + (data.audience.members.length ? 'No match.' : 'Nobody in the campaign yet. Set the filters and press Deal letters.') + '</td></tr>';
+        return '<tr class="link" data-id="' + esc(m.ID) + '">' + (multi() ? '<td>' + verBadge(m.Version) + '</td>' : '') + '<td>' + esc(m.Name) + '</td><td>' + esc(m.Company || '') + '</td><td>' + esc(m.Area || '') + '</td><td>' + stagePill(m.Stage) + '</td><td class="sub">' + esc(String(m.Rep || '').split('@')[0]) + '</td><td>' + (isAdmin ? '<button class="btn sm ghost" data-remove="' + esc(m.ID) + '" title="Only possible before anything is sent">✕</button>' : '') + '</td></tr>';
+      }).join('') + (rows.length > 300 ? '<tr><td colspan="7" class="sub">… ' + (rows.length - 300) + ' more; narrow the search</td></tr>' : '') : '<tr><td colspan="7" class="empty">' + (data.audience.members.length ? 'No match.' : 'Nobody in the campaign yet. Tick a list above, Save, then add the people who match.') + '</td></tr>';
     }
     function picked(box) { return Array.prototype.map.call(box.querySelectorAll('input:checked'), function (i) { return i.value; }); }
 
@@ -122,27 +125,34 @@
     function renderCopy() {
       var c = data.campaign, vs = data.versions.filter(function (v) { return c.versions.indexOf(String(v.Letter)) !== -1; });
       var anyLocked = vs.some(function (v) { return String(v.Locked).toLowerCase() === 'yes'; });
-      var html = '<div class="card"><div class="hd"><h2>Letters</h2><span class="sub">plain text · street address + opt-out line · ends with a question · {{first}} {{name}} {{company}} {{area}} are filled in</span><div class="spacer"></div><span class="sub">' + (anyLocked ? '🔒 locked: sending has started' : 'editable until the first send') + '</span></div>' +
+      var m = multi();
+      var html = '<div class="card"><div class="hd"><h2>' + (m ? 'Wordings' : 'The email') + '</h2><span class="sub">plain text · street address + opt-out line · ends with a question · {{first}} {{name}} {{company}} {{area}} are filled in</span><div class="spacer"></div><span class="sub">' + (anyLocked ? '🔒 locked: sending has started' : 'editable until the first send') + '</span></div>' +
         (vs.length ? vs.map(function (v) {
           var locked = String(v.Locked).toLowerCase() === 'yes';
           var ro = (!isAdmin || locked) ? ' readonly' : '';
-          return '<details class="card" style="margin:10px 12px;box-shadow:none"' + (vs.length === 1 ? ' open' : '') + '><summary>' + verBadge(v.Letter) + '<span>' + esc(v.Angle || 'untitled') + '</span><span class="sub">' + esc(v.Subject || 'no subject yet') + '</span>' + (locked ? '<span class="pill">locked</span>' : (!String(v.Body || '').trim() ? '<span class="pill warn">empty</span>' : '')) + '</summary>' +
+          return (m ? '<details class="card" style="margin:10px 12px;box-shadow:none"><summary>' + verBadge(v.Letter) + '<span>' + esc(v.Angle || 'untitled') + '</span><span class="sub">' + esc(v.Subject || 'no subject yet') + '</span>' + (locked ? '<span class="pill">locked</span>' : (!String(v.Body || '').trim() ? '<span class="pill warn">empty</span>' : '')) + '</summary>' : '<div>') +
             '<form class="bd verForm" data-letter="' + esc(v.Letter) + '">' +
-            '<div class="grid2"><div class="f"><label>Angle</label><input name="angle" value="' + esc(v.Angle) + '"' + ro + '></div><div class="f"><label>Subject</label><input name="subject" value="' + esc(v.Subject) + '"' + ro + '></div></div>' +
+            (m ? '<div class="grid2"><div class="f"><label>Angle</label><input name="angle" value="' + esc(v.Angle) + '"' + ro + '></div><div class="f"><label>Subject</label><input name="subject" value="' + esc(v.Subject) + '"' + ro + '></div></div>' : '<input type="hidden" name="angle" value="' + esc(v.Angle) + '"><div class="f"><label>Subject</label><input name="subject" value="' + esc(v.Subject) + '"' + ro + '></div>') +
             '<div class="f"><label>First email</label><textarea name="body" style="min-height:220px"' + ro + '>' + esc(v.Body) + '</textarea></div>' +
             '<div class="f"><label>Follow-up (same thread, ' + c.followUpDays + ' business days later, only one)</label><textarea name="followUpBody" style="min-height:80px"' + ro + '>' + esc(v['Follow Up Body']) + '</textarea></div>' +
             '<div class="problems"></div>' +
-            (isAdmin && !locked ? '<div class="row"><button class="btn primary" type="submit">Save letter ' + esc(v.Letter) + '</button><span class="sub">Saving checks the footer rules.</span></div>' : '') + '</form></details>';
-        }).join('') : '<div class="empty">No letters picked. Tick them on the Audience tab.</div>') + '</div>';
+            (isAdmin && !locked ? '<div class="row"><button class="btn primary" type="submit">' + (m ? 'Save wording ' + esc(v.Letter) : 'Save email') + '</button><span class="sub">Saving checks the footer rules.</span></div>' : '') + '</form>' + (m ? '</details>' : '</div>');
+        }).join('') : '<div class="empty">No wording yet.</div>') +
+        (isAdmin && !m && !anyLocked ? '<div class="ft"><a href="#" id="compareLink" class="sub">Want to test a second wording on the same people? Add wording B</a></div>' : '') + '</div>';
       $('tab-copy').innerHTML = html;
+      if ($('compareLink')) on($('compareLink'), 'click', function (e) {
+        e.preventDefault();
+        if (!confirm('Add a second wording (B)? People added from now on are split evenly between A and B so you can compare reply rates.')) return;
+        api('saveCampaign', id, { versions: data.campaign.versions.concat(['B']) }).then(function () { toast('Wording B added', 'success'); load(); }).catch(fail);
+      });
       $('tab-copy').querySelectorAll('.verForm').forEach(function (f) {
         f.addEventListener('submit', function (e) {
           e.preventDefault();
           var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Saving…');
           api('saveVersion', f.dataset.letter, { angle: f.angle.value, subject: f.subject.value, body: f.body.value, followUpBody: f.followUpBody.value }, id).then(function (r) {
             f.querySelector('.problems').innerHTML = r.problems.length ? r.problems.map(function (p) { return '<div class="problem">' + esc(p) + '</div>'; }).join('') : '<div class="ok-box">✓ Passes the footer and plain-text rules.</div>';
-            toast('Saved letter ' + f.dataset.letter, 'success');
-          }).catch(fail).finally(function () { busy(btn, false, 'Save letter ' + f.dataset.letter); });
+            toast('Saved', 'success');
+          }).catch(fail).finally(function () { busy(btn, false, multi() ? 'Save wording ' + f.dataset.letter : 'Save email'); });
         });
       });
     }
@@ -180,13 +190,13 @@
       var f = filters.filter(function (x) { return x[0] === resultFilter; })[0] || filters[0];
       var shown = rows.filter(f[2]);
       var html = '<div class="card"><div class="hd"><h2>Everyone, one line each</h2><div class="spacer"></div>' + filters.map(function (x) { return '<button class="chip ' + (x[0] === resultFilter ? 'on' : '') + '" data-filter="' + x[0] + '">' + x[1] + ' · ' + count(x[2]) + '</button>'; }).join('') + '<button class="btn sm" id="csvBtn">⬇ Export CSV</button></div>' +
-        '<div class="scroll-x"><table class="tight"><thead><tr><th>Letter</th><th>Name</th><th>Company</th><th>Sent</th><th>Follow-up</th><th>Replied</th><th>Response</th><th>Calls</th></tr></thead><tbody>' +
+        '<div class="scroll-x"><table class="tight"><thead><tr>' + (multi() ? '<th>Wording</th>' : '') + '<th>Name</th><th>Company</th><th>Sent</th><th>Follow-up</th><th>Replied</th><th>Response</th><th>Calls</th></tr></thead><tbody>' +
         (shown.length ? shown.map(function (r) {
           var fu = r.followUp ? (r.followUp.status === 'sent' ? fmtDate(r.followUp.at) : r.followUp.status === 'queued' ? '<span class="sub">due ' + fmtDate(r.followUp.at) + '</span>' : '<span class="sub">' + esc(r.followUp.status) + '</span>') : '—';
           var resp = r.response ? responsePill(r.response) : '';
           var calls = r.calls ? r.calls + (r.lastCall ? ' · ' + esc(String(r.lastCall.outcome || '').replace('_', ' ')) : '') : '—';
           if (r.repliedAt && !r.calls) calls += ' <span class="pill bad">call back</span>';
-          return '<tr class="link" data-id="' + esc(r.ID) + '"><td>' + verBadge(r.Version) + '</td><td>' + esc(r.Name) + (r.doNotContact ? ' <span class="pill bad">DNC</span>' : '') + '</td><td>' + esc(r.Company || '') + '</td><td>' + (fmtDate(r.sentAt) || '—') + '</td><td>' + fu + '</td><td>' + (fmtDate(r.repliedAt) || '—') + '</td><td>' + resp + '</td><td>' + calls + '</td></tr>';
+          return '<tr class="link" data-id="' + esc(r.ID) + '">' + (multi() ? '<td>' + verBadge(r.Version) + '</td>' : '') + '<td>' + esc(r.Name) + (r.doNotContact ? ' <span class="pill bad">DNC</span>' : '') + '</td><td>' + esc(r.Company || '') + '</td><td>' + (fmtDate(r.sentAt) || '—') + '</td><td>' + fu + '</td><td>' + (fmtDate(r.repliedAt) || '—') + '</td><td>' + resp + '</td><td>' + calls + '</td></tr>';
         }).join('') : '<tr><td colspan="8" class="empty">Nobody here.</td></tr>') + '</tbody></table></div></div>';
       $('tab-results').innerHTML = html;
       on($('tab-results'), 'click', function (e) {
@@ -262,7 +272,7 @@
         $('dupBtn').style.display = isAdmin ? '' : 'none';
         $('doneBtn').style.display = isAdmin && c.status !== 'done' && c.status !== 'draft' ? '' : 'none';
         $('saveAll').style.display = 'none';
-        $('nAud').textContent = c.audience; $('nCopy').textContent = c.versions.length;
+        $('nAud').textContent = c.audience; $('nCopy').textContent = c.versions.length; $('nCopy').style.display = c.versions.length > 1 ? '' : 'none';
         renderOverview(); renderAudience(); renderCopy(); renderSchedule();
         var want = null; try { want = localStorage.getItem('cp-tab-' + id); } catch (err) {}
         var cur = $('tabs').querySelector('button.on');
