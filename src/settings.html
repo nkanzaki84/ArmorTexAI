@@ -316,6 +316,7 @@
       var info = '';
       if (st.webhookId) info += 'Webhook <b>#' + esc(st.webhookId) + '</b> registered for: ' + st.events.join(', ') + '.';
       if (st.lastHook) info += (info ? '<br>' : '') + 'Last post from Quo ' + fmtDateTime(st.lastHook.at) + ': <b>' + esc(st.lastHook.type) + '</b> → ' + esc(st.lastHook.result && st.lastHook.result.action || '?') + (st.lastHook.result && st.lastHook.result.reason ? ' (' + esc(st.lastHook.result.reason) + ')' : '') + (st.lastHook.result && st.lastHook.result.partnerId ? ' · partner ' + esc(st.lastHook.result.partnerId) : '') + '.';
+      if (st.lastHook && st.lastHook.result && st.lastHook.result.clock) { var c = st.lastHook.result.clock; info += '<br><span class="sub">Clock trail · stored ' + esc(c.stored) + ' · event created ' + esc(c.eventCreated || '—') + ' · event completed ' + esc(c.eventCompleted || '—') + ' · API created ' + esc(c.apiCreated || '—') + ' · API completed ' + esc(c.apiCompleted || '—') + ' · received ' + esc(c.received) + '</span>'; }
       if (st.lastError) info += (info ? '<br>' : '') + '<span style="color:var(--bad)">Last problem: ' + esc(st.lastError) + '</span>';
       $('quoHookInfo').innerHTML = info;
     }

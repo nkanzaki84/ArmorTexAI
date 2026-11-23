@@ -254,7 +254,10 @@ function _quoHandleEvent_(envelope, now) {
     } else {
       return { action: 'ignored', reason: 'unhandled ' + type };
     }
-    return _quoUpsertEvent_(existing, patch, callId, phone, now, type);
+    const result = _quoUpsertEvent_(existing, patch, callId, phone, now, type);
+    // the clock trail, so a wrong time on a record can be traced to its source (Settings → Quo shows it)
+    result.clock = { stored: patch['At'] ? new Date(patch['At']).toISOString() : '(kept)', eventCreated: res.createdAt || null, eventCompleted: res.completedAt || null, apiCreated: call.createdAt || null, apiCompleted: call.completedAt || null, received: now.toISOString() };
+    return result;
   }
 
   if (/^message\./.test(type)) {
