@@ -124,6 +124,8 @@ function setup() {
     props.setProperty(PROP_SHEET_ID, sheetId);
   }
 
+  // The Sheet and the script must agree on the clock, or dates drift between the two.
+  try { if (ss.setSpreadsheetTimeZone && ss.getSpreadsheetTimeZone() !== Session.getScriptTimeZone()) ss.setSpreadsheetTimeZone(Session.getScriptTimeZone()); } catch (err) { /* older fake / no permission: skip */ }
   const report = { sheetId: sheetId, url: ss.getUrl ? ss.getUrl() : '', created: [], appended: [] };
   Object.keys(HEADERS).forEach(function (tabName) {
     let tab = ss.getSheetByName(tabName);

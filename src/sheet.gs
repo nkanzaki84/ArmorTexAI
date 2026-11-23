@@ -99,17 +99,23 @@ function _updateRow_(tabName, rowIndex, rowObject) {
   _updateRows_(tabName, [{ rowIndex: rowIndex, row: rowObject }]);
 }
 
-/** Update several rows; one read + one write per contiguous block is overkill
- *  for our sizes, so this does one setValues per row but never re-reads. */
+/**
+ * Update several rows. Writes ONLY the cells named in each row object, one
+ * setValue per cell. It used to read the whole row back and re-write it, and
+ * every round trip shifted the date cells it was not even changing (seen
+ * 2026-11-22: a call's At moved back a day with each recording / transcript /
+ * summary update). Volumes are tiny, so per-cell writes are fine.
+ */
 function _updateRows_(tabName, updates) {
   if (!updates || !updates.length) return;
   const tab = _getTab_(tabName);
   const idx = _headerIndex_(tab);
-  const width = tab.getLastColumn();
   updates.forEach(function (u) {
-    const range = tab.getRange(u.rowIndex, 1, 1, width);
-    const existing = range.getValues()[0];
-    range.setValues([_rowArray_(tabName, idx, width, u.row, existing)]);
+    HEADERS[tabName].forEach(function (h) {
+      const i = idx[h];
+      if (i === undefined || !Object.prototype.hasOwnProperty.call(u.row, h)) return;
+      tab.getRange(u.rowIndex, i + 1).setValue(_coerceCell_(u.row[h]));
+    });
   });
 }
 

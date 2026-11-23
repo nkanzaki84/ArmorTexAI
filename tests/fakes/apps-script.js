@@ -79,6 +79,8 @@ class FakeSheet {
 }
 
 class FakeSpreadsheet {
+  getSpreadsheetTimeZone() { return this._tz || 'Etc/GMT'; }
+  setSpreadsheetTimeZone(tz) { this._tz = tz; return this; }
   constructor(id, name) { this.id = id; this.name = name; this.sheets = [new FakeSheet('Sheet1')]; }
   getId() { return this.id; }
   getUrl() { return 'https://docs.google.com/spreadsheets/d/' + this.id; }

@@ -254,3 +254,23 @@ test('call-through-Quo switch: pages get the Quo number to dial from, nothing se
   assert.ok(html.indexOf('"viaApp":true') !== -1 && html.indexOf('+19035550199') !== -1);
   assert.ok(html.indexOf('key-123') === -1, 'the API key never reaches the browser');
 });
+
+test('later Quo events change only their own cells; the call time written first is never re-written', () => {
+  const { app, state, post } = connectedApp();
+  state.calls.AC9 = { id: 'AC9', direction: 'outgoing', status: 'completed', duration: 30, participants: ['+19035550123'], createdAt: '2026-11-24T14:00:00Z', completedAt: '2026-11-24T14:00:30Z' };
+  post(callEnvelope('call.completed', { id: 'AC9', direction: 'outgoing', status: 'answered', createdAt: '2026-11-24T14:00:00Z', completedAt: '2026-11-24T14:00:30Z', duration: 30, hasVoicemail: false }));
+  const sheet = app.$sheet('Events');
+  const atCol = sheet[0].indexOf('At');
+  const before = sheet[1][atCol];
+  const writes = [];
+  const tab = app.SpreadsheetApp.openById(app.PropertiesService.getScriptProperties().getProperty('OUTREACH_SHEET_ID')).getSheetByName('Events');
+  const origGetRange = tab.getRange.bind(tab);
+  tab.getRange = function (r, c, nr, nc) { const rg = origGetRange(r, c, nr, nc); const sv = rg.setValue && rg.setValue.bind(rg); if (sv) rg.setValue = function (v) { writes.push([r, c]); return sv(v); }; return rg; };
+  post(callEnvelope('call.summary.completed', { callId: 'AC9', processingStatus: 'completed', summary: ['Short call.'], nextSteps: [], handledByAiAgent: false, jobs: [] }));
+  post(callEnvelope('call.recording.completed', { id: 'AC9', direction: 'outgoing', duration: 30, recordings: [{ id: 'RE9', duration: 30, type: 'audio/mpeg', url: 'https://rec.example.com/RE9.mp3' }] }));
+  assert.ok(writes.length > 0, 'updates went through per-cell writes');
+  assert.ok(writes.every(w => w[1] !== atCol + 1), 'the At cell was not touched by the updates');
+  assert.equal(app.$sheet('Events')[1][atCol], before);
+  assert.equal(app.$rows('Events')[0].Snippet, 'Short call.');
+  assert.equal(app.$rows('Events')[0]['Recording URL'], 'https://rec.example.com/RE9.mp3');
+});
