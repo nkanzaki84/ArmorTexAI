@@ -1,16 +1,19 @@
-<!-- Shared list for both Partners-side sections. `section` is a template variable:
-     'marketing' = the pipeline (Prospect → Contacted → Replied), with the marketing tools;
-     'partners'  = established relationships (Stage = Partner), with referrals, jobs and the touch clock. -->
-<? var isMarketing = (section === 'marketing'); ?>
+<!-- Shared list for the three tiers of the Partners side. `section` is a template variable:
+     'prospects' = cold: never answered (Stage Prospect/Contacted, or a no), where campaigns draw from;
+     'marketing' = warm: replied and being worked (Stage Replied): calls, sample report, richer content;
+     'partners'  = hot: the book (Stage Partner), with referrals, jobs and the touch clock. -->
+<? var isProspects = (section === 'prospects'), isMarketing = (section === 'marketing'), isBook = (section === 'partners'); ?>
 <div class="row" style="margin-bottom:12px">
-  <h1 style="margin:0"><?= isMarketing ? 'Marketing' : 'Partners' ?></h1>
-  <span class="sub"><?= isMarketing ? 'people we are still courting' : 'established relationships' ?></span>
+  <h1 style="margin:0"><?= isProspects ? 'Prospects' : isMarketing ? 'Marketing' : 'Partners' ?></h1>
+  <span class="sub"><?= isProspects ? '❄️ cold · never answered' : isMarketing ? '🌤️ warm · replied, work the conversation' : '🤝 hot · established relationships' ?></span>
   <div class="spacer"></div>
-  <? if (isMarketing) { ?>
+  <? if (isProspects) { ?>
   <a class="btn sm" href="<?= appUrl ?>?page=today&side=partners">☀️ Today's batch</a>
-  <a class="btn sm" href="<?= appUrl ?>?page=campaign&side=partners">✉️ Email versions</a>
+  <a class="btn sm" href="<?= appUrl ?>?page=campaigns&side=partners">📊 Campaigns</a>
+  <? } else if (isMarketing) { ?>
+  <a class="btn sm" href="<?= appUrl ?>?page=today&side=partners">☀️ Today's calls</a>
   <? } ?>
-  <button class="btn primary sm" id="addBtn" style="display:none">+ Add <?= isMarketing ? 'prospect' : 'partner' ?></button>
+  <? if (!isMarketing) { ?><button class="btn primary sm" id="addBtn" style="display:none">+ Add <?= isProspects ? 'prospect' : 'partner' ?></button><? } ?>
 </div>
 
 <div class="ptabs" id="typeTabs">
@@ -21,7 +24,7 @@
   <button data-type="property_manager">Property managers <span class="n" id="n_property_manager"></span></button>
 </div>
 
-<? if (isMarketing) { ?>
+<? if (isProspects) { ?>
 <div class="funnel" id="funnel"></div>
 <? } else { ?>
 <div class="stats" id="bookStats"></div>
@@ -32,15 +35,21 @@
   <span class="chips" id="repChips"><button class="chip on" data-rep="">Everyone</button><button class="chip" data-rep="mine">Mine</button><button class="chip" data-rep="none">Unassigned</button></span>
 </div>
 <div class="row" style="margin-bottom:12px">
-  <? if (isMarketing) { ?>
+  <? if (isProspects) { ?>
   <div class="chips" id="stageChips">
-    <button class="chip on" data-stage="">All stages</button>
-    <button class="chip" data-stage="Prospect">Prospect</button>
-    <button class="chip" data-stage="Contacted">Contacted</button>
-    <button class="chip" data-stage="Replied">Replied</button>
+    <button class="chip on" data-stage="">Everyone</button>
+    <button class="chip" data-stage="Prospect">Not emailed yet</button>
+    <button class="chip" data-stage="Contacted">Emailed, no answer</button>
+    <button class="chip" data-stage="no">Said no</button>
   </div>
-  <select id="verSel" class="chip"><option value="">Any version</option><option>A</option><option>B</option><option>C</option><option>E</option></select>
-  <select id="respSel" class="chip"><option value="">Any response</option><option>Replied</option><option>Not interested</option><option>Bounced</option><option>Opted out</option></select>
+  <select id="verSel" class="chip" style="display:none"><option value="">Any wording</option><option>A</option><option>B</option><option>C</option><option>E</option></select>
+  <? } else if (isMarketing) { ?>
+  <div class="chips" id="stageChips">
+    <button class="chip on" data-stage="">Everyone</button>
+    <button class="chip" data-stage="queue">📞 On the call list</button>
+    <button class="chip" data-stage="uncalled">Not called yet</button>
+    <button class="chip" data-stage="cold">🥶 Going quiet</button>
+  </div>
   <? } else { ?>
   <div class="chips" id="stageChips">
     <button class="chip on" data-stage="">Everyone</button>
@@ -51,7 +60,7 @@
 </div>
 
 <div class="card" id="addCard" style="display:none">
-  <div class="hd"><h2>Add a <?= isMarketing ? 'prospect' : 'partner' ?></h2><span class="sub"><?= isMarketing ? 'starts in the pipeline at Prospect' : 'goes straight into the book as an established partner' ?></span></div>
+  <div class="hd"><h2>Add a <?= isProspects ? 'prospect' : 'partner' ?></h2><span class="sub"><?= isProspects ? 'starts cold, at Prospect' : 'goes straight into the book as an established partner' ?></span></div>
   <form class="bd" id="addForm">
     <div class="grid2">
       <div class="f"><label>Name<span class="req">*</span></label><input name="name" type="text" required placeholder="Loretta Nelson"></div>
@@ -73,7 +82,7 @@
 
 <script>
   (function () {
-    var SECTION = '<?= section ?>', MARKETING = SECTION === 'marketing';
+    var SECTION = '<?= section ?>', PROSPECTS = SECTION === 'prospects', MARKETING = SECTION === 'marketing', BOOK = SECTION === 'partners';
     var filters = { stage: '', type: '', version: '', response: '', q: '', rep: (O.session.role === 'sales') ? 'mine' : '' };
     var ME = String(O.session.email || '').toLowerCase();
     $('repChips').querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('on', c.dataset.rep === filters.rep); });
@@ -84,7 +93,8 @@
     var TYPE_LABEL = { realtor: 'realtors', inspector: 'home inspectors', insurance: 'insurance agents', property_manager: 'property managers' };
     try { filters.type = localStorage.getItem('atx_' + SECTION + '_tab') || ''; } catch (e) {}
 
-    if (canWrite) $('addBtn').style.display = '';
+    if (canWrite && $('addBtn')) $('addBtn').style.display = '';
+    if ($('verSel') && (O.multiCampaigns || []).length) $('verSel').style.display = '';
     on($('addBtn'), 'click', function () { $('addCard').style.display = ''; $('addForm').name.focus(); });
     on($('addCancel'), 'click', function () { $('addCard').style.display = 'none'; });
     on($('addForm'), 'submit', function (e) {
@@ -93,7 +103,7 @@
       ['name', 'type', 'company', 'area', 'email', 'phone', 'notes'].forEach(function (k) { payload[k] = f[k].value; });
       var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Saving…');
       api('addPartner', payload)
-        .then(function (id) { return MARKETING ? id : api('markAsPartner', id).then(function () { return id; }); })
+        .then(function (id) { return BOOK ? api('markAsPartner', id).then(function () { return id; }) : id; })
         .then(function (id) { toast('Added', 'success'); go('partner', { id: id, from: SECTION }); })
         .catch(fail).finally(function () { busy(btn, false, 'Save'); });
     });
@@ -124,14 +134,25 @@
       all.forEach(function (p) { c[p.Type] = (c[p.Type] || 0) + 1; });
       ['', 'realtor', 'inspector', 'insurance', 'property_manager'].forEach(function (t) { var el = $('n_' + (t || 'all')); if (el) el.textContent = c[t] || 0; });
       var mine = all.filter(inType);
-      if (MARKETING) {
-        var st = { Prospect: 0, Contacted: 0, Replied: 0 };
-        mine.forEach(function (p) { if (st[p.Stage] !== undefined) st[p.Stage]++; });
-        var steps = [['Prospect', 'on the list'], ['Contacted', 'emailed'], ['Replied', 'replied']];
-        $('funnel').innerHTML = steps.map(function (s, i) {
-          var rate = i === 0 || !st[steps[i - 1][0]] && !st[s[0]] ? '' : '';
-          return '<div class="fstep"><b>' + st[s[0]] + '</b><span>' + s[0] + '</span><i>' + s[1] + '</i></div>' + (i < steps.length - 1 ? '<div class="farrow">›</div>' : '');
-        }).join('') + '<div class="farrow">›</div><a class="fstep win" href="' + O.appUrl + '?page=partners&side=partners"><b>' + (window.__partnerCount || '…') + '</b><span>Partners</span><i>in the book</i></a>';
+      if (PROSPECTS) {
+        var st = { Prospect: 0, Contacted: 0, no: 0 };
+        mine.forEach(function (p) { if (p.Stage === 'Replied' || String(p['Do Not Contact']).toLowerCase() === 'yes') st.no++; else if (st[p.Stage] !== undefined) st[p.Stage]++; });
+        var other = window.__tierCounts || {};
+        var n = function (t) { return other[t] ? (filters.type ? (other[t][filters.type] || 0) : other[t].all) : '…'; };
+        $('funnel').innerHTML =
+          '<div class="fstep"><b>' + st.Prospect + '</b><span>Not emailed</span><i>cold</i></div><div class="farrow">›</div>' +
+          '<div class="fstep"><b>' + st.Contacted + '</b><span>Emailed</span><i>waiting on a reply</i></div><div class="farrow">›</div>' +
+          '<a class="fstep" href="' + O.appUrl + '?page=marketing&side=partners"><b>' + n('marketing') + '</b><span>Marketing</span><i>🌤️ warm · replied</i></a><div class="farrow">›</div>' +
+          '<a class="fstep win" href="' + O.appUrl + '?page=partners&side=partners"><b>' + n('partners') + '</b><span>Partners</span><i>🤝 hot · in the book</i></a>' +
+          (st.no ? '<div class="fstep" style="opacity:.7"><b>' + st.no + '</b><span>Said no</span><i>stay cold</i></div>' : '');
+      } else if (MARKETING) {
+        var queue = 0, uncalled = 0, quiet = 0;
+        mine.forEach(function (p) { if (p['Call Queue'] === 'Yes') queue++; if (!p.metrics.calls) uncalled++; if (p.cold) quiet++; });
+        $('bookStats').innerHTML =
+          '<div class="stat"><b>' + mine.length + '</b><span>warm · replied</span></div>' +
+          '<div class="stat"><b>' + queue + '</b><span>on the call list</span></div>' +
+          '<div class="stat"><b>' + uncalled + '</b><span>not called yet</span></div>' +
+          '<div class="stat"><b>' + quiet + '</b><span>going quiet (30+ days)</span></div>';
       } else {
         var refs = 0, jobs = 0, val = 0, cold = 0;
         mine.forEach(function (p) { refs += p.metrics.referralsIn; jobs += p.metrics.jobsSigned; val += p.metrics.jobValue; if (p.cold) cold++; });
@@ -148,10 +169,15 @@
       var q = filters.q.toLowerCase();
       var rows = all.filter(function (p) {
         if (!inType(p) || !repOk(p)) return false;
-        if (MARKETING) {
-          if (filters.stage && p.Stage !== filters.stage) return false;
+        if (PROSPECTS) {
+          var no = p.Stage === 'Replied' || String(p['Do Not Contact']).toLowerCase() === 'yes';
+          if (filters.stage === 'no' && !no) return false;
+          if (filters.stage && filters.stage !== 'no' && (no || p.Stage !== filters.stage)) return false;
           if (filters.version && p.Version !== filters.version) return false;
-          if (filters.response && p.Response !== filters.response) return false;
+        } else if (MARKETING) {
+          if (filters.stage === 'queue' && p['Call Queue'] !== 'Yes') return false;
+          if (filters.stage === 'uncalled' && p.metrics.calls) return false;
+          if (filters.stage === 'cold' && !p.cold) return false;
         } else {
           if (filters.stage === 'cold' && !p.cold) return false;
           if (filters.stage === 'active' && !p.metrics.referralsIn) return false;
@@ -159,26 +185,33 @@
         if (q && [p.Name, p.Company, p.Email, p.Phone, p.Area].join(' ').toLowerCase().indexOf(q) === -1) return false;
         return true;
       });
-      if (!MARKETING) rows.sort(function (a, b) { return (b.cold - a.cold) || (b.metrics.referralsIn - a.metrics.referralsIn); });
+      if (BOOK) rows.sort(function (a, b) { return (b.cold - a.cold) || (b.metrics.referralsIn - a.metrics.referralsIn); });
+      if (MARKETING) rows.sort(function (a, b) { return ((b['Call Queue'] === 'Yes') - (a['Call Queue'] === 'Yes')) || ((a.daysSinceContact === null ? 1e9 : a.daysSinceContact) - (b.daysSinceContact === null ? 1e9 : b.daysSinceContact)); });
       $('rows').innerHTML = rows.length ? rows.map(function (p) {
         var facts = typeFacts(p);
         var right;
-        if (MARKETING) {
-          right = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span>' + repChip(p) + ' ' + stagePill(p.Stage) + '</span>' + responsePill(p.Response) + (p['Call Queue'] === 'Yes' ? '<span class="pill warn">📞 on call list</span>' : '') + (p['Next Step'] ? '<span class="sub">→ ' + esc(p['Next Step']) + '</span>' : '') + '</div>';
+        if (PROSPECTS) {
+          right = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span>' + repChip(p) + ' ' + stagePill(p.Stage) + '</span>' + (p.Response && p.Response !== p.Stage ? responsePill(p.Response) : '') + (String(p['Do Not Contact']).toLowerCase() === 'yes' ? '<span class="pill bad">Do not contact</span>' : '') + (p['Call Queue'] === 'Yes' ? '<span class="pill warn">📞 on call list</span>' : '') + (p['Next Step'] ? '<span class="sub">→ ' + esc(p['Next Step']) + '</span>' : '') + '</div>';
+        } else if (MARKETING) {
+          var mm = p.metrics;
+          right = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span>' + repChip(p) + ' ' + (p.Response && p.Response !== 'Replied' ? responsePill(p.Response) : '') + (p['Call Queue'] === 'Yes' ? '<span class="pill warn">📞 on call list</span>' : '') + '</span>' +
+            '<span class="sub">' + (mm.calls ? mm.calls + ' call' + (mm.calls === 1 ? '' : 's') : 'not called yet') + '</span>' +
+            (p.daysSinceContact === null ? '' : p.cold ? '<span class="pill bad">🥶 ' + p.daysSinceContact + ' days quiet</span>' : '<span class="pill ok">' + p.daysSinceContact + 'd ago</span>') +
+            (p['Next Step'] ? '<span class="sub">→ ' + esc(p['Next Step']) + '</span>' : '') + '</div>';
         } else {
           var m = p.metrics;
           right = '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' + repChip(p) +
             '<span class="sub">' + m.referralsIn + ' referral' + (m.referralsIn === 1 ? '' : 's') + (m.jobsSigned ? ' · ' + m.jobsSigned + ' job' + (m.jobsSigned === 1 ? '' : 's') + (m.jobValue ? ' · ' + fmtMoney(m.jobValue) : '') : '') + '</span>' +
             (p.daysSinceContact === null ? '<span class="pill warn">never contacted</span>' : p.cold ? '<span class="pill bad">🥶 ' + p.daysSinceContact + ' days quiet</span>' : '<span class="pill ok">' + p.daysSinceContact + 'd ago</span>') + '</div>';
         }
-        return '<li class="link" data-id="' + esc(p.ID) + '">' + (MARKETING ? letterBadge(p) : '<span class="ver" style="background:#e8f6ee;color:#17743d">🤝</span>') +
+        return '<li class="link" data-id="' + esc(p.ID) + '">' + (BOOK ? '<span class="ver" style="background:#e8f6ee;color:#17743d">🤝</span>' : MARKETING ? '<span class="ver" style="background:#fff3e0;color:#b25e00">🌤️</span>' : letterBadge(p)) +
           '<div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + ' <span class="sub">' + esc((O.profiles[p.Type] || {}).label || p.Type) + '</span></div><div class="sub">' + esc(p.Company || '') + (p.Area ? ' · ' + esc(p.Area) : '') + (p.Phone ? ' · ' + fmtPhone(p.Phone) : '') + '</div>' + (facts ? '<div class="sub" style="color:var(--navy)">' + esc(facts) + '</div>' : '') + '</div>' +
           right + (p.Phone ? '<a class="btn sm" href="' + esc(callHref(p.Phone)) + '" onclick="event.stopPropagation()" title="Call">📞</a>' : '') + '</li>';
       }).join('') : '<li class="empty">' + emptyText() + '</li>';
       $('count').textContent = rows.length + ' of ' + all.length;
     }
     function emptyText() {
-      if (!all.length) return MARKETING ? 'No prospects yet. Import the realtor list under Settings.' : 'No established partners yet. They arrive here when a prospect sends work, or when you mark one as a partner.';
+      if (!all.length) return PROSPECTS ? 'No prospects yet. Import the realtor list under Settings.' : MARKETING ? 'Nobody warm yet. A prospect lands here the moment they reply to an email, a text or a call.' : 'No established partners yet. They arrive here when a prospect sends work, or when you mark one as a partner.';
       if (filters.type && !all.some(function (p) { return p.Type === filters.type; })) return 'No ' + TYPE_LABEL[filters.type] + ' here yet.';
       return 'Nobody matches.';
     }
@@ -189,9 +222,14 @@
       $('stageChips').querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); }); c.classList.add('on');
       filters.stage = c.dataset.stage; render();
     });
-    ['verSel', 'respSel'].forEach(function (id, i) { on($(id), 'change', function (e) { filters[['version', 'response'][i]] = e.target.value; render(); }); });
+    on($('verSel'), 'change', function (e) { filters.version = e.target.value; render(); });
 
     api('listPartners', { section: SECTION, includeDnc: true }).then(function (rows) { all = rows; setTab(filters.type); }).catch(function (e) { $('rows').innerHTML = '<li class="empty">' + esc(e.message) + '</li>'; });
-    if (MARKETING) api('listPartners', { section: 'partners' }).then(function (rows) { window.__partnerCount = rows.length; renderCounts(); }).catch(function () {});
+    if (PROSPECTS) ['marketing', 'partners'].forEach(function (t) {
+      api('listPartners', { section: t }).then(function (rows) {
+        var c = { all: rows.length }; rows.forEach(function (p) { c[p.Type] = (c[p.Type] || 0) + 1; });
+        (window.__tierCounts = window.__tierCounts || {})[t] = c; renderCounts();
+      }).catch(function () {});
+    });
   })();
 </script>

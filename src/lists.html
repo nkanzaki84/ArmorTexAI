@@ -80,7 +80,7 @@
       });
       on($('memberRows'), 'click', function (e) {
         var rm = e.target.closest('[data-remove]'); if (rm) { api('removeFromList', l.id, [rm.dataset.remove]).then(function () { toast('Removed', 'success'); loadMembers(); }).catch(fail); return; }
-        var tr = e.target.closest('tr[data-id]'); if (tr) go('partner', { id: tr.dataset.id, from: 'marketing' });
+        var tr = e.target.closest('tr[data-id]'); if (tr) go('partner', { id: tr.dataset.id, from: 'prospects' });
       });
     }
     function loadMembers() {

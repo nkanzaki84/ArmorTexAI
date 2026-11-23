@@ -99,7 +99,7 @@
       on($('tab-audience'), 'click', function (e) {
         var ch = e.target.closest('label.chip'); if (ch && ch.querySelector('input')) { setTimeout(function () { ch.classList.toggle('on', ch.querySelector('input').checked); markDirty(); }, 0); }
         var rm = e.target.closest('[data-remove]'); if (rm) { e.stopPropagation(); if (!confirm('Take this person out of the campaign?')) return; api('removeFromCampaign', id, rm.dataset.remove).then(function () { toast('Removed', 'success'); load(); }).catch(fail); return; }
-        var tr = e.target.closest('tr[data-id]'); if (tr) go('partner', { id: tr.dataset.id, from: 'marketing' });
+        var tr = e.target.closest('tr[data-id]'); if (tr) go('partner', { id: tr.dataset.id, from: 'prospects' });
       });
       if ($('dealBtn')) on($('dealBtn'), 'click', function () {
         var letters = picked($('audLetters'));
@@ -211,7 +211,7 @@
       $('tab-results').innerHTML = html;
       on($('tab-results'), 'click', function (e) {
         var fb = e.target.closest('[data-filter]'); if (fb) { resultFilter = fb.dataset.filter; renderResults(); return; }
-        var tr = e.target.closest('tr[data-id]'); if (tr) go('partner', { id: tr.dataset.id, from: 'marketing' });
+        var tr = e.target.closest('tr[data-id]'); if (tr) go('partner', { id: tr.dataset.id, from: 'prospects' });
       });
       on($('csvBtn'), 'click', function () {
         var head = ['ID', 'Name', 'Company', 'Area', 'Email', 'Letter', 'Rep', 'Sent', 'Follow-up', 'Follow-up status', 'Replied', 'Response', 'Calls', 'Last call', 'Do not contact'];

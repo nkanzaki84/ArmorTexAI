@@ -116,7 +116,7 @@ test('established partners import straight into the book and never enter the ema
   const book = app.listPartners({ section: 'partners' });
   assert.equal(book.length, 2);
   assert.ok(book.every(p => p.Stage === 'Partner' && p['Partner Since'] && p.Version === ''));
-  assert.equal(app.listPartners({ section: 'marketing' }).length, 0);
+  assert.equal(app.listPartners({ section: 'prospects' }).length, 0);
   // prospects imported normally, then versions: only the prospects get one
   app.importPartners('Name,Email\nNew Realtor,new@example.com');
   const a = app.assignVersions({ versions: ['A', 'B', 'C'] });

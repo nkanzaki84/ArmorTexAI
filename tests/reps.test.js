@@ -66,13 +66,13 @@ test('rep: mine filter, unassigned counts as mine, retrofit on an imported list,
   assert.throws(() => a.assignRepToList('tyler', 'nobody@x.com'), /Not on the team/);
   // mine filter for Tanner: his 5; for Brian: unassigned only
   a.$as(TANNER);
-  assert.equal(a.listPartners({ section: 'marketing', rep: 'mine' }).length, 5);
+  assert.equal(a.listPartners({ section: 'prospects', rep: 'mine' }).length, 5);
   const id = a.addPartner({ name: 'Walk In', email: 'walk@x.com' });
   assert.equal(a.getPartner(id).partner.Rep, TANNER, 'sales adds default to themselves');
   a.$as(OWNER);
-  assert.equal(a.listPartners({ section: 'marketing', rep: 'mine' }).length, 0);
+  assert.equal(a.listPartners({ section: 'prospects', rep: 'mine' }).length, 0);
   a.savePartner(id, { rep: '' });
-  assert.equal(a.listPartners({ section: 'marketing', rep: 'mine' }).length, 1);
+  assert.equal(a.listPartners({ section: 'prospects', rep: 'mine' }).length, 1);
   assert.throws(() => a.savePartner(id, { rep: 'stranger@x.com' }), /Not on the team/);
   // manual queue toggle
   a.setCallQueue(id, true);

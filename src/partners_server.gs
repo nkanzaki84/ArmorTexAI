@@ -257,8 +257,21 @@ function _partnerMetricsMap_() {
 }
 
 /**
- * @param {{section?:'marketing'|'partners', type?:string, stage?:string, version?:string, response?:string, q?:string, includeDnc?:boolean, rep?:string}} filters
- *   section 'marketing' = not yet a Partner; 'partners' = Stage Partner. rep 'mine' = the signed-in user's or unassigned.
+ * The three tiers of the Partners side (Brian, 2026-11-23: "prospects are cold, marketing is warm, partner is hot").
+ *   prospects = never answered, or answered no (Stage Prospect/Contacted, or Replied with a cold response, or do-not-contact)
+ *   marketing = replied and in play (Stage Replied) — call them, send the sample report
+ *   partners  = the book (Stage Partner)
+ */
+function _tierOf_(p) {
+  const stage = String(p['Stage'] || '');
+  if (stage === 'Partner') return 'partners';
+  if (stage === 'Replied' && COLD_RESPONSES.indexOf(String(p['Response'] || '')) === -1 && !_yes_(p['Do Not Contact'])) return 'marketing';
+  return 'prospects';
+}
+
+/**
+ * @param {{section?:'prospects'|'marketing'|'partners', type?:string, stage?:string, version?:string, response?:string, q?:string, includeDnc?:boolean, rep?:string}} filters
+ *   section = tier, see _tierOf_. rep 'mine' = the signed-in user's or unassigned.
  *   Rows carry `metrics` and `daysSinceContact`.
  */
 function listPartners(filters) {
@@ -269,8 +282,7 @@ function listPartners(filters) {
   const metrics = _partnerMetricsMap_();
   const now = Date.now();
   return _readTab_(TAB.PARTNERS).filter(function (p) {
-    if (filters.section === 'marketing' && String(p['Stage']) === 'Partner') return false;
-    if (filters.section === 'partners' && String(p['Stage']) !== 'Partner') return false;
+    if (filters.section && _tierOf_(p) !== filters.section) return false;
     if (repFilter) { const r = _normEmail_(p['Rep']); if (r !== repFilter && !(filters.rep === 'mine' && !r)) return false; }
     if (filters.type && String(p['Type']) !== filters.type) return false;
     if (filters.stage && String(p['Stage']) !== filters.stage) return false;
@@ -286,7 +298,7 @@ function listPartners(filters) {
     const m = metrics[p['ID']] || { referralsIn: 0, reportsSent: 0, jobsSigned: 0, jobValue: 0, calls: 0, lastTouch: '' };
     const last = p['Last Contact'] || m.lastTouch;
     const days = last ? Math.floor((now - new Date(last).getTime()) / 86400000) : null;
-    const o = Object.assign({}, p, { metrics: m, daysSinceContact: isNaN(days) ? null : days, cold: days !== null && !isNaN(days) && days >= PARTNER_TOUCH_DAYS });
+    const o = Object.assign({}, p, { tier: _tierOf_(p), metrics: m, daysSinceContact: isNaN(days) ? null : days, cold: days !== null && !isNaN(days) && days >= PARTNER_TOUCH_DAYS });
     Object.defineProperty(o, '_row', { value: p._row, enumerable: false });
     return o;
   });
@@ -331,7 +343,7 @@ function getPartner(id) {
     jobValue: inRefs.reduce(function (sum, r) { return sum + (Number(r['Contract Amount']) || Number(r['Job Value']) || 0); }, 0),
     won: WIN_RESPONSES.indexOf(String(p['Response'])) !== -1 || inRefs.length > 0,
   };
-  return { partner: p, emails: emails, events: events, referrals: referrals, metrics: metrics, profile: PARTNER_TYPE_PROFILES[String(p['Type'])] || null };
+  return { partner: p, tier: _tierOf_(p), emails: emails, events: events, referrals: referrals, metrics: metrics, profile: PARTNER_TYPE_PROFILES[String(p['Type'])] || null };
 }
 
 /** Add a partner by hand. */

@@ -47,11 +47,13 @@ Read this first. It holds what the next session needs without re-asking.
 - The homeowner list never leaves the app except as the printer's mailing file.
 - Open rates are not measured. Counts sit beside every rate; the Campaign table carries the "125 per version is too few" note.
 
-## Two sections on the Partners side (2026-11-19, Brian: "a marketing stage, then established relationships")
+## Three tiers on the Partners side (2026-11-23, Brian: "prospects are cold, marketing is warm, partner is hot")
 
-- **Marketing** (`page=marketing`): the pipeline, Stage ≠ Partner. Type tabs, a Prospect → Contacted → Replied → Partners funnel strip, stage/version/response filters, links to Today's batch and Email versions. This is where the email test lives.
-- **Partners** (`page=partners`): the book, Stage = Partner. Type tabs, totals (partners, referrals in, jobs signed + $, gone cold), rows show referrals/jobs and a touch clock (`PARTNER_TOUCH_DAYS` = 30 → 🥶 gone cold), filters Everyone / Gone cold / Sent work.
-- Both render `partners.html` with a `section` template variable; `listPartners({section})` filters server-side and attaches `metrics` + `daysSinceContact`. A prospect becomes a partner by a win Response, a referral in, or **Mark as partner** on the record (`markAsPartner` / `unmarkPartner`); `Partner Since` is stamped once. The record's back button follows `?from=`.
+Same `partners.html` rendered with a `section` template variable; `listPartners({section})` filters by `_tierOf_(p)` (partners_server.gs), and rows/`getPartner` carry `tier`. Stage underneath is unchanged.
+- **Prospects** (`page=prospects`, ❄️ cold): `_tierOf_` = Stage Prospect/Contacted, or Replied with a `COLD_RESPONSES` response (Not interested / Bounced / Opted out), or do-not-contact. Where campaigns draw from. Funnel strip Not emailed → Emailed → Marketing → Partners (+ Said no), filters Everyone / Not emailed yet / Emailed, no answer / Said no, wording select only when `O.multiCampaigns` has entries, links to Today's batch and Campaigns, + Add prospect.
+- **Marketing** (`page=marketing`, 🌤️ warm): Stage Replied and in play. Stats: warm, on the call list, not called yet, going quiet (`PARTNER_TOUCH_DAYS`); filters Everyone / On the call list / Not called yet / Going quiet; rows show calls count and days since contact; sorted call list first then quietest last. No Add button (people arrive by replying). This is where richer content (sample report, photos) is fine; the plain-text rule is for Prospects only.
+- **Partners** (`page=partners`, 🤝 hot): Stage Partner. Unchanged: totals, touch clock, Everyone / Gone cold / Sent work, + Add partner (`markAsPartner` right away).
+- A reply moves someone Prospects → Marketing automatically (`recountPartnerStages`); a win Response, a referral in, or **Mark as partner** moves them to Partners; **Remove from partners** (`unmarkPartner`) drops them to Marketing (Stage Replied). The record's tier pill reads "❄️ cold · prospect" / "🌤️ warm · in marketing" / "🤝 partner since". The back button follows `?from=prospects|marketing|partners`; campaign and list member links use `from=prospects`.
 
 ## Partner types (2026-11-19, Brian: "different metrics and profiles per type")
 

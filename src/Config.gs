@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.10.4';
+const APP_VERSION    = '0.11.0';
 const APP_BUILD_DATE = '2026-11-23';
 
 // ===== Script Property keys =====
@@ -280,6 +280,7 @@ const PARTNER_TYPES = ['realtor', 'inspector', 'insurance', 'property_manager'];
 const PARTNER_STAGES = ['Prospect', 'Contacted', 'Replied', 'Partner'];
 const HOME_STAGES = ['Target', 'Mailed', 'Knocked', 'Talked', 'Roof check booked'];
 const RESPONSES = ['', 'Replied', 'Sent an address', 'Referred a job', 'Sent a claim', 'Sent a property', 'Not interested', 'Bounced', 'Opted out'];
+const COLD_RESPONSES = ['Not interested', 'Bounced', 'Opted out'];   // a reply that closes the door: back to cold
 const WIN_RESPONSES = ['Sent an address', 'Referred a job', 'Sent a claim', 'Sent a property'];
 
 // "Sent", "sent 11/3", "Bilingual | sent" in an imported Notes column = already emailed by hand.
@@ -415,8 +416,9 @@ const ROLES = [
 
 const PAGE_CATALOG = [
   { key: 'today',     label: 'Today' },
-  { key: 'marketing', label: 'Marketing' },   // the pipeline: prospects we are still courting
-  { key: 'partners',  label: 'Partners' },    // established relationships
+  { key: 'prospects', label: 'Prospects' },   // cold: never answered (Stage Prospect/Contacted, or a no)
+  { key: 'marketing', label: 'Marketing' },   // warm: replied, being worked (Stage Replied)
+  { key: 'partners',  label: 'Partners' },    // hot: the book (Stage Partner)
   { key: 'lists',     label: 'Lists' },       // curated groups of people, picked by hand or by filter; campaigns point at them
   { key: 'homes',    label: 'Homes' },
   { key: 'campaigns', label: 'Campaigns' },  // the ledger; page=campaign&id=CP-1 is one campaign's record
@@ -424,9 +426,9 @@ const PAGE_CATALOG = [
 ];
 
 const DEFAULT_ROLE_ACCESS = {
-  owner:    ['today', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'settings'],
-  sales:    ['today', 'marketing', 'partners', 'lists', 'homes', 'campaigns'],
-  viewonly: ['today', 'marketing', 'partners', 'lists', 'homes', 'campaigns'],
+  owner:    ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns', 'settings'],
+  sales:    ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns'],
+  viewonly: ['today', 'prospects', 'marketing', 'partners', 'lists', 'homes', 'campaigns'],
 };
 
 const WRITE_ROLES = ['owner', 'sales'];   // who may change data

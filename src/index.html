@@ -34,8 +34,8 @@
   <?!= include('noaccess', { noAccess: noAccess, appUrl: appUrl }) ?>
 <? } else { ?>
 <? var sideSwitch = '<div class="side-switch" role="tablist" aria-label="Side">'
-  + '<a role="tab" class="' + (side === 'partners' ? 'on' : '') + '" href="' + appUrl + '?page=' + ((page === 'homes' || page === 'home') ? 'marketing' : page) + '&side=partners">Partners</a>'
-  + '<a role="tab" class="' + (side === 'homes' ? 'on' : '') + '" href="' + appUrl + '?page=' + ((page === 'partners' || page === 'partner' || page === 'marketing') ? 'homes' : page) + '&side=homes">Homes</a>'
+  + '<a role="tab" class="' + (side === 'partners' ? 'on' : '') + '" href="' + appUrl + '?page=' + ((page === 'homes' || page === 'home') ? 'prospects' : page) + '&side=partners">Partners</a>'
+  + '<a role="tab" class="' + (side === 'homes' ? 'on' : '') + '" href="' + appUrl + '?page=' + ((page === 'partners' || page === 'partner' || page === 'marketing' || page === 'prospects') ? 'homes' : page) + '&side=homes">Homes</a>'
   + '</div>'; ?>
 
 <!-- phone top bar (hidden on desktop) -->
@@ -55,7 +55,8 @@
       <? if (side === 'homes') { ?>
       <a href="<?= appUrl ?>?page=homes&side=homes" class="<?= (page === 'homes' || page === 'home') ? 'active' : '' ?>"><i>🏠</i><span>Homes</span></a>
       <? } else { ?>
-      <a href="<?= appUrl ?>?page=marketing&side=partners" class="<?= (page === 'marketing' || (page === 'partner' && section === 'marketing')) ? 'active' : '' ?>"><i>📣</i><span>Marketing</span></a>
+      <a href="<?= appUrl ?>?page=prospects&side=partners" class="<?= (page === 'prospects' || (page === 'partner' && section === 'prospects')) ? 'active' : '' ?>" title="Cold: never answered"><i>❄️</i><span>Prospects</span></a>
+      <a href="<?= appUrl ?>?page=marketing&side=partners" class="<?= (page === 'marketing' || (page === 'partner' && section === 'marketing')) ? 'active' : '' ?>" title="Warm: replied, being worked"><i>🌤️</i><span>Marketing</span></a>
       <a href="<?= appUrl ?>?page=partners&side=partners" class="<?= (page === 'partners' || (page === 'partner' && section === 'partners')) ? 'active' : '' ?>"><i>🤝</i><span>Partners</span></a>
       <a href="<?= appUrl ?>?page=lists&side=partners" class="<?= page === 'lists' ? 'active' : '' ?>"><i>📋</i><span>Lists</span></a>
       <? } ?>
@@ -83,6 +84,7 @@
     <? if (page === 'today') { ?><?!= include('today') ?>
     <? } else if (page === 'partners') { ?><?!= include('partners', { section: 'partners', appUrl: appUrl }) ?>
     <? } else if (page === 'marketing') { ?><?!= include('partners', { section: 'marketing', appUrl: appUrl }) ?>
+    <? } else if (page === 'prospects') { ?><?!= include('partners', { section: 'prospects', appUrl: appUrl }) ?>
     <? } else if (page === 'partner') { ?><?!= include('partner', { section: section }) ?>
     <? } else if (page === 'homes' || page === 'home') { ?><?!= include('homes') ?>
     <? } else if (page === 'lists') { ?><?!= include('lists') ?>

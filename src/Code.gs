@@ -34,14 +34,15 @@ function doGet(e) {
   if (validPages.indexOf(page) === -1) page = 'today';
   // Record pages sit under their list page for access purposes.
   const accessKey = page === 'partner' ? 'partners' : page === 'home' ? 'homes' : page === 'campaign' ? 'campaigns' : page;
-  tpl_section = page === 'marketing' ? 'marketing' : 'partners';
+  tpl_section = (page === 'prospects' || page === 'marketing') ? page : 'partners';
   if (!noAccess && session.allowedPages.indexOf(accessKey) === -1) {
     noAccess = { kind: 'forbidden', requestedLabel: accessKey, roleLabel: session.roleLabel, landing: session.defaultLanding || 'today' };
   }
 
   const tpl = HtmlService.createTemplateFromFile('index');
   tpl.page = page;
-  tpl.section = (page === 'partner' && String(params.from || '') === 'marketing') ? 'marketing' : tpl_section;
+  const from = String(params.from || '');
+  tpl.section = (page === 'partner' && (from === 'prospects' || from === 'marketing')) ? from : tpl_section;
   tpl.recordId = String(params.id || '');
   tpl.side = (String(params.side || '') === 'homes') ? 'homes' : 'partners';
   tpl.appUrl = ScriptApp.getService().getUrl();

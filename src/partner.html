@@ -1,5 +1,5 @@
 <div class="title-row" id="titleRow">
-  <button class="btn sm ghost" id="backBtn" onclick="go(O.section === 'marketing' ? 'marketing' : 'partners')">← <?= section === 'marketing' ? 'Marketing' : 'Partners' ?></button>
+  <button class="btn sm ghost" id="backBtn" onclick="go(O.section === 'prospects' || O.section === 'marketing' ? O.section : 'partners')">← <?= section === 'prospects' ? 'Prospects' : section === 'marketing' ? 'Marketing' : 'Partners' ?></button>
   <h1 id="titleName">…</h1>
   <span id="titlePills"></span>
   <div class="spacer"></div>
@@ -31,7 +31,7 @@
       var isPartner = p.Stage === 'Partner';
       $('titleName').textContent = p.Name;
       $('titlePills').innerHTML = '<span class="pill">' + esc(prof.label) + '</span> ' + letterBadge(p) + stagePill(p.Stage) + (p.Response && p.Response !== p.Stage ? ' ' + responsePill(p.Response) : '') + (dnc ? ' <span class="pill bad">Do not contact</span>' : '') +
-        (isPartner ? ' <span class="pill ok">🤝 partner' + (p['Partner Since'] ? ' since ' + fmtDate(p['Partner Since']) : '') + '</span>' : ' <span class="pill orange">📣 in marketing</span>');
+        (isPartner ? ' <span class="pill ok">🤝 partner' + (p['Partner Since'] ? ' since ' + fmtDate(p['Partner Since']) : '') + '</span>' : data.tier === 'marketing' ? ' <span class="pill orange">🌤️ warm · in marketing</span>' : ' <span class="pill navy">❄️ cold · prospect</span>');
       $('saveAll').style.display = canWrite ? '' : 'none';
       var html = '';
 
@@ -49,7 +49,7 @@
         (p.Email ? '<a class="btn" href="' + esc(gmailComposeUrl(p.Email)) + '" target="_blank" rel="noopener" title="Opens Gmail in a new tab">✉️ Email</a>' : '<button class="btn" disabled>✉️ No email</button>') +
         (canWrite ? '<button class="btn" id="logCallBtn">📝 Log call</button>' : '<button class="btn" disabled>📝 Log call</button>') + '</div>';
       if (canWrite) html += '<div class="row" style="margin:-4px 0 12px;justify-content:flex-end"><button class="btn sm ' + (p['Call Queue'] === 'Yes' ? 'ghost' : '') + '" id="queueBtn">' + (p['Call Queue'] === 'Yes' ? '✓ On the call list · remove' : '📞 Add to call list') + '</button>' + (isPartner
-        ? '<button class="btn sm ghost" id="unmarkBtn">↩ Back to marketing</button>'
+        ? '<button class="btn sm ghost" id="unmarkBtn">↩ Remove from partners</button>'
         : '<button class="btn sm navy" id="markBtn">🤝 Mark as partner · they ' + esc(prof.winVerb) + '</button>') + '</div>';
 
       // contact + next step
@@ -152,7 +152,7 @@
         $('repSel').innerHTML = '<option value="">— unassigned —</option>' + team.map(function (u) { return '<option value="' + esc(u.email) + '"' + (String(p.Rep || '').toLowerCase() === u.email ? ' selected' : '') + '>' + esc(u.name || u.email) + '</option>'; }).join('');
       }).catch(function () { if ($('repSel')) $('repSel').innerHTML = '<option value="' + esc(p.Rep || '') + '">' + esc(p.Rep || '— unassigned —') + '</option>'; });
       on($('markBtn'), 'click', function () { if (!confirm('Move ' + p.Name + ' into the Partners book?')) return; api('markAsPartner', id).then(function () { toast('Now a partner', 'success'); load(); }).catch(fail); });
-      on($('unmarkBtn'), 'click', function () { if (!confirm('Send ' + p.Name + ' back to the marketing pipeline?')) return; api('unmarkPartner', id).then(function () { toast('Back in marketing', 'success'); load(); }).catch(fail); });
+      on($('unmarkBtn'), 'click', function () { if (!confirm('Take ' + p.Name + ' out of the Partners book? They go back to Marketing (warm).')) return; api('unmarkPartner', id).then(function () { toast('Back in marketing', 'success'); load(); }).catch(fail); });
       on($('dncBtn'), 'click', function () {
         var msg = dnc ? 'Allow contacting ' + p.Name + ' again?' : 'Mark ' + p.Name + ' do-not-contact? Queued emails are cancelled and they are never emailed again.';
         if (!confirm(msg)) return;
