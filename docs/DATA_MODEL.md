@@ -22,6 +22,7 @@ Versions are keyed by Letter. Settings by Name. Users by Email.
 | Rep | staff email who owns the relationship; blank = unassigned (counts as "mine" for everyone). |
 | Skip Email Test | Yes = never assigned a version, never in a batch (e.g. emailed by hand before the app). |
 | Call Queue | Yes = on Today's call list until a call is logged after Last Contact. |
+| Quo Contact ID | the contact Quo holds for this person, pushed from the app (externalId = our ID). The app is the source of truth; only a changed phone/email comes back from Quo. |
 | Partner Since | set the first time Stage becomes `Partner` (by a win, a referral in, or *Mark as partner*). Separates the **Marketing** pipeline (Prospect/Contacted/Replied) from the **Partners** book. |
 | **Type profile columns** (sparse): Areas Served · Listings Per Year, Avg Listing Value (realtor) · Inspections Per Month, Refers Roofers (inspector) · Carriers, Handles Claims (insurance) · Doors Managed, Property Types, Decision Maker (property manager) | Which apply is defined per type in `PARTNER_TYPE_PROFILES` (Config.gs), along with the company label, the win response and the email versions. |
 

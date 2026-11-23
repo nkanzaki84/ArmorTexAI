@@ -18,6 +18,7 @@ function quoApi(ctx, state) {
     const path = url.replace('https://api.quo.com', '');
     const method = String(opts.method || 'get').toLowerCase();
     const auth = opts.headers && opts.headers.Authorization;
+    let m;
     if (auth !== 'key-123') return { code: 401, text: JSON.stringify({ error: { message: 'Unauthorized', key: 'Unauthorized' } }) };
     if (path === '/v1/users') return { code: 200, text: JSON.stringify({ data: [{ id: 'US1', email: TANNER, firstName: 'Tanner', lastName: 'Fought' }, { id: 'US2', email: OWNER, firstName: 'Brian' }] }) };
     if (path === '/v1/phone-numbers') return { code: 200, text: JSON.stringify({ data: [{ id: 'PN1', number: '+19035550100', name: 'Tanner', users: [{ id: 'US1' }] }, { id: 'PN2', number: '+19035550199', name: 'Office', users: [{ id: 'US2' }] }] }) };
@@ -31,7 +32,26 @@ function quoApi(ctx, state) {
     if (/^\/webhooks\/\d+\/events\/test$/.test(path)) return { code: 200, text: JSON.stringify({ id: 'EVtest', type: JSON.parse(opts.payload).eventType }) };
     if (/^\/webhooks\/\d+\/events\/D1$/.test(path)) return { code: 200, text: JSON.stringify({ data: { id: 'D1', eventType: 'call.completed', attempts: [{ id: 'A1', timestamp: NOW.toISOString(), status: 'failed', responseStatusCode: 302, responseBody: '<HTML><HEAD><TITLE>Moved Temporarily</TITLE></HEAD><BODY>The document has moved</BODY></HTML>', responseDurationMs: 120 }] } }) };
     if (/^\/webhooks\/\d+\/events/.test(path)) return { code: 200, text: JSON.stringify({ data: [{ id: 'D1', eventType: 'call.completed', status: 'success', createdAt: NOW.toISOString() }] }) };
-    let m = path.match(/^\/v1\/calls\/(.+)$/);
+    // contacts
+    state.contacts = state.contacts || {};
+    if (path.indexOf('/v1/contacts?') === 0 && method === 'get') {
+      const ext = decodeURIComponent((path.match(/externalIds=([^&]+)/) || [])[1] || '');
+      const hits = Object.values(state.contacts).filter(c => c.externalId === ext);
+      return { code: 200, text: JSON.stringify({ data: hits }) };
+    }
+    if (path === '/v1/contacts' && method === 'post') {
+      const body = JSON.parse(opts.payload); state.seq = (state.seq || 0) + 1; const id = 'CT' + state.seq;
+      state.contacts[id] = Object.assign({ id }, body, body.defaultFields); state.log = (state.log || []).concat(['post ' + id]);
+      return { code: 201, text: JSON.stringify({ data: state.contacts[id] }) };
+    }
+    m = null;
+    m = path.match(/^\/v1\/contacts\/(.+)$/);
+    if (m && method === 'patch') {
+      const id = decodeURIComponent(m[1]); if (!state.contacts[id]) return { code: 404, text: '{"message":"not found"}' };
+      const body = JSON.parse(opts.payload); Object.assign(state.contacts[id], body, body.defaultFields); state.log = (state.log || []).concat(['patch ' + id]);
+      return { code: 200, text: JSON.stringify({ data: state.contacts[id] }) };
+    }
+    m = path.match(/^\/v1\/calls\/(.+)$/);
     if (m) { const c = state.calls[decodeURIComponent(m[1])]; return c ? { code: 200, text: JSON.stringify({ data: c }) } : { code: 404, text: '{"message":"not found"}' }; }
     m = path.match(/^\/v1\/messages\/(.+)$/);
     if (m) { const c = state.messages[decodeURIComponent(m[1])]; return c ? { code: 200, text: JSON.stringify({ data: c }) } : { code: 404, text: '{"message":"not found"}' }; }
@@ -273,4 +293,58 @@ test('later Quo events change only their own cells; the call time written first 
   assert.equal(app.$sheet('Events')[1][atCol], before);
   assert.equal(app.$rows('Events')[0].Snippet, 'Short call.');
   assert.equal(app.$rows('Events')[0]['Recording URL'], 'https://rec.example.com/RE9.mp3');
+});
+
+test('contacts: push creates once, re-push updates, Quo-deleted contacts are re-created, and the app stays the source of truth', () => {
+  const { app, ctx, state } = connectedApp();
+  // Terri and Carla are pushable; a third partner with neither phone nor email is not
+  app.addPartner({ type: 'realtor', name: 'No Contact Info' });
+  let st = app.quoContactsStatus();
+  assert.deepEqual([st.total, st.pushable, st.inQuo, st.missing], [3, 2, 0, 2]);
+  let r = app.quoPushContacts({ limit: 60 });
+  assert.deepEqual([r.created, r.updated, r.failed, r.remaining], [2, 0, 0, 0]);
+  const terri = app.$rows('Partners').find(p => p.Name === 'Terri Searcy');
+  assert.equal(terri['Quo Contact ID'], 'CT1');
+  const sent = state.contacts.CT1;
+  assert.equal(sent.externalId, terri.ID); assert.equal(sent.source, 'armortex-outreach');
+  assert.deepEqual(sent.defaultFields.phoneNumbers, [{ name: 'mobile', value: '+19035550123' }]);
+  assert.deepEqual(sent.defaultFields.emails, [{ name: 'work', value: 'terri@example.com' }]);
+  assert.equal(sent.defaultFields.firstName, 'Terri'); assert.equal(sent.defaultFields.lastName, 'Searcy');
+  assert.equal(sent.defaultFields.company, 'Texas Real Estate Executives'); assert.equal(sent.defaultFields.role, 'Realtor');
+  assert.ok(sent.sourceUrl.indexOf('page=partner&id=' + terri.ID) !== -1);
+  assert.equal(app.quoContactsStatus().missing, 0);
+  // editing in the app flows to Quo
+  app.savePartner(terri.ID, { company: 'TREE Longview', phone: '903-555-0199' });
+  assert.equal(state.contacts.CT1.defaultFields.company, 'TREE Longview');
+  assert.deepEqual(state.contacts.CT1.defaultFields.phoneNumbers, [{ name: 'mobile', value: '+19035550199' }]);
+  assert.throws(() => app.savePartner(terri.ID, { name: '' }), /Name is required/);
+  assert.throws(() => app.savePartner(terri.ID, { email: 'carla@example.com' }), /already has the email/);
+  // Quo lost it (deleted there) → re-push makes a new one and keeps the new id
+  delete state.contacts.CT1;
+  r = app.quoPushContacts({ limit: 60, all: true });
+  assert.deepEqual([r.created, r.updated], [1, 1]);
+  assert.equal(app.$rows('Partners').find(p => p.Name === 'Terri Searcy')['Quo Contact ID'], 'CT3');
+  // a new partner added by hand goes straight to Quo
+  const id = app.addPartner({ type: 'inspector', name: 'Carl Dawson', company: 'ETHI', phone: '903 555 0201' });
+  assert.equal(app.$rows('Partners').find(p => p.ID === id)['Quo Contact ID'], 'CT4');
+  assert.equal(state.contacts.CT4.defaultFields.role, 'Home inspector');
+  // Tanner cannot run the bulk push
+  ctx.user = TANNER;
+  assert.throws(() => app.quoPushContacts({}), /cannot do that/);
+  ctx.user = OWNER;
+});
+
+test('contact.updated from Quo: only a changed phone/email comes back, matched by our ID; strangers are ignored', () => {
+  const { app, post } = connectedApp();
+  app.quoPushContacts({ limit: 60 });
+  const terri = app.$rows('Partners').find(p => p.Name === 'Terri Searcy');
+  const ev = (res) => ({ id: 'EVc', type: 'contact.updated', createdAt: NOW.toISOString(), data: { resource: res, context: { orgId: 'OR1', userId: 'US1', sharedWithIds: [] }, links: { quo: null } } });
+  let r = JSON.parse(post(ev({ id: 'CT1', firstName: 'Theresa', lastName: 'Searcy', company: 'Somewhere Else', externalId: terri.ID, emails: [{ value: 'terri@example.com', type: 'email' }], phoneNumbers: [{ value: '+19035550777', type: 'phone-number' }], updatedAt: NOW.toISOString() })).getContent());
+  assert.equal(r.result.action, 'updated'); assert.deepEqual(r.result.fields, ['Phone']);
+  const after = app.$rows('Partners').find(p => p.ID === terri.ID);
+  assert.equal(after.Phone, '9035550777');
+  assert.equal(after.Name, 'Terri Searcy', 'name is not taken from Quo'); assert.equal(after.Company, 'Texas Real Estate Executives', 'company is not taken from Quo');
+  r = JSON.parse(post(ev({ id: 'CT9', firstName: 'Stranger', externalId: null, emails: [], phoneNumbers: [{ value: '+15550000000', type: 'phone-number' }], updatedAt: NOW.toISOString() })).getContent());
+  assert.equal(r.result.action, 'ignored');
+  assert.equal(app.$rows('Partners').length, 2);
 });

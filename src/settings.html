@@ -122,6 +122,11 @@
       <div class="row"><button class="btn primary" id="quoHookBtn">Register webhook</button><button class="btn" id="quoTestBtn" style="display:none">Send a test event</button><button class="btn ghost" id="quoHookRemove" style="display:none">Remove webhook</button></div>
       <div id="quoHookInfo" class="sub" style="margin-top:8px"></div>
       <div id="quoResult" style="margin-top:10px"></div>
+      <div class="f" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><label>Contacts in Quo</label>
+        <div class="row"><span id="quoContactsNote" class="sub">…</span></div>
+        <div class="row" style="margin-top:6px"><button class="btn navy" id="quoPushBtn">Push to Quo</button><button class="btn ghost" id="quoPushAllBtn">Re-push everyone</button><span class="sub">Name, brokerage, phone and email go to Quo so callers show by name. The app is the source of truth: edits here flow to Quo, and only a changed phone or email flows back.</span></div>
+        <div id="quoPushResult" style="margin-top:8px"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -341,6 +346,30 @@
       api('quoRegisterWebhook', $('quoHookUrl').value.trim()).then(function (st) { quoRender(st); toast('Webhook registered with Quo', 'success'); }).catch(fail).finally(function () { busy($('quoHookBtn'), false, quo && quo.webhookId ? 'Re-register webhook' : 'Register webhook'); });
     });
     on($('quoHookRemove'), 'click', function () { if (!confirm('Remove the webhook? Calls and texts stop being logged.')) return; api('quoRemoveWebhook').then(function (st) { quoRender(st); toast('Webhook removed', 'success'); }).catch(fail); });
+    function quoContactsLoad() {
+      api('quoContactsStatus').then(function (c) {
+        $('quoContactsNote').innerHTML = c.keySet ? '<b>' + c.inQuo + '</b> of ' + c.pushable + ' people with a phone or email are in Quo' + (c.missing ? ' · <b>' + c.missing + '</b> not yet' : ' · all synced') + '.' : 'Connect Quo first.';
+        $('quoPushBtn').disabled = !c.keySet || !c.missing; $('quoPushAllBtn').disabled = !c.keySet;
+      }).catch(function (e) { $('quoContactsNote').textContent = e.message; });
+    }
+    quoContactsLoad();
+    function quoPushLoop(all, btn, label) {
+      var totals = { created: 0, updated: 0, failed: 0, errors: [] };
+      busy(btn, true, 'Pushing…'); $('quoPushResult').innerHTML = '';
+      (function step(first) {
+        api('quoPushContacts', { limit: 60, all: all && first }).then(function (r) {
+          totals.created += r.created; totals.updated += r.updated; totals.failed += r.failed; totals.errors = totals.errors.concat(r.errors || []);
+          $('quoPushResult').innerHTML = '<div class="sub">' + (totals.created + totals.updated) + ' pushed so far' + (r.remaining ? ', ' + r.remaining + ' to go…' : '') + '</div>';
+          if (r.remaining > 0 && !(all && first)) return step(false);
+          if (all && first && r.remaining > 0) return step(false);
+          $('quoPushResult').innerHTML = '<div class="' + (totals.failed ? 'problem' : 'ok-box') + '">Created ' + totals.created + ', updated ' + totals.updated + (totals.failed ? ', <b>' + totals.failed + ' failed</b>' : '') + '.' + (totals.errors.length ? '<div class="sub">' + totals.errors.map(esc).join('<br>') + '</div>' : '') + '</div>';
+          toast('Quo contacts updated', totals.failed ? 'error' : 'success');
+          quoContactsLoad();
+        }).catch(function (e) { fail(e); }).finally(function () { busy(btn, false, label); });
+      })(true);
+    }
+    on($('quoPushBtn'), 'click', function () { quoPushLoop(false, $('quoPushBtn'), 'Push to Quo'); });
+    on($('quoPushAllBtn'), 'click', function () { if (!confirm('Re-send every contact to Quo? Existing Quo contacts are updated, not duplicated.')) return; quoPushLoop(true, $('quoPushAllBtn'), 'Re-push everyone'); });
     on($('quoTestBtn'), 'click', function () {
       busy($('quoTestBtn'), true, 'Asking Quo…'); $('quoResult').innerHTML = '';
       api('quoSendTestEvent', 'call.completed').then(function (r) {

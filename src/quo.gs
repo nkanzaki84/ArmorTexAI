@@ -279,6 +279,8 @@ function _quoHandleEvent_(envelope, now) {
     return _quoUpsertEvent_(existing, row, msgId, phone, now, type);
   }
 
+  if (/^contact\./.test(type)) return _quoHandleContactEvent_(type, res);
+
   return { action: 'ignored', reason: 'unhandled ' + type };
 }
 
@@ -352,6 +354,134 @@ function _quoLinkConfig_() {
     const first = numbers.filter(function (n) { return watch.indexOf(n.id) !== -1; })[0] || numbers[0] || null;
     return { viaApp: on && !!first, from: first ? String(first.number || '') : '' };
   } catch (err) { return { viaApp: false, from: '' }; }
+}
+
+
+// ============================================================
+// 4. Contacts: the app pushes to Quo; Quo never overwrites the app
+// ============================================================
+
+/** What the Settings card shows: how many partners Quo knows about. */
+function quoContactsStatus() {
+  _requireRole_(ADMIN_ROLES);
+  const ps = _readTab_(TAB.PARTNERS);
+  const pushable = ps.filter(_quoPushable_);
+  const inQuo = pushable.filter(function (p) { return !!p['Quo Contact ID']; });
+  return { total: ps.length, pushable: pushable.length, inQuo: inQuo.length, missing: pushable.length - inQuo.length, keySet: !!_quoKey_() };
+}
+
+/**
+ * Push a batch of partners to Quo. Owner only. `limit` keeps one call under
+ * Apps Script's run-time limit (Quo allows 10 requests/s); the Settings page
+ * calls again while `remaining` > 0. `all` = re-push everyone, not just the
+ * ones Quo doesn't have yet.
+ */
+function quoPushContacts(opts) {
+  _requireRole_(ADMIN_ROLES);
+  opts = opts || {};
+  const limit = Math.max(1, Math.min(Number(opts.limit) || 60, 150));
+  const todo = _readTab_(TAB.PARTNERS).filter(_quoPushable_).filter(function (p) { return opts.all || !p['Quo Contact ID']; });
+  const batch = todo.slice(0, limit);
+  const out = { created: 0, updated: 0, failed: 0, remaining: todo.length - batch.length, errors: [] };
+  batch.forEach(function (p) {
+    try {
+      const r = _quoPushContact_(p);
+      out[r.action === 'created' ? 'created' : 'updated']++;
+    } catch (err) {
+      out.failed++;
+      if (out.errors.length < 5) out.errors.push(p['Name'] + ': ' + err.message);
+    }
+  });
+  return out;
+}
+
+/** Someone with a name and a phone or email is worth having in Quo. */
+function _quoPushable_(p) {
+  return !!String(p['Name'] || '').trim() && (!!_quoDigits_(p['Phone']) || !!String(p['Email'] || '').trim());
+}
+
+/** Best-effort push of one partner, used by add/save. Never throws. */
+function _quoPushContactQuietly_(partnerId) {
+  try {
+    if (!_quoKey_()) return;
+    const p = _byId_(TAB.PARTNERS, partnerId);
+    if (p && _quoPushable_(p)) _quoPushContact_(p);
+  } catch (err) { _quoNoteError_('contact push ' + partnerId + ': ' + err.message); }
+}
+
+/**
+ * Create or update the Quo contact for a partner. The partner's ID is Quo's
+ * externalId, so a re-push finds the same contact even if our stored
+ * Quo Contact ID was lost. Returns { action: 'created'|'updated', id }.
+ */
+function _quoPushContact_(p) {
+  const body = _quoContactBody_(p);
+  let quoId = String(p['Quo Contact ID'] || '').trim();
+  if (!quoId) {
+    const found = _quoFetch_('get', '/v1/contacts?externalIds=' + encodeURIComponent(String(p['ID'])) + '&sources=' + encodeURIComponent(QUO_CONTACT_SOURCE) + '&maxResults=1');
+    const hit = (found.code >= 200 && found.code < 300 && found.json && found.json.data && found.json.data[0]) || null;
+    if (hit && hit.id) quoId = String(hit.id);
+  }
+  let action = 'updated';
+  if (quoId) {
+    const r = _quoFetch_('patch', '/v1/contacts/' + encodeURIComponent(quoId), body);
+    if (r.code === 404) quoId = '';            // deleted inside Quo: make it again
+    else _quoOk_(r, 'update contact');
+  }
+  if (!quoId) {
+    const created = _quoOk_(_quoFetch_('post', '/v1/contacts', body), 'create contact').data || {};
+    if (!created.id) throw new Error('Quo did not return a contact id.');
+    quoId = String(created.id);
+    action = 'created';
+  }
+  if (quoId !== String(p['Quo Contact ID'] || '')) _updateRow_(TAB.PARTNERS, p._row, { 'Quo Contact ID': quoId });
+  return { action: action, id: quoId };
+}
+
+/** The contact as Quo wants it. Name split on the first space; role = partner type. */
+function _quoContactBody_(p) {
+  const name = String(p['Name'] || '').trim();
+  const sp = name.indexOf(' ');
+  const prof = PARTNER_TYPE_PROFILES[String(p['Type'])] || {};
+  const digits = _quoDigits_(p['Phone']);
+  const email = String(p['Email'] || '').trim();
+  const fields = {
+    firstName: sp === -1 ? name : name.slice(0, sp),
+    lastName: sp === -1 ? '' : name.slice(sp + 1),
+    company: String(p['Company'] || '') || null,
+    role: prof.label || null,
+    phoneNumbers: digits ? [{ name: 'mobile', value: '+1' + digits }] : [],
+    emails: email ? [{ name: 'work', value: email }] : [],
+  };
+  const appUrl = ScriptApp.getService().getUrl();
+  return {
+    defaultFields: fields,
+    externalId: String(p['ID']),
+    source: QUO_CONTACT_SOURCE,
+    sourceUrl: appUrl ? appUrl.replace(/\?.*$/, '') + '?page=partner&id=' + encodeURIComponent(String(p['ID'])) : undefined,
+  };
+}
+
+/**
+ * Quo told us a contact changed. The app stays the source of truth, so the
+ * ONLY things taken from Quo are a new phone or email on a contact we pushed
+ * (matched by externalId = our partner ID). Returns a result like the others.
+ */
+function _quoHandleContactEvent_(type, res) {
+  if (type !== 'contact.updated') return { action: 'ignored', reason: 'unhandled ' + type };
+  const pid = String(res.externalId || '');
+  if (!pid) return { action: 'ignored', reason: 'not one of ours (no external id)' };
+  const p = _byId_(TAB.PARTNERS, pid);
+  if (!p) return { action: 'ignored', reason: 'no partner ' + pid };
+  const upd = {};
+  const phone = _quoDigits_(((res.phoneNumbers || [])[0] || {}).value);
+  const email = String(((res.emails || [])[0] || {}).value || '').trim().toLowerCase();
+  if (phone && phone !== _quoDigits_(p['Phone'])) upd['Phone'] = phone;
+  if (email && email !== String(p['Email'] || '').toLowerCase()) upd['Email'] = email;
+  if (res.id && String(res.id) !== String(p['Quo Contact ID'] || '')) upd['Quo Contact ID'] = String(res.id);
+  if (!Object.keys(upd).length) return { action: 'ignored', reason: 'nothing new for ' + pid };
+  _updateRow_(TAB.PARTNERS, p._row, upd);
+  return { action: 'updated', partnerId: pid, fields: Object.keys(upd) };
 }
 
 // ============================================================

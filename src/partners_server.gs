@@ -389,6 +389,7 @@ function addPartner(payload) {
   if (row['Rep'] && !_isStaffEmail_(row['Rep'])) throw new Error('Not on the team: ' + row['Rep']);
   if (!row['Name']) throw new Error('Name is required.');
   _appendRows_(TAB.PARTNERS, [row]);
+  _quoPushContactQuietly_(row['ID']);
   return row['ID'];
 }
 
@@ -418,6 +419,11 @@ function savePartner(id, payload) {
     if (k === 'email') v = _normEmail_(v);
     if (k === 'rep') { v = _normEmail_(v); if (v && !_isStaffEmail_(v)) throw new Error('Not on the team: ' + v); }
     if (k === 'response' && RESPONSES.indexOf(v) === -1) throw new Error('Unknown response: ' + v);
+    if (k === 'name' && !v) throw new Error('Name is required.');
+    if (k === 'email' && v) {
+      const dup = _findRowIndex_(TAB.PARTNERS, function (p) { return _normEmail_(p['Email']) === v && String(p['ID']) !== String(id); });
+      if (dup !== -1) throw new Error('Another partner already has the email ' + v + '.');
+    }
     row[allowed[k]] = v;
   });
   if (payload.callQueue !== undefined) row['Call Queue'] = payload.callQueue ? 'Yes' : '';
@@ -437,6 +443,7 @@ function savePartner(id, payload) {
     });
   }
   _updateRow_(TAB.PARTNERS, idx, row);
+  if (row['Name'] !== undefined || row['Company'] !== undefined || row['Phone'] !== undefined || row['Email'] !== undefined) _quoPushContactQuietly_(id);
   return { ok: true };
 }
 

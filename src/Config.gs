@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.5.6';
+const APP_VERSION    = '0.6.0';
 const APP_BUILD_DATE = '2026-11-22';
 
 // ===== Script Property keys =====
@@ -93,6 +93,7 @@ const HEADERS = {
     'Rep',                   // staff email who owns this relationship (blank = unassigned)
     'Skip Email Test',       // Yes = never gets a version or a batch slot (e.g. already emailed by hand)
     'Call Queue',            // Yes = on the call list until a call is logged after Last Contact
+    'Quo Contact ID',        // the contact Quo holds for this person (pushed from here; the app is the source of truth)
   ],
   'Homes': [
     'ID',
@@ -341,7 +342,8 @@ const SETTING = {
 // ===== Quo (phone system) =====
 const QUO_API = 'https://api.quo.com';
 const QUO_API_VERSION = '2026-03-30';                      // webhooks are versioned by date; v1 endpoints are not
-const QUO_HOOK_EVENTS = ['call.completed', 'call.recording.completed', 'call.transcript.completed', 'call.summary.completed', 'call.voicemail.completed', 'message.received', 'message.delivered'];
+const QUO_HOOK_EVENTS = ['call.completed', 'call.recording.completed', 'call.transcript.completed', 'call.summary.completed', 'call.voicemail.completed', 'message.received', 'message.delivered', 'contact.updated'];
+const QUO_CONTACT_SOURCE = 'armortex-outreach';           // stamped on every contact we push, so Quo can tell ours apart
 const PROP_QUO_API_KEY = 'QUO_API_KEY';
 const PROP_QUO_HOOK_TOKEN = 'QUO_HOOK_TOKEN';              // random token in the webhook URL; the only thing a poster must know
 const PROP_QUO_WEBHOOK_KEY = 'QUO_WEBHOOK_KEY';            // whsec_… Quo's signing key (kept for a relay; Apps Script can't read headers)

@@ -55,8 +55,9 @@ Options for "really" calling from the app, pick by which number should show:
   address with the suffix swapped (different deployment ids); and re-writing
   whole rows shifted untouched Date cells a day per update (fixed v0.5.6).
   Real calls verified on Brian's record: outcome, duration, recording,
-  transcript, summary. Next: Tanner's number + the carrier registration Quo
-  asks for before texting.
+  transcript, summary. Contacts pushed to Quo (v0.6.0) so callers show by
+  name. Next: Tanner's number + the carrier registration Quo asks for before
+  texting (also needed for the caller-ID name).
   What the docs say (read 2026-11-22, api.quo.com, header `Quo-Api-Version:
   2026-03-30`, auth `Authorization: <key>` no Bearer, 10 req/s):
   - Webhooks (`POST /webhooks`, events `call.completed`, `call.recording.completed`,
