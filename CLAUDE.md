@@ -97,6 +97,7 @@ The SFM suite look: `src/ui_base.html` (Brian's portable base: palette, inputs, 
 - **Running** needs every in-play letter to pass `validateVersion`. `buildTodayBatch` iterates RUNNING campaigns: each with its own cap (room = cap − that campaign's sends today), days, start date; the list is always previewable, `problems` say why it can't go yet; `campaigns[]` carries the per-campaign breakdown. `sendTodayBatch` uses the campaign's wording (`versions[campaign|letter]`), stamps Campaign ID on Emails, follow-up gap per campaign, locks letters per campaign.
 - **Schedule** tab draws the plan day by day (`_campaignPlan_`). **Results** tab = `campaignResults`: one row per member with sent / follow-up / replied / response / calls; Export CSV is built in the browser. Stats per campaign (`getCampaignStats(id)`, now with `notInterested`).
 - The five-address test is its own campaign: Settings → Test batch → `createTestCampaign` (list `test`, letters borrowed from the first campaign, started).
+- **Send now** (v0.8.1, owner, title row of a running campaign): `sendCampaignNow(id)` → `sendTodayBatch({force:true, campaignId})`; `buildTodayBatch` takes `campaignId` to limit itself to one campaign. Sends that campaign's batch today regardless of its sending days; a person still presses it.
 - `npm test` and `npm run preview` run with `TZ=America/Chicago` so `_parseLocalDate_` behaves as in Apps Script (a date-only start date is Central midnight).
 - Tests: `tests/campaigns.test.js`.
 

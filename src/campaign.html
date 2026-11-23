@@ -5,6 +5,7 @@
   <div class="spacer"></div>
   <span class="sub" id="savedStamp"></span>
   <button class="btn" id="statusBtn" style="display:none"></button>
+  <button class="btn navy" id="sendNowBtn" style="display:none" title="Owner only: send this campaign's batch now, even if today is not a sending day">📨 Send now</button>
   <button class="btn primary" id="saveAll" style="display:none">💾 Save</button>
 </div>
 
@@ -59,7 +60,7 @@
         '<div class="ft"><span class="sub">' + esc(s.note) + '</span></div></div>';
       html += '<div class="grid2"><div class="card"><div class="hd"><h2>Next send</h2></div><div class="bd">' +
         (c.status !== 'running' ? '<div class="sub">Not running. ' + (c.status === 'draft' ? 'Deal letters, write the copy, then press Start sending.' : c.status === 'paused' ? 'Press Resume to put it back on Today.' : 'This campaign is finished.') + '</div>' :
-          due ? '<b>' + esc(due.weekday) + ' ' + fmtDate(due.date) + '</b> · ' + due.firsts + ' first email' + (due.firsts === 1 ? '' : 's') + (due.followUps ? ' + ' + due.followUps + ' follow-up' + (due.followUps === 1 ? '' : 's') : '') + '<div class="sub" style="margin-top:6px">Shows on Today. A person presses Send; nothing goes out on its own.</div>' : '<div class="sub">Nothing left to send. ' + (plan.followUpsQueued ? plan.followUpsQueued + ' follow-ups are still queued.' : 'Everyone has been emailed.') + '</div>') +
+          due ? '<b>' + esc(due.weekday) + ' ' + fmtDate(due.date) + '</b> · ' + due.firsts + ' first email' + (due.firsts === 1 ? '' : 's') + (due.followUps ? ' + ' + due.followUps + ' follow-up' + (due.followUps === 1 ? '' : 's') : '') + '<div class="sub" style="margin-top:6px">Shows on Today. A person presses Send; nothing goes out on its own.' + (isAdmin ? ' Or press Send now in the title row to send this campaign\'s batch today.' : '') + '</div>' : '<div class="sub">Nothing left to send. ' + (plan.followUpsQueued ? plan.followUpsQueued + ' follow-ups are still queued.' : 'Everyone has been emailed.') + '</div>') +
         '<div class="row" style="margin-top:10px"><a class="btn sm" href="#" onclick="go(\'today\'); return false;">☀️ Open Today</a></div></div></div>' +
         '<div class="card"><div class="hd"><h2>Plan</h2></div><div class="bd"><div>' + c.cap + ' a day · ' + esc(c.days) + ' · follow-up after ' + c.followUpDays + ' business days</div>' +
         (c.startDate ? '<div class="sub">Starts ' + fmtDate(c.startDate) + '</div>' : '') + (plan.finish ? '<div class="sub">Finishes about ' + fmtDate(plan.finish) + ' at this pace.</div>' : '') +
@@ -213,6 +214,22 @@
       api('saveCampaign', id, payload).then(function () { toast('Saved', 'success'); stampSaved($('savedStamp')); dirty = false; load(); }).catch(fail).finally(function () { busy($('saveAll'), false, '💾 Save'); });
     }
     $('saveAll').onclick = saveAll;
+    on($('sendNowBtn'), 'click', function () {
+      api('buildTodayBatch', { campaignId: id, force: true }).then(function (b) {
+        var n = (b.followUps || []).length + (b.firsts || []).length;
+        var real = b.problems.filter(function (p) { return !/not a sending day/.test(p); });
+        if (real.length) return toast(real[0], 'error');
+        if (!n) return toast('Nothing to send: everyone in this campaign has been emailed, or the daily cap is used up.', 'error');
+        if (!confirm('Send ' + n + ' email' + (n === 1 ? '' : 's') + ' from this campaign now, from the business mailbox?')) return;
+        busy($('sendNowBtn'), true, 'Sending…');
+        api('sendCampaignNow', id).then(function (r) {
+          if (r.problems && r.problems.length) return toast(r.problems[0], 'error');
+          toast('Sent ' + r.sent + (r.followUps ? ' + ' + r.followUps + ' follow-ups' : '') + (r.errors.length ? ' · ' + r.errors.length + ' failed' : ''), r.errors.length ? 'error' : 'success');
+          if (r.errors.length) alert(r.errors.join('\n'));
+          load();
+        }).catch(fail).finally(function () { busy($('sendNowBtn'), false, '📨 Send now'); });
+      }).catch(fail);
+    });
     on($('statusBtn'), 'click', function () {
       var n = nextStatus(data.campaign.status); if (!n) return;
       if (n.to === 'running' && !confirm('Start sending? From the next sending day this campaign shows on Today, and its letters lock at the first send.')) return;
@@ -228,6 +245,7 @@
         $('titlePills').innerHTML = statusPill(c.status) + ' <span class="sub">' + esc(c.typeLabel) + (c.firstSentAt ? ' · started ' + fmtDate(c.firstSentAt) : c.startDate ? ' · starts ' + fmtDate(c.startDate) : '') + '</span>';
         var n = nextStatus(c.status);
         $('statusBtn').style.display = isAdmin && n ? '' : 'none'; if (n) $('statusBtn').textContent = n.label;
+        $('sendNowBtn').style.display = isAdmin && c.status === 'running' ? '' : 'none';
         $('saveAll').style.display = 'none';
         $('nAud').textContent = c.audience; $('nCopy').textContent = c.versions.length;
         renderOverview(); renderAudience(); renderCopy(); renderSchedule();

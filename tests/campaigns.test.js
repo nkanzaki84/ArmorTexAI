@@ -189,3 +189,20 @@ test('the five-address test becomes its own small running campaign with borrowed
   const again = app.createTestCampaign('brian+1@armortexroofs.com');
   assert.equal(again.campaignId, r.campaignId); assert.equal(again.existed, 1);
 });
+
+test('Send now sends one campaign\'s batch today regardless of its days; refused unless running; owner only', () => {
+  const app = appWithLists();
+  const { id } = app.createCampaign({ name: 'Dec', type: 'realtor', lists: ['tyler'], versions: ['A'], sendingDays: 'Tue', dailyCap: 3 });
+  app.saveVersion('A', { subject: 'A', body: BODY, followUpBody: 'Still?' }, id);
+  app.dealLetters(id, { rng: seeded(1) });
+  assert.throws(() => app.sendCampaignNow(id), /Start sending/);
+  app.saveCampaign(id, { status: 'running' });
+  const SUN = new Date('2026-11-22T20:00:00Z');
+  const b = app.buildTodayBatch({ now: SUN, campaignId: id, force: true });
+  assert.equal(b.firsts.length, 3); assert.deepEqual(b.campaigns.map(c => c.id), [id]);
+  const r = app.sendCampaignNow(id);
+  assert.equal(r.sent, 3); assert.deepEqual(r.problems, []);
+  assert.ok(app.$rows('Emails').filter(e => e.Step === 'first').every(e => e['Campaign ID'] === id));
+  // the other running campaign (the seeded first one) was not touched by Send now
+  assert.equal(app.getCampaign('CP-1').campaign.sent, 0);
+});

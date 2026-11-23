@@ -51,7 +51,7 @@ function sendTodayBatch(opts) {
   if (!lock.tryLock(5000)) throw new Error('Another send is already running. Wait a minute and refresh.');
   try {
     const force = !!opts.force && !!me.isAdmin;   // only an owner may send outside sending days (test batch)
-    const batch = buildTodayBatch({ now: now, force: force });
+    const batch = buildTodayBatch({ now: now, force: force, campaignId: opts.campaignId });
     const blocking = batch.problems.slice();
     if (blocking.length) return { sent: 0, followUps: 0, skipped: { dnc: 0, quota: 0 }, errors: [], problems: blocking };
 
@@ -138,6 +138,17 @@ function sendTodayBatch(opts) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * "Send now" on a campaign page: this campaign's batch, today, regardless of
+ * its sending days. Owner only; a person is still the one pressing it.
+ */
+function sendCampaignNow(campaignId) {
+  _requireRole_(ADMIN_ROLES);
+  const c = _campaignById_(campaignId);
+  if (String(c['Status']) !== 'running') throw new Error('Press Start sending (or Resume) first; a paused or draft campaign cannot send.');
+  return sendTodayBatch({ force: true, campaignId: String(campaignId) });
 }
 
 function _pause_() {

@@ -112,10 +112,10 @@ function buildTodayBatch(opts) {
   emails.forEach(function (e) { if (e['Status'] !== 'cancelled') emailed[e['Partner ID']] = true; });
   const versionRows = _readTab_(TAB.VERSIONS);
 
-  const campaigns = _readTab_(TAB.CAMPAIGNS).filter(function (c) { return String(c['Status']) === 'running'; });
+  const campaigns = _readTab_(TAB.CAMPAIGNS).filter(function (c) { return String(c['Status']) === 'running' && (!opts.campaignId || String(c['ID']) === String(opts.campaignId)); });
   const out = { date: todayKey, weekday: _weekday_(now), sendingDay: false, paused: paused, cap: 0, sentToday: 0, room: 0, followUps: [], firsts: [], problems: [], campaigns: [] };
   if (paused) out.problems.push('Sending is paused (Settings).');
-  if (!campaigns.length) out.problems.push('No campaign is running. Start one under Campaigns.');
+  if (!campaigns.length) out.problems.push(opts.campaignId ? 'This campaign is not running. Press Start sending or Resume first.' : 'No campaign is running. Start one under Campaigns.');
 
   campaigns.forEach(function (c) {
     const cid = String(c['ID']);
