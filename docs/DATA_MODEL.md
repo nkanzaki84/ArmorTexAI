@@ -92,7 +92,7 @@ them. Lists never carry status.
 | ID, Name, Status | draft → running ⇄ paused → done. Only running campaigns feed Today's batch. |
 | Partner Type, Lists, Stages | the audience: Lists holds list ids (`L-3`) and/or import-file names, any one qualifies (blank = everyone of the type). Stages is kept but hidden in the UI. The Partners book, hand-emailed people, do-not-contact and no-email are always left out. |
 | Versions | letters in play, e.g. `A,B,C`. Each has its own Versions row (Campaign ID). |
-| Start Date, Sending Days, Daily Cap, Follow Up Days | the plan; blank days/cap/follow-up inherit Settings. |
+| Start Date, Sending Days, Daily Cap, Follow Up Days, Call After Days | the plan; blank days/cap/follow-up inherit Settings. Call After Days = the call plan: no reply N business days after the first email → Today's call list (blank = no call step). |
 | Created At, Created By, Notes | |
 
 ## Versions — one email or postcard wording

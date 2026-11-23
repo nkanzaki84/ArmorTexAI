@@ -228,7 +228,7 @@ function assignVersions(opts) {
   opts = opts || {};
   // Kept for the tests and the first campaign: dealing letters now lives on a campaign (campaigns_server.gs).
   const cid = String(opts.campaignId || _defaultCampaignId_());
-  const r = dealLetters(cid, { versions: opts.versions, rng: opts.rng });
+  const r = dealLetters(cid, { versions: opts.versions || EMAIL_VERSIONS, rng: opts.rng });   // legacy default: all four letters
   return { assigned: r.dealt, counts: r.counts, campaignId: cid };
 }
 

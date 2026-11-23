@@ -338,7 +338,8 @@ function getTodayWork(opts) {
   const partners = {};
   _readTab_(TAB.PARTNERS).forEach(function (p) { if (mine(p)) partners[p['ID']] = p; });
   const events = _readTab_(TAB.EVENTS);
-  const weekAgo = Date.now() - 7 * 86400000;
+  const nowMs = (opts.now ? new Date(opts.now) : new Date()).getTime();   // tests inject a clock
+  const weekAgo = nowMs - 7 * 86400000;
   const lastReply = {}, lastCall = {}, lastMissed = {};
   events.forEach(function (ev) {
     const t = new Date(ev['At']).getTime();
@@ -360,6 +361,23 @@ function getTodayWork(opts) {
     const p = partners[id];
     if (p && !_yes_(p['Do Not Contact']) && p['Response'] !== 'Not interested' && !(lastCall[id] && lastCall[id] >= lastReply[id])) callIds[id] = 'replied';
   });
+  // the campaign call plan: no reply N business days after the first email → call
+  const firstSentAt = {};
+  _readTab_(TAB.EMAILS).forEach(function (e) { if (e['Step'] === 'first' && e['Sent At'] && e['Status'] !== 'cancelled' && (!firstSentAt[e['Partner ID']] || new Date(e['Sent At']) < new Date(firstSentAt[e['Partner ID']]))) firstSentAt[e['Partner ID']] = e['Sent At']; });
+  _readTab_(TAB.CAMPAIGNS).filter(function (c) { return String(c['Status']) === 'running' && _campaignSending_(c).callAfterDays > 0; }).forEach(function (c) {
+    const after = _campaignSending_(c).callAfterDays;
+    const isMember = _campaignMemberTest_(c['ID']);
+    Object.keys(partners).forEach(function (id) {
+      const p = partners[id];
+      if (callIds[id] || !isMember(p) || !firstSentAt[id]) return;
+      if (_yes_(p['Do Not Contact']) || p['Response'] === 'Not interested' || String(p['Stage']) === 'Partner') return;
+      const sent = new Date(firstSentAt[id]);
+      if (lastReply[id] && lastReply[id] >= sent.getTime()) return;          // they replied: the "replied" rule covers them
+      if (lastCall[id] && lastCall[id] >= sent.getTime()) return;            // already called since the email
+      if (_addBusinessDays_(sent, after).getTime() > nowMs) return;          // not due yet
+      callIds[id] = 'noreply';
+    });
+  });
   Object.keys(lastMissed).forEach(function (id) {
     const p = partners[id];
     if (p && !_yes_(p['Do Not Contact']) && p['Response'] !== 'Not interested' && !(lastCall[id] && lastCall[id] >= lastMissed[id]) && !callIds[id]) callIds[id] = 'missed';
@@ -372,7 +390,7 @@ function getTodayWork(opts) {
     if (!callIds[id]) callIds[id] = 'queued';
   });
   const calls = Object.keys(callIds).map(function (id) { return Object.assign({ listingValue: listingValue[id] || 0, why: callIds[id] }, partners[id]); })
-    .sort(function (a, b) { const rank = function (w) { return w === 'replied' ? 0 : w === 'missed' ? 1 : 2; }; return rank(a.why) - rank(b.why) || (b.listingValue - a.listingValue) || ((lastReply[b['ID']] || lastMissed[b['ID']] || 0) - (lastReply[a['ID']] || lastMissed[a['ID']] || 0)); });
+    .sort(function (a, b) { const rank = function (w) { return w === 'replied' ? 0 : w === 'missed' ? 1 : w === 'noreply' ? 2 : 3; }; return rank(a.why) - rank(b.why) || (b.listingValue - a.listingValue) || ((lastReply[b['ID']] || lastMissed[b['ID']] || 0) - (lastReply[a['ID']] || lastMissed[a['ID']] || 0)); });
 
   // the human queue: automation guesses on a known partner, plus calls/texts from numbers nobody knows (owner and "everyone" scope only)
   const needsReview = events.filter(function (ev) { return _yes_(ev['Needs Review']) && (partners[ev['Partner ID']] || (!ev['Partner ID'] && !ev['Home ID'] && scope === 'all')); })

@@ -31,7 +31,7 @@ test('setup seeds the first campaign and owns the seeded letters', () => {
   const cs = app.listCampaigns();
   assert.equal(cs.length, 1);
   assert.equal(cs[0].name, 'Realtor email test'); assert.equal(cs[0].status, 'running'); assert.equal(cs[0].type, 'realtor');
-  assert.deepEqual(cs[0].versions, ['A', 'B', 'C', 'E']);
+  assert.deepEqual(cs[0].versions, ['A'], 'one letter unless you ask for more');
   assert.ok(app.listVersions().every(v => v['Campaign ID'] === cs[0].id));
   app.setup();
   assert.equal(app.listCampaigns().length, 1, 'setup is idempotent');
@@ -205,4 +205,31 @@ test('Send now sends one campaign\'s batch today regardless of its days; refused
   assert.ok(app.$rows('Emails').filter(e => e.Step === 'first').every(e => e['Campaign ID'] === id));
   // the other running campaign (the seeded first one) was not touched by Send now
   assert.equal(app.getCampaign('CP-1').campaign.sent, 0);
+});
+
+test('one letter by default; the call plan puts no-reply people on the call list after N business days', () => {
+  const app = appWithLists();
+  const { id } = app.createCampaign({ name: 'Dec', type: 'realtor', lists: ['tyler'], dailyCap: 5, callAfterDays: 3 });
+  assert.deepEqual(app.getCampaign(id).campaign.versions, ['A'], 'A only unless asked');
+  assert.equal(app.getCampaign(id).campaign.callAfterDays, 3);
+  app.saveVersion('A', { subject: 'A', body: BODY, followUpBody: 'Still?' }, id);
+  app.dealLetters(id, { rng: seeded(1) });
+  app.saveCampaign(id, { status: 'running' });
+  const plan = app.getCampaign(id).plan;
+  assert.ok(plan.days.some(d => d.calls > 0), 'calls appear in the drawn-out plan');
+  app.sendTodayBatch({ now: TUE });   // Tue Dec 1: 5 first emails
+  const sent = app.$rows('Emails').filter(e => e.Step === 'first').map(e => e['Partner ID']);
+  assert.equal(sent.length, 5);
+  // Thu Dec 3: only 2 business days later → not yet
+  assert.equal(app.getTodayWork({ rep: 'all', now: new Date('2026-12-03T16:00:00Z') }).calls.filter(p => p.why === 'noreply').length, 0);
+  // Fri Dec 4: 3 business days → due, except one who replied (gets 'replied') and one already called
+  app._appendRows_('Events', [{ ID: 'EV-r', 'Partner ID': sent[0], Kind: 'reply', At: new Date('2026-12-02T15:00:00Z'), By: 'trigger' }]);
+  app._appendRows_('Events', [{ ID: 'EV-c', 'Partner ID': sent[1], Kind: 'call', Outcome: 'voicemail', At: new Date('2026-12-03T15:00:00Z'), By: 'tanner@armortexroofs.com' }]);
+  const calls = app.getTodayWork({ rep: 'all', now: new Date('2026-12-04T16:00:00Z') }).calls;
+  assert.deepEqual(calls.filter(p => p.why === 'noreply').map(p => p.ID).sort(), sent.slice(2).sort());
+  assert.equal(calls.find(p => p.ID === sent[0]).why, 'replied');
+  assert.ok(!calls.some(p => p.ID === sent[1]), 'already called since the email');
+  // no call step → nobody from the plan
+  app.saveCampaign(id, { callAfterDays: '' });
+  assert.equal(app.getTodayWork({ rep: 'all', now: new Date('2026-12-04T16:00:00Z') }).calls.filter(p => p.why === 'noreply').length, 0);
 });

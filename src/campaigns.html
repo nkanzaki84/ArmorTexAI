@@ -25,7 +25,7 @@
       </div>
       <div class="f"><label>Lists</label><div class="row" id="newLists"></div><span class="sub">Ticked lists add up. None ticked = everyone of this type. The Partners book, hand-emailed and opted-out people are never emailed.</span></div>
       <div id="newStages" style="display:none"></div>
-      <div class="f"><label>Letters</label><div class="row" id="newLetters"></div><span class="sub">The wording is copied from your last campaign of this type, editable until the first send.</span></div>
+      <details class="f"><summary class="sub" style="cursor:pointer">Compare wordings? (optional)</summary><div class="row" id="newLetters" style="margin-top:6px"></div><span class="sub">One letter (A) is the norm. Tick B or C only to test a second wording on the same people. Wording is copied from your last campaign of this type.</span></details>
       <div class="row" style="justify-content:flex-end;margin-top:12px"><button type="button" class="btn" id="newCancel">Cancel</button><button type="submit" class="btn primary">Create</button></div>
     </form>
   </div>
@@ -59,7 +59,7 @@
       on($('newBtn'), 'click', function () {
         $('newType').innerHTML = Object.keys(profiles).map(function (k) { return '<option value="' + esc(k) + '">' + esc(profiles[k].plural || profiles[k].label) + '</option>'; }).join('');
         chips($('newStages'), ['Prospect', 'Contacted', 'Replied'].map(function (s) { return { value: s, label: s }; }), []);
-        chips($('newLetters'), ['A', 'B', 'C', 'E'].map(function (l) { return { value: l, label: l }; }), ['A', 'B', 'C']);
+        chips($('newLetters'), ['A', 'B', 'C', 'E'].map(function (l) { return { value: l, label: l }; }), ['A']);
         api('listLists').then(function (ls) { lists = ls; chips($('newLists'), ls.map(function (l) { return { value: l.id, label: l.name + ' · ' + l.count }; }), []); if (!ls.length) $('newLists').innerHTML = '<span class="sub">No lists yet: make one under Lists first, or leave this blank for everyone of the type.</span>'; }).catch(fail);
         $('newModal').classList.add('show');
       });

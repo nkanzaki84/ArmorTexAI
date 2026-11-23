@@ -30,7 +30,7 @@
       var dnc = String(p['Do Not Contact']).toLowerCase() === 'yes';
       var isPartner = p.Stage === 'Partner';
       $('titleName').textContent = p.Name;
-      $('titlePills').innerHTML = '<span class="pill">' + esc(prof.label) + '</span> ' + verBadge(p.Version) + ' ' + stagePill(p.Stage) + ' ' + responsePill(p.Response) + (dnc ? ' <span class="pill bad">Do not contact</span>' : '') +
+      $('titlePills').innerHTML = '<span class="pill">' + esc(prof.label) + '</span> ' + verBadge(p.Version) + ' ' + stagePill(p.Stage) + (p.Response && p.Response !== p.Stage ? ' ' + responsePill(p.Response) : '') + (dnc ? ' <span class="pill bad">Do not contact</span>' : '') +
         (isPartner ? ' <span class="pill ok">🤝 partner' + (p['Partner Since'] ? ' since ' + fmtDate(p['Partner Since']) : '') + '</span>' : ' <span class="pill orange">📣 in marketing</span>');
       $('saveAll').style.display = canWrite ? '' : 'none';
       var html = '';

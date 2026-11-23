@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.8.1';
+const APP_VERSION    = '0.9.0';
 const APP_BUILD_DATE = '2026-11-22';
 
 // ===== Script Property keys =====
@@ -212,6 +212,7 @@ const HEADERS = {
     'Created At',
     'Created By',
     'Notes',
+    'Call After Days',   // the call plan: business days after the first email with no reply → Today's call list (blank = no call step); appended 2026-11-23
   ],
   'Versions': [
     'Letter',            // A | B | C | E  (postcards: P1, P2, …)
@@ -339,7 +340,8 @@ const PARTNER_TYPE_PROFILES = {
 };
 const EMAIL_VERSIONS = ['A', 'B', 'C', 'E'];
 const CAMPAIGN_STATUSES = ['draft', 'running', 'paused', 'done'];
-const DEFAULT_CAMPAIGN = { Name: 'Realtor email test', 'Partner Type': 'realtor', Versions: 'A,B,C,E', Status: 'running' };   // seeded once; the one campaign the app ran before campaigns existed
+const DEFAULT_CALL_AFTER_DAYS = 7;   // a new campaign's call plan: call anyone who hasn't replied 7 business days after the first email
+const DEFAULT_CAMPAIGN = { Name: 'Realtor email test', 'Partner Type': 'realtor', Versions: 'A', Status: 'running' };   // seeded once; the one campaign the app ran before campaigns existed
 const EMAIL_STATUSES = ['queued', 'sent', 'replied', 'bounced', 'cancelled'];
 const EVENT_KINDS = ['reply', 'bounce', 'opt-out', 'call', 'text', 'voicemail', 'postcard', 'knock', 'note'];
 const CALL_OUTCOMES = ['talked', 'voicemail', 'no_answer', 'missed'];   // Quo maps to these; a person may type anything

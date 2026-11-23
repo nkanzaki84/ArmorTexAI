@@ -97,7 +97,7 @@
           .replace('</div></div>', '</div><div class="sub" style="white-space:pre-wrap;margin-top:4px">' + esc((ev.Snippet || '').slice(0, 160)) + '</div></div>');
       }).join('') : '<li class="empty">No new replies this week.</li>';
       $('callList').innerHTML = w.calls.length ? w.calls.map(function (p) {
-        return partnerLine(p, '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span>' + (p.why === 'replied' ? '<span class="pill warn">replied</span>' : p.why === 'missed' ? '<span class="pill bad">missed their call</span>' : '<span class="pill">emailed by hand' + (p['Last Contact'] ? ' ' + fmtDate(p['Last Contact']) : '') + '</span>') + ' ' + repChip(p) + (p.listingValue ? ' <span class="pill navy">' + fmt$(p.listingValue) + '</span>' : '') + '</span>' + callBtn(p) + '</div>');
+        return partnerLine(p, '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span>' + (p.why === 'replied' ? '<span class="pill warn">replied</span>' : p.why === 'missed' ? '<span class="pill bad">missed their call</span>' : p.why === 'noreply' ? '<span class="pill navy">no reply to the email</span>' : '<span class="pill">emailed by hand' + (p['Last Contact'] ? ' ' + fmtDate(p['Last Contact']) : '') + '</span>') + ' ' + repChip(p) + (p.listingValue ? ' <span class="pill navy">' + fmt$(p.listingValue) + '</span>' : '') + '</span>' + callBtn(p) + '</div>');
       }).join('') : '<li class="empty">Nobody to call right now.</li>';
       var rv = w.needsReview || [];
       $('reviewCard').style.display = rv.length ? '' : 'none';

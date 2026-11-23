@@ -56,6 +56,7 @@ function _campaignSending_(c) {
     days: daysRaw.split(',').map(function (d) { return d.trim().slice(0, 3).toLowerCase(); }).filter(Boolean),
     daysLabel: daysRaw,
     followUpDays: isNaN(follow) ? 4 : follow,
+    callAfterDays: String(c['Call After Days'] || '').trim() === '' ? 0 : Math.max(0, parseInt(c['Call After Days'], 10) || 0),
     inherited: { cap: String(c['Daily Cap'] || '').trim() === '', days: String(c['Sending Days'] || '').trim() === '', followUpDays: String(c['Follow Up Days'] || '').trim() === '' },
   };
 }
@@ -124,7 +125,7 @@ function _campaignSummary_(c, partners, emails, events) {
     sent: sentFirst.length, replied: Object.keys(replied).length, replyRate: sentFirst.length ? Object.keys(replied).length / sentFirst.length : 0,
     wins: wins, winNoun: (PARTNER_TYPE_PROFILES[String(c['Partner Type'])] || {}).winVerb || 'won',
     startDate: c['Start Date'] || '', firstSentAt: firstSent ? new Date(firstSent).toISOString() : '', lastSentAt: lastSent ? new Date(lastSent).toISOString() : '',
-    cap: sending.cap, days: sending.daysLabel, followUpDays: sending.followUpDays,
+    cap: sending.cap, days: sending.daysLabel, followUpDays: sending.followUpDays, callAfterDays: sending.callAfterDays,
     createdAt: c['Created At'] || '', notes: String(c['Notes'] || ''),
   };
 }
@@ -139,7 +140,7 @@ function getCampaign(id) {
   const summary = _campaignSummary_(c, partners, emails, events);
   return {
     campaign: summary,
-    raw: { 'Start Date': c['Start Date'] || '', 'Sending Days': c['Sending Days'] || '', 'Daily Cap': c['Daily Cap'] === undefined ? '' : c['Daily Cap'], 'Follow Up Days': c['Follow Up Days'] === undefined ? '' : c['Follow Up Days'] },
+    raw: { 'Start Date': c['Start Date'] || '', 'Sending Days': c['Sending Days'] || '', 'Daily Cap': c['Daily Cap'] === undefined ? '' : c['Daily Cap'], 'Follow Up Days': c['Follow Up Days'] === undefined ? '' : c['Follow Up Days'], 'Call After Days': c['Call After Days'] === undefined ? '' : c['Call After Days'] },
     sending: _campaignSending_(c),
     versions: listVersions(id),
     stats: getCampaignStats(id),
@@ -160,7 +161,8 @@ function createCampaign(payload) {
   if (!name) throw new Error('Give the campaign a name.');
   const type = String(payload.type || 'realtor').toLowerCase();
   if (!PARTNER_TYPE_PROFILES[type]) throw new Error('Unknown partner type: ' + type);
-  const letters = (payload.versions || ['A', 'B', 'C']).map(String).filter(function (l) { return EMAIL_VERSIONS.indexOf(l) !== -1; });
+  // one letter by default; B/C/E are for comparing wordings, which is optional
+  const letters = (payload.versions || ['A']).map(String).filter(function (l) { return EMAIL_VERSIONS.indexOf(l) !== -1; });
   if (!letters.length) throw new Error('Pick at least one letter.');
   const id = _nextId_(TAB.CAMPAIGNS);
   const row = {
@@ -169,6 +171,7 @@ function createCampaign(payload) {
     'Start Date': payload.startDate ? _parseLocalDate_(payload.startDate) : '', 'Sending Days': String(payload.sendingDays || ''), 'Daily Cap': payload.dailyCap === undefined || payload.dailyCap === '' ? '' : parseInt(payload.dailyCap, 10),
     'Follow Up Days': payload.followUpDays === undefined || payload.followUpDays === '' ? '' : parseInt(payload.followUpDays, 10),
     'Created At': new Date(), 'Created By': me.email, 'Notes': String(payload.notes || ''),
+    'Call After Days': payload.callAfterDays === undefined ? DEFAULT_CALL_AFTER_DAYS : (String(payload.callAfterDays).trim() === '' ? '' : parseInt(payload.callAfterDays, 10)),
   };
   _appendRows_(TAB.CAMPAIGNS, [row]);
   // letters: copy wording from the newest campaign of this type that has any, else blank
@@ -219,6 +222,10 @@ function saveCampaign(id, payload) {
       if (remaining !== null && n > remaining) throw new Error('Daily cap ' + n + ' is above what this mailbox can send today (' + remaining + ').');
       row['Daily Cap'] = n;
     }
+  }
+  if (payload.callAfterDays !== undefined) {
+    if (String(payload.callAfterDays).trim() === '') row['Call After Days'] = '';
+    else { const n = parseInt(payload.callAfterDays, 10); if (isNaN(n) || n < 0) throw new Error('Call plan must be a whole number of business days (0 = call right after the email).'); row['Call After Days'] = n; }
   }
   if (payload.followUpDays !== undefined) {
     if (String(payload.followUpDays).trim() === '') row['Follow Up Days'] = '';
@@ -346,21 +353,27 @@ function _campaignPlan_(c, partners, emails, now) {
   const start = c['Start Date'] ? new Date(c['Start Date']) : null;
   if (start && start.getTime() > d.getTime()) d = new Date(start.getTime());
   d.setHours(9, 0, 0, 0);
-  let remaining = firstsLeft, pendingFollow = [];
+  let remaining = firstsLeft, pendingFollow = [], pendingCalls = [];
   let guard = 0;
-  while ((remaining > 0 || pendingFollow.length) && guard++ < 120) {
+  while ((remaining > 0 || pendingFollow.length || pendingCalls.length) && guard++ < 150) {
+    const key = Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    let firsts = 0, fu = 0;
     if (sending.days.indexOf(_weekday_(d).toLowerCase()) !== -1) {
       let room = sending.cap;
       const dueFollow = pendingFollow.filter(function (f) { return f.getTime() <= d.getTime(); }).length;
-      const fu = Math.min(dueFollow, room); room -= fu;
+      fu = Math.min(dueFollow, room); room -= fu;
       pendingFollow = pendingFollow.filter(function (f) { return f.getTime() > d.getTime(); }).concat(pendingFollow.filter(function (f) { return f.getTime() <= d.getTime(); }).slice(fu));
-      const firsts = Math.min(remaining, room); remaining -= firsts;
-      for (let i = 0; i < firsts; i++) pendingFollow.push(_addBusinessDays_(d, sending.followUpDays));
-      if (firsts || fu) days.push({ date: Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd'), weekday: _weekday_(d), firsts: firsts, followUps: fu });
+      firsts = Math.min(remaining, room); remaining -= firsts;
+      for (let i = 0; i < firsts; i++) { pendingFollow.push(_addBusinessDays_(d, sending.followUpDays)); if (sending.callAfterDays) pendingCalls.push(_addBusinessDays_(d, sending.callAfterDays)); }
     }
+    // calls happen on any weekday, not only sending days
+    const wd = _weekday_(d).toLowerCase();
+    let calls = 0;
+    if (wd !== 'sat' && wd !== 'sun') { calls = pendingCalls.filter(function (f) { return f.getTime() <= d.getTime(); }).length; pendingCalls = pendingCalls.filter(function (f) { return f.getTime() > d.getTime(); }); }
+    if (firsts || fu || calls) days.push({ date: key, weekday: _weekday_(d), firsts: firsts, followUps: fu, calls: calls });
     d = new Date(d.getTime() + 86400000);
   }
-  return { days: days, firstsLeft: firstsLeft, followUpsQueued: queuedFollowUps, cap: sending.cap, sendingDays: sending.daysLabel, finish: days.length ? days[days.length - 1].date : '' };
+  return { days: days, firstsLeft: firstsLeft, followUpsQueued: queuedFollowUps, cap: sending.cap, sendingDays: sending.daysLabel, callAfterDays: sending.callAfterDays, finish: days.length ? days[days.length - 1].date : '' };
 }
 
 /** One line per person in the campaign: letter, sent, follow-up, reply, response, calls. Any role. */
