@@ -161,17 +161,31 @@ function _pause_() {
  * sees one conversation. Uses the Gmail advanced service because GmailApp
  * cannot set In-Reply-To / threadId on a new message to a third party.
  */
-function _sendInThread_(threadId, firstMessageId, to, subject, body) {
+function _sendInThread_(threadId, firstMessageId, to, subject, body, attachments) {
   let rfcId = '';
   try { const first = GmailApp.getMessageById(firstMessageId); if (first) rfcId = String(first.getHeader('Message-ID') || ''); } catch (err) { rfcId = ''; }
   const lines = [
     'To: ' + to,
     'Subject: ' + subject.replace(/[\r\n]+/g, ' '),
-    'Content-Type: text/plain; charset="UTF-8"',
-    'Content-Transfer-Encoding: 8bit',
   ];
   if (rfcId) { lines.push('In-Reply-To: ' + rfcId); lines.push('References: ' + rfcId); }
-  const raw = lines.join('\r\n') + '\r\n\r\n' + body;
+  let raw;
+  if (attachments && attachments.length) {
+    // multipart: the plain-text note first, then each file base64-encoded
+    const boundary = 'atx_' + Utilities.getUuid().replace(/-/g, '');
+    lines.push('MIME-Version: 1.0');
+    lines.push('Content-Type: multipart/mixed; boundary="' + boundary + '"');
+    const parts = ['--' + boundary, 'Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: 8bit', '', body];
+    attachments.forEach(function (blob) {
+      const name = String(blob.getName() || 'attachment').replace(/["\r\n]/g, '');
+      parts.push('--' + boundary, 'Content-Type: ' + blob.getContentType() + '; name="' + name + '"', 'Content-Transfer-Encoding: base64', 'Content-Disposition: attachment; filename="' + name + '"', '', Utilities.base64Encode(blob.getBytes()));
+    });
+    parts.push('--' + boundary + '--');
+    raw = lines.join('\r\n') + '\r\n\r\n' + parts.join('\r\n');
+  } else {
+    lines.push('Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: 8bit');
+    raw = lines.join('\r\n') + '\r\n\r\n' + body;
+  }
   const res = Gmail.Users.Messages.send({ raw: Utilities.base64EncodeWebSafe(raw), threadId: threadId }, 'me');
   return { id: res.id, threadId: res.threadId || threadId };
 }

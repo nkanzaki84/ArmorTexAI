@@ -48,6 +48,16 @@
 </div>
 
 <div class="card">
+  <div class="hd"><h2>Sample roof report</h2><span class="sub">the warm tier's tool: one press on a record sends this PDF as a reply</span></div>
+  <form class="bd" id="sampleForm">
+    <div class="f"><label>PDF in Drive</label><input name="sample_report_file" placeholder="https://drive.google.com/file/d/…/view"><span class="hint">Upload the PDF to Drive, Share → anyone with the link can view (or just your own Drive), paste the link here. Press Check file to prove it opens.</span></div>
+    <div class="f"><label>Subject (when no thread exists yet)</label><input name="sample_report_subject"></div>
+    <div class="f"><label>Note that goes with it</label><textarea name="sample_report_body" style="min-height:140px"></textarea><span class="hint">{{first}} {{name}} {{company}} {{area}} {{rep}} {{address}} are filled in. Sent as a plain-text reply in the realtor's own thread, with the PDF attached. Whoever presses the button is {{rep}}.</span></div>
+    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" id="sampleCheck">Check file</button><span class="sub" id="sampleResult"></span></div>
+  </form>
+</div>
+
+<div class="card">
   <div class="hd"><h2>Import partners</h2><span class="sub">CSV · duplicates and do-not-contact are skipped</span></div>
   <div class="bd">
     <div class="grid2">
@@ -259,6 +269,22 @@
         api('getTriggerStatus').then(showTrig);
       }).catch(fail).finally(function () { busy($('runCheck'), false, 'Check replies now'); });
     });
+    (function () {
+      var sf = $('sampleForm');
+      api('getSettings').then(function (s) { Array.prototype.forEach.call(sf.elements, function (el) { if (el.name && s[el.name] !== undefined) el.value = s[el.name]; }); }).catch(function () {});
+      on(sf, 'submit', function (e) {
+        e.preventDefault();
+        var map = {}; Array.prototype.forEach.call(sf.elements, function (el) { if (el.name) map[el.name] = el.value; });
+        var btn = sf.querySelector('[type=submit]'); busy(btn, true, 'Saving…');
+        api('saveSettings', map).then(function () { toast('Saved', 'success'); }).catch(fail).finally(function () { busy(btn, false, 'Save'); });
+      });
+      on($('sampleCheck'), 'click', function () {
+        busy($('sampleCheck'), true, 'Checking…'); $('sampleResult').textContent = '';
+        api('checkSampleReport', sf.sample_report_file.value.trim()).then(function (r) {
+          $('sampleResult').innerHTML = r.ok ? '✓ ' + esc(r.name) + (r.size ? ' · ' + Math.round(r.size / 1024) + ' KB' : '') + (r.pdf ? '' : ' <span class="pill warn">not a PDF</span>') : esc(r.message);
+        }).catch(function (e) { $('sampleResult').innerHTML = '<span class="pill bad">' + esc(e.message) + '</span>'; }).finally(function () { busy($('sampleCheck'), false, 'Check file'); });
+      });
+    })();
     on($('testBtn'), 'click', function () {
       var text = $('testEmails').value;
       if (!text.trim()) return toast('Add at least one address', 'error');

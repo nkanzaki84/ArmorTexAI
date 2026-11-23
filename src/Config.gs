@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.11.0';
+const APP_VERSION    = '0.11.1';
 const APP_BUILD_DATE = '2026-11-23';
 
 // ===== Script Property keys =====
@@ -374,6 +374,10 @@ const SETTING = {
   QUO_WEBHOOK_ID:   'quo_webhook_id',     // the webhook Quo gave us
   QUO_WEBHOOK_URL:  'quo_webhook_url',    // what Quo posts to (hook URL + src + token)
   QUO_CALL_LINKS:   'quo_call_links',     // Yes = Call/Text buttons open the Quo app (openphone://) instead of the phone's dialer
+  // Sample roof report (warm tier): the stock PDF sent from the record with one press
+  SAMPLE_REPORT_FILE:    'sample_report_file',     // Drive link or file id of the PDF
+  SAMPLE_REPORT_SUBJECT: 'sample_report_subject',
+  SAMPLE_REPORT_BODY:    'sample_report_body',     // {{first}} {{name}} {{company}} {{rep}} {{address}}
 };
 
 // ===== Quo (phone system) =====
@@ -403,6 +407,9 @@ const SETTING_DEFAULTS = {
   call_script_url:      '',
   do_not_contact:       '',
   dev_url:              '',
+  sample_report_file:    '',
+  sample_report_subject: 'Sample roof report from ArmorTex',
+  sample_report_body:    "Hi {{first}},\n\nHere's the sample roof report I mentioned. It's what you'd get on any of your listings within 48 hours of sending me the address, at no cost and with no strings.\n\nIf there's a property you'd like one on, reply with the address and I'll get it going.\n\n{{rep}}\nArmorTex Roofs\n{{address}}",
 };
 
 const ROOF_AGE_REVIEWS = ['', 'original', 'replaced', 'unsure'];
