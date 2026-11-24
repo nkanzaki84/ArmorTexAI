@@ -460,10 +460,25 @@ function _campaignPlan_(c, partners, emails, now) {
       if (e['Step'] === 'followup' && e['Status'] === 'queued') queuedFollowUps++;
     }
   });
-  let firstsLeft = 0;
-  partners.forEach(function (p) { if (memberIds[p['ID']] && String(p['Version'] || '').trim() && !emailed[p['ID']] && !_yes_(p['Do Not Contact'])) firstsLeft++; });
+  // who is still to get a first email, in the order Today's batch deals them (round-robin across wordings, sheet order within)
+  const dnc = {};
+  _doNotContactEmails_().forEach(function (e) { dnc[e] = true; });
+  const candidates = partners.filter(function (p) {
+    if (!memberIds[p['ID']] || !String(p['Version'] || '').trim() || emailed[p['ID']]) return false;
+    if (String(p['Stage']) === 'Partner' || p['Partner Since'] || _yes_(p['Skip Email Test'])) return false;
+    return !_yes_(p['Do Not Contact']) && !dnc[_normEmail_(p['Email'])] && !!_normEmail_(p['Email']);
+  });
+  const buckets = {}, order = [];
+  candidates.forEach(function (p) { (buckets[p['Version']] = buckets[p['Version']] || []).push(p['ID']); });
+  const vkeys = Object.keys(buckets);
+  for (let i = 0; vkeys.some(function (v) { return buckets[v].length; }); i++) { const v = vkeys[i % vkeys.length]; if (buckets[v].length) order.push(buckets[v].shift()); }
+  const firstsLeft = order.length;
+  const people = {};
+  const note = function (pid) { const p = byPid[pid]; if (p && !people[pid]) people[pid] = { id: pid, name: String(p['Name'] || ''), company: String(p['Company'] || ''), area: String(p['Area'] || '') }; };
+  const byPid = {};
+  partners.forEach(function (p) { byPid[p['ID']] = p; });
   const days = [];
-  if (!sending.cap || !sending.days.length) return { days: days, firstsLeft: firstsLeft, followUpsQueued: queuedFollowUps, cap: sending.cap, sendingDays: sending.daysLabel, finish: '' };
+  if (!sending.cap || !sending.days.length) return { days: days, people: people, firstsLeft: firstsLeft, followUpsQueued: queuedFollowUps, cap: sending.cap, sendingDays: sending.daysLabel, finish: '' };
   // today's room is what is left after what already went out today
   const todayKey = _dateKey_(now);
   let sentToday = 0;
@@ -472,27 +487,37 @@ function _campaignPlan_(c, partners, emails, now) {
   const start = c['Start Date'] ? new Date(c['Start Date']) : null;
   if (start && start.getTime() > d.getTime()) d = new Date(start.getTime());
   d.setHours(9, 0, 0, 0);
-  let remaining = firstsLeft, pendingFollow = [], pendingCalls = [];
+  // pending items carry {at, pid}: follow-ups already queued for people emailed earlier start the list
+  let queue = order.slice(), pendingFollow = [], pendingCalls = [];
+  emails.forEach(function (e) {
+    if (e['Status'] !== 'queued' || e['Step'] !== 'followup' || !e['Scheduled For']) return;
+    if (String(e['Campaign ID']) === id || (!String(e['Campaign ID'] || '').trim() && memberIds[e['Partner ID']])) pendingFollow.push({ at: new Date(e['Scheduled For']).getTime(), pid: String(e['Partner ID']) });
+  });
   let guard = 0;
-  while ((remaining > 0 || pendingFollow.length || pendingCalls.length) && guard++ < 150) {
+  while ((queue.length || pendingFollow.length || pendingCalls.length) && guard++ < 150) {
     const key = Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    let firsts = 0, fu = 0;
+    const t = d.getTime();
+    let firsts = [], fu = [];
     if (sending.days.indexOf(_weekday_(d).toLowerCase()) !== -1) {
       let room = Math.max(0, sending.cap - (key === todayKey ? sentToday : 0));
-      const dueFollow = pendingFollow.filter(function (f) { return f.getTime() <= d.getTime(); }).length;
-      fu = Math.min(dueFollow, room); room -= fu;
-      pendingFollow = pendingFollow.filter(function (f) { return f.getTime() > d.getTime(); }).concat(pendingFollow.filter(function (f) { return f.getTime() <= d.getTime(); }).slice(fu));
-      firsts = Math.min(remaining, room); remaining -= firsts;
-      for (let i = 0; i < firsts; i++) { pendingFollow.push(_addBusinessDays_(d, sending.followUpDays)); if (sending.callAfterDays) pendingCalls.push(_addBusinessDays_(d, sending.callAfterDays)); }
+      const due = pendingFollow.filter(function (f) { return f.at <= t; });
+      fu = due.slice(0, room); room -= fu.length;
+      pendingFollow = pendingFollow.filter(function (f) { return f.at > t; }).concat(due.slice(fu.length));
+      firsts = queue.splice(0, Math.min(queue.length, room));
+      firsts.forEach(function (pid) { pendingFollow.push({ at: _addBusinessDays_(d, sending.followUpDays).getTime(), pid: pid }); if (sending.callAfterDays) pendingCalls.push({ at: _addBusinessDays_(d, sending.callAfterDays).getTime(), pid: pid }); });
     }
     // calls happen on any weekday, not only sending days
     const wd = _weekday_(d).toLowerCase();
-    let calls = 0;
-    if (wd !== 'sat' && wd !== 'sun') { calls = pendingCalls.filter(function (f) { return f.getTime() <= d.getTime(); }).length; pendingCalls = pendingCalls.filter(function (f) { return f.getTime() > d.getTime(); }); }
-    if (firsts || fu || calls) days.push({ date: key, weekday: _weekday_(d), firsts: firsts, followUps: fu, calls: calls });
+    let calls = [];
+    if (wd !== 'sat' && wd !== 'sun') { calls = pendingCalls.filter(function (f) { return f.at <= t; }); pendingCalls = pendingCalls.filter(function (f) { return f.at > t; }); }
+    if (firsts.length || fu.length || calls.length) {
+      const fuIds = fu.map(function (f) { return f.pid; }), callIds = calls.map(function (f) { return f.pid; });
+      firsts.concat(fuIds).concat(callIds).forEach(note);
+      days.push({ date: key, weekday: _weekday_(d), firsts: firsts.length, followUps: fuIds.length, calls: callIds.length, who: { firsts: firsts, followUps: fuIds, calls: callIds } });
+    }
     d = new Date(d.getTime() + 86400000);
   }
-  return { days: days, firstsLeft: firstsLeft, followUpsQueued: queuedFollowUps, cap: sending.cap, sendingDays: sending.daysLabel, callAfterDays: sending.callAfterDays, finish: days.length ? days[days.length - 1].date : '' };
+  return { days: days, people: people, firstsLeft: firstsLeft, followUpsQueued: queuedFollowUps, cap: sending.cap, sendingDays: sending.daysLabel, callAfterDays: sending.callAfterDays, finish: days.length ? days[days.length - 1].date : '' };
 }
 
 /** One line per person in the campaign: letter, sent, follow-up, reply, response, calls. Any role. */

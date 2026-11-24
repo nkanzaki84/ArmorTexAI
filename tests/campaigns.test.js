@@ -163,6 +163,25 @@ test('schedule plan draws the days out; results list everyone with sent, follow-
   assert.deepEqual(c.plan.days.slice(0, 3).map(d => [d.date, d.firsts, d.followUps]), [['2026-12-01', 10, 0], ['2026-12-02', 10, 0], ['2026-12-03', 9, 0]]);
   assert.ok(c.plan.days.some(d => d.followUps > 0), 'follow-ups appear 4 business days later');
   assert.equal(c.plan.finish, c.plan.days[c.plan.days.length - 1].date);
+  // the plan says who: day 1's ten first emails are ten distinct members, named; their follow-ups are the same ten
+  const d1 = c.plan.days[0];
+  assert.equal(d1.who.firsts.length, 10);
+  assert.equal(new Set(d1.who.firsts).size, 10);
+  assert.ok(d1.who.firsts.every(pid => c.plan.people[pid] && c.plan.people[pid].name));
+  const fuDay = c.plan.days.find(d => d.followUps > 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(fuDay.who.followUps)), JSON.parse(JSON.stringify(d1.who.firsts)));
+  assert.equal(c.plan.days.map(d => d.who.firsts.length).reduce((a, b) => a + b, 0), 29, 'everyone appears exactly once');
+  // follow-ups already queued (sent firsts) are drawn too
+  app.saveVersion('A', { subject: 'A', body: BODY, followUpBody: 'Hi {{first}}, still interested?' }, id);
+  app.saveVersion('B', { subject: 'B', body: BODY, followUpBody: 'Hi {{first}}, still interested?' }, id);
+  app.saveCampaign(id, { status: 'running' });
+  app.sendTodayBatch({ now: new Date('2026-12-01T15:00:00Z') });
+  const after = app.getCampaign(id).plan;
+  const queued = after.days.find(d => d.followUps > 0);
+  assert.equal(queued.date, '2026-12-08', 'queued for Mon Dec 7, drawn on the next sending day');
+  assert.equal(queued.followUps, 10);
+  assert.ok(!after.days.some(d => d.date === '2026-12-07'), 'nothing drawn on a non-sending day');
+  assert.equal(after.firstsLeft, 19);
   // send a day, get a reply and a call
   app.sendTodayBatch({ now: TUE });
   const sent = app.$rows('Emails').filter(e => e.Step === 'first');

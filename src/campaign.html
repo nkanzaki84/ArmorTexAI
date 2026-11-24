@@ -183,7 +183,8 @@
         '<div class="f"><label>Notes</label><textarea name="notes" style="min-height:60px"' + dis + '>' + esc(c.notes) + '</textarea></div>' +
         '<div class="sub">A person presses Send on Today. The plan only says what will be offered.</div></form></div>' +
         '<div class="card"><div class="hd"><h2>Drawn out</h2><span class="sub">from today, at this cap</span></div>' +
-        (plan.days.length ? '<div class="scroll-x"><table><thead><tr><th>Day</th><th class="num">First emails</th><th class="num">Follow-ups</th><th class="num">Calls due</th></tr></thead><tbody>' + plan.days.slice(0, 40).map(function (d) { return '<tr><td>' + esc(d.weekday) + ' ' + fmtDate(d.date) + '</td><td class="num">' + (d.firsts || '—') + '</td><td class="num">' + (d.followUps || '—') + '</td><td class="num">' + (d.calls || '—') + '</td></tr>'; }).join('') + (plan.days.length > 40 ? '<tr><td colspan="4" class="sub">… ' + (plan.days.length - 40) + ' more days</td></tr>' : '') + '</tbody></table></div>' +
+        (plan.days.length ? '<div class="scroll-x"><table><thead><tr><th>Day</th><th class="num">First emails</th><th class="num">Follow-ups</th><th class="num">Calls due</th></tr></thead><tbody>' + plan.days.slice(0, 40).map(function (d, i) { var cell = function (n, kind) { return '<td class="num">' + (n ? '<a href="#" class="plan-who" data-day="' + i + '" data-kind="' + kind + '" title="Who">' + n + '</a>' : '—') + '</td>'; }; return '<tr>' + '<td>' + esc(d.weekday) + ' ' + fmtDate(d.date) + '</td>' + cell(d.firsts, 'firsts') + cell(d.followUps, 'followUps') + cell(d.calls, 'calls') + '</tr>'; }).join('') + (plan.days.length > 40 ? '<tr><td colspan="4" class="sub">… ' + (plan.days.length - 40) + ' more days</td></tr>' : '') + '</tbody></table></div>' +
+          '<div id="planWho" style="display:none;border-top:1px solid var(--line)"><div class="hd"><h3 id="planWhoTitle" style="margin:0"></h3><div class="spacer"></div><button class="btn sm ghost" type="button" id="planWhoClose">✕</button></div><ul class="list" id="planWhoList" style="max-height:360px;overflow:auto"></ul></div>' +
           '<div class="bd sub">' + plan.firstsLeft + ' first emails left' + (plan.followUpsQueued ? ', ' + plan.followUpsQueued + ' follow-ups queued' : '') + '. Finishes about <b>' + fmtDate(plan.finish) + '</b>. Capped by what the mailbox can still send each day.</div>' :
           '<div class="empty">' + (plan.cap ? 'Nothing left to send.' : 'Daily cap is 0, or no sending days.') + '</div>') + '</div></div>';
       $('tab-schedule').innerHTML = html;
@@ -192,6 +193,18 @@
       on($('tab-schedule'), 'click', function (e) { var ch = e.target.closest('label.chip'); if (ch && ch.querySelector('input') && isAdmin) { setTimeout(function () { ch.classList.toggle('on', ch.querySelector('input').checked); markDirty(); }, 0); } });
       on($('schedForm'), 'input', markDirty);
       on($('schedForm'), 'submit', function (e) { e.preventDefault(); saveAll(); });
+      on($('tab-schedule'), 'click', function (e) {
+        var a = e.target.closest('a.plan-who'); if (!a) return;
+        e.preventDefault();
+        var d = plan.days[parseInt(a.dataset.day, 10)], kind = a.dataset.kind, ids = (d.who || {})[kind] || [];
+        var label = { firsts: 'first emails', followUps: 'follow-ups', calls: 'calls due' }[kind];
+        $('planWhoTitle').textContent = ids.length + ' ' + label + ' · ' + d.weekday + ' ' + fmtDate(d.date);
+        $('planWhoList').innerHTML = ids.length ? ids.map(function (pid) { var p = (plan.people || {})[pid] || { name: pid }; return '<li class="link" data-id="' + esc(pid) + '"><div style="flex:1;min-width:0"><div class="name">' + esc(p.name) + '</div><div class="sub">' + esc(p.company || '') + (p.area ? ' · ' + esc(p.area) : '') + '</div></div><span class="sub">›</span></li>'; }).join('') : '<li class="empty">Nobody.</li>';
+        $('planWho').style.display = '';
+        $('planWho').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+      on($('planWhoClose'), 'click', function () { $('planWho').style.display = 'none'; });
+      on($('planWhoList'), 'click', function (e) { var li = e.target.closest('li[data-id]'); if (li) go('partner', { id: li.dataset.id, from: 'prospects' }); });
     }
 
     // ---- results ----
