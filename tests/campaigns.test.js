@@ -56,40 +56,47 @@ test('create: copies the type\'s letters, starts as draft; audience shows who ma
   assert.throws(() => app.createCampaign({ name: 'x', type: 'realtor', versions: [] }), /letter/);
 });
 
-test('deal letters: joins the audience, deals in turn within brokerages, keeps existing letters, never re-deals; one campaign per person', () => {
+test('deal letters: joins the audience, deals in turn within brokerages, keeps existing letters, never re-deals; a person can be in several', () => {
   const app = appWithLists();
   const { id } = app.createCampaign({ name: 'Dec', type: 'realtor', lists: ['tyler'], versions: ['A', 'B', 'C'] });
   let r = app.dealLetters(id, { rng: seeded(3) });
   assert.equal(r.dealt, 29);
   assert.deepEqual(Object.keys(r.counts).sort(), ['A', 'B', 'C']);
   assert.ok(Object.values(r.counts).every(n => n >= 9 && n <= 10), JSON.stringify(r.counts));
-  const members = app.$rows('Partners').filter(p => p['Campaign ID'] === id);
+  const members = app.$rows('Partners').filter(p => p['Campaign ID'].split(',').indexOf(id) !== -1);
   assert.equal(members.length, 29);
   assert.ok(members.every(p => 'ABC'.indexOf(p.Version) !== -1));
   r = app.dealLetters(id, { rng: seeded(4) });
   assert.equal(r.dealt, 0, 'nothing left to deal');
-  // a second campaign on the same list cannot take them
-  const other = app.createCampaign({ name: 'Again', type: 'realtor', lists: ['tyler'], versions: ['A'] });
-  assert.equal(app.campaignAudience(other.id).excluded['in another campaign'], 29);
-  assert.equal(app.dealLetters(other.id).dealt, 0);
+  // a second campaign on the same list can take the same people (one person, several campaigns)
+  const other = app.createCampaign({ name: 'Again', type: 'realtor', lists: ['tyler'], versions: ['A', 'B', 'C'] });   // same letters: the letter is one per person, shared across campaigns
+  assert.equal(app.campaignAudience(other.id).undealt, 29);
+  assert.equal(app.dealLetters(other.id).dealt, 29);
+  const both = app.$rows('Partners').filter(p => p['Campaign ID'].split(',').indexOf(id) !== -1 && p['Campaign ID'].split(',').indexOf(other.id) !== -1);
+  assert.equal(both.length, 29, 'in both; the letter is shared');
+  assert.equal(app.campaignAudience(id).members.length, 29, 'still counted in the first');
   // a newcomer on the list is dealt on the next press, and only them
   app.importPartners('Name,Email,Brokerage\nNew Realtor,new@example.com,KW', { sourceList: 'tyler' });
   r = app.dealLetters(id, { rng: seeded(5) });
   assert.equal(r.dealt, 1);
-  // removing someone before any send frees them; after a send it is refused
+  // removing someone from one campaign leaves them in the other; after a send it is refused
   const m = members[0];
   app.removeFromCampaign(id, m.ID);
+  assert.equal(app.$rows('Partners').find(p => p.ID === m.ID)['Campaign ID'], other.id);
+  assert.ok(app.$rows('Partners').find(p => p.ID === m.ID).Version, 'letter kept while still in a campaign');
+  app.removeFromCampaign(other.id, m.ID);
   assert.equal(app.$rows('Partners').find(p => p.ID === m.ID)['Campaign ID'], '');
+  assert.equal(app.$rows('Partners').find(p => p.ID === m.ID).Version, '');
   app._appendRows_('Emails', [{ ID: 'E-1', 'Partner ID': members[1].ID, Version: members[1].Version, Step: 'first', 'Sent At': TUE, Status: 'sent', 'Campaign ID': id }]);
   assert.throws(() => app.removeFromCampaign(id, members[1].ID), /Already emailed/);
   // dropping a wording: unused letters go, holders are re-dealt; a letter that went out stays
-  const before = app.$rows('Partners').filter(p => p['Campaign ID'] === id && p.Version === 'C').length;
+  const before = app.$rows('Partners').filter(p => p['Campaign ID'].split(',').indexOf(id) !== -1 && p.Version === 'C').length;
   assert.ok(before > 0);
   let rw = app.removeWording(id, 'C');
   assert.deepEqual(rw.versions, ['A', 'B']);
   assert.ok(rw.redealt >= before, 'holders of C were dealt again (plus anyone free to join)');
   assert.equal(app.$rows('Campaigns').find(c => c.ID === id).Versions, 'A,B');
-  assert.ok(app.$rows('Partners').filter(p => p['Campaign ID'] === id).every(p => 'AB'.indexOf(p.Version) !== -1 && p.Version));
+  assert.ok(app.$rows('Partners').filter(p => p['Campaign ID'].split(',').indexOf(id) !== -1).every(p => 'AB'.indexOf(p.Version) !== -1 && p.Version));
   assert.throws(() => app.removeWording(id, members[1].Version), /already went out/);
   const otherLetter = members[1].Version === 'A' ? 'B' : 'A';
   rw = app.removeWording(id, otherLetter);
@@ -119,7 +126,7 @@ test('running needs valid letters; the batch draws only from running campaigns w
   assert.equal(b.cap, 4 + 50, 'caps add up across running campaigns');
   assert.equal(b.firsts.length, 4, 'this campaign\'s cap, not Settings\'');
   assert.deepEqual(b.problems, []);
-  assert.ok(b.firsts.every(p => p['Campaign ID'] === id));
+  assert.ok(b.firsts.every(p => p.campaignId === id));
   assert.deepEqual(b.campaigns.map(c => [c.name, c.firsts]), [['Realtor email test', 0], ['Dec', 4]]);
   // Thursday is not one of its days
   const THU = new Date('2026-12-03T15:00:00Z');
@@ -217,7 +224,7 @@ test('the five-address test becomes its own small running campaign with borrowed
   assert.deepEqual(c.versions.map(v => v.Subject), ['Test A', 'Test B', 'Test C']);
   const b = app.buildTodayBatch({ now: TUE });
   assert.equal(b.firsts.length, 3);
-  assert.ok(b.firsts.every(p => p['Campaign ID'] === r.campaignId));
+  assert.ok(b.firsts.every(p => p.campaignId === r.campaignId));
   // pressing it again reuses the campaign
   const again = app.createTestCampaign('brian+1@armortexroofs.com');
   assert.equal(again.campaignId, r.campaignId); assert.equal(again.existed, 1);
@@ -298,24 +305,22 @@ test('release and series: a finished campaign frees its people after the cooling
   app.saveCampaign(p1.id, { status: 'running' });
   const rep = app.sendTodayBatch({ now: TUE });
   assert.equal(rep.sent, 29);
-  const members = app.$rows('Partners').filter(p => p['Campaign ID'] === p1.id);
+  const members = app.$rows('Partners').filter(p => p['Campaign ID'].split(',').indexOf(p1.id) !== -1);
   // two reply, one says no
   const e = {}; app.$rows('Emails').filter(x => x.Step === 'first').forEach(x => { e[x['Partner ID']] = x; });
   [0, 1].forEach(i => app._updateRow_('Emails', e[members[i].ID]._row, { Status: 'replied' }));
   app._updateRow_('Partners', members[0]._row, { Stage: 'Replied', Response: 'Replied' });
   app._updateRow_('Partners', members[1]._row, { Stage: 'Replied', Response: 'Replied' });
   app._updateRow_('Partners', members[2]._row, { Stage: 'Replied', Response: 'Not interested' });
-  // while Part 1 is open, nobody can be taken
+  // Part 2 right away: the cooling-off holds the silent ones, said-no is out for good; Part 1 being open does not matter
   const p2 = app.createCampaign({ name: 'Part 2', type: 'realtor', lists: [p1.id], versions: ['A'] });
   let aud = app.campaignAudience(p2.id);
-  assert.equal(aud.excluded['in another campaign'], 27, 'silent ones are still Part 1\'s while it runs');
-  assert.equal(aud.matching, 0);
-  // Part 1 done → free, but the cooling-off holds them
-  app.saveCampaign(p1.id, { status: 'done' });
-  aud = app.campaignAudience(p2.id);
   assert.equal(aud.excluded['emailed in the last 90 days'], 26);
   assert.equal(aud.excluded['said no'], 1);
-  assert.ok(!aud.excluded['in another campaign']);
+  assert.equal(aud.matching, 0);
+  assert.equal(aud.excludedPeople['said no'].length, 1);
+  assert.ok(aud.excludedPeople['emailed in the last 90 days'][0].lastSent, 'the who-list says when they were last emailed');
+  app.saveCampaign(p1.id, { status: 'done' });
   // cooling-off over
   app.saveSettings({ reengage_days: '0' });
   aud = app.campaignAudience(p2.id);
@@ -324,7 +329,7 @@ test('release and series: a finished campaign frees its people after the cooling
   assert.equal(app.getCampaign(p2.id).earlier.find(x => x.id === p1.id).noReply, 27, 'pool counts everyone silent; said-no is cut by the exclusion');
   const dealt = app.dealLetters(p2.id, { rng: seeded(3) });
   assert.equal(dealt.dealt, 26);
-  assert.ok(app.$rows('Partners').filter(p => p['Campaign ID'] === p2.id).length === 26);
+  assert.equal(app.$rows('Partners').filter(p => p['Campaign ID'].split(',').indexOf(p2.id) !== -1).length, 26);
   // Part 1 keeps its history and numbers
   assert.equal(app.getCampaignStats(p1.id).rows.reduce((n, r) => n + r.sent, 0), 29);
   assert.equal(app.campaignResults(p1.id).rows.length, 29);
@@ -333,5 +338,5 @@ test('release and series: a finished campaign frees its people after the cooling
   app.saveCampaign(p2.id, { status: 'running' });
   const b = app.buildTodayBatch({ now: new Date('2026-12-08T15:00:00Z'), campaignId: p2.id });
   assert.equal(b.firsts.length, 26);
-  assert.ok(b.firsts.every(p => p['Campaign ID'] === p2.id));
+  assert.ok(b.firsts.every(p => p.campaignId === p2.id));
 });

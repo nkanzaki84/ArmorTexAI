@@ -157,7 +157,7 @@ function buildTodayBatch(opts) {
     let i = 0;
     while (firsts.length < firstRoom && versions.some(function (v) { return buckets[v].length; })) {
       const v = versions[i % versions.length];
-      if (buckets[v].length) firsts.push(buckets[v].shift());
+      if (buckets[v].length) { const p = buckets[v].shift(); const o = Object.assign({ campaignId: cid }, p); Object.defineProperty(o, '_row', { value: p._row, enumerable: false }); firsts.push(o); }
       i++;
     }
 
@@ -186,9 +186,9 @@ function buildTodayBatch(opts) {
 }
 
 /** Cancel queued (unsent) emails for a partner — used by opt-out and reply. */
-function _cancelQueuedEmails_(partnerId) {
+function _cancelQueuedEmails_(partnerId, campaignId) {
   const updates = _readTab_(TAB.EMAILS)
-    .filter(function (e) { return String(e['Partner ID']) === String(partnerId) && e['Status'] === 'queued'; })
+    .filter(function (e) { return String(e['Partner ID']) === String(partnerId) && e['Status'] === 'queued' && (!campaignId || String(e['Campaign ID']) === String(campaignId)); })
     .map(function (e) { return { rowIndex: e._row, row: { 'Status': 'cancelled' } }; });
   _updateRows_(TAB.EMAILS, updates);
   return updates.length;

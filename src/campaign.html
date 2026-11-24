@@ -76,21 +76,22 @@
     function renderAudience() {
       var c = data.campaign, a = data.audience;
       var chip = function (v, label, on) { return '<label class="chip ' + (on ? 'on' : '') + '"><input type="checkbox" value="' + esc(v) + '" hidden' + (on ? ' checked' : '') + '> ' + esc(label) + '</label>'; };
-      var ex = Object.keys(a.excluded).map(function (k) { return a.excluded[k] + ' ' + k; }).join(' · ');
+      var ex = Object.keys(a.excluded).map(function (k, i) { return '<a href="#" class="ex-why" data-why="' + esc(k) + '">' + a.excluded[k] + ' ' + esc(k) + '</a>'; }).join(' · ');
       var curated = data.curated || [];
       var html = '<div class="card"><div class="hd"><h2>Who is in it</h2><span class="sub">' + esc(c.typeLabel) + ' · pick lists, then Save</span><div class="spacer"></div><a class="btn sm ghost" href="#" onclick="go(\'lists\'); return false;">📋 Manage lists</a></div><div class="bd">' +
         '<div class="f"><label>Lists</label><div class="row" id="audLists">' + (curated.map(function (l) { return chip(l.id, l.name + ' · ' + l.count, c.lists.indexOf(l.id) !== -1); }).join('') || '<span class="sub">No lists yet. Make one under Lists, or use an import file below.</span>') + '</div><span class="sub">Ticked lists add up. None ticked = everyone of this type.</span></div>' +
         ((data.earlier || []).length ? '<div class="f"><label>People from an earlier campaign who never replied</label><div class="row" id="audEarlier">' + data.earlier.map(function (x) { return chip(x.id, x.name + ' · ' + x.noReply + ' no reply' + (x.status !== 'done' ? ' · ' + x.status : ''), c.lists.indexOf(x.id) !== -1); }).join('') + '</div><span class="sub">A series: Part 2 goes to Part 1\'s silent ones with a new angle. People are free once the earlier campaign is marked done, and never within ' + (data.reengageDays || 90) + ' days of their last email.</span></div>' : '') +
         '<details style="margin:4px 0 10px"><summary class="sub" style="cursor:pointer">Import files (the file a person arrived in)</summary><div class="row" id="audSources" style="margin-top:6px">' + (data.lists.map(function (l) { return chip(l.sourceList, l.sourceList + ' · ' + l.count, c.lists.indexOf(l.sourceList) !== -1); }).join('') || '<span class="sub">nothing imported yet</span>') + '</div></details>' +
         '<div id="audStages" style="display:none">' + data.stageOptions.map(function (s) { return chip(s, s, c.stages.indexOf(s) !== -1); }).join('') + '</div>' +
-        '<div class="ok-box"><b>' + a.members.length + ' in this campaign</b>' + (a.undealt ? ' · <b>' + a.undealt + '</b> match the filters and are not in yet' : '') + (ex ? '<div class="sub" style="margin-top:4px">Left out: ' + esc(ex) + '</div>' : '') + '</div>' +
+        '<div class="ok-box"><b>' + a.members.length + ' in this campaign</b>' + (a.undealt ? ' · <b>' + a.undealt + '</b> match the filters and are not in yet' : '') + (ex ? '<div class="sub" style="margin-top:4px">Left out: ' + ex + ' <span class="sub">(click one to see who)</span></div>' : '') + '</div>' +
+        '<div id="exWho" style="display:none;margin-top:8px"></div>' +
         '</div></div>';
       var counts = Object.keys(a.counts).filter(function (k) { return k !== 'none'; }).map(function (k) { return '<span class="pill">' + esc(k) + ' · ' + a.counts[k] + '</span>'; }).join(' ');
       var m = multi();
       html += '<div class="card"><div class="hd"><h2>People in it</h2><span class="sub">once in, they stay in; the email goes to each of them once</span><div class="spacer"></div><span class="pill ' + (a.undealt || a.counts.none ? 'warn' : 'ok') + '">' + (a.members.length - (a.counts.none || 0)) + ' of ' + (a.members.length + a.undealt) + ' in</span></div><div class="bd">' +
         '<div class="row">' + (isAdmin ? '<button class="btn navy" id="dealBtn"' + (a.undealt || a.counts.none ? '' : ' disabled') + '>' + (a.undealt ? 'Add the ' + a.undealt + ' who match' : 'Everyone who matches is in') + '</button>' : '') +
         '<span id="audLetters" class="chips" style="' + (m ? '' : 'display:none') + '"><span class="sub">Wordings:</span>' + data.letterOptions.map(function (l) { return chip(l, l, c.versions.indexOf(l) !== -1); }).join('') + '</span></div>' +
-        '<div class="sub" style="margin:6px 0">' + (m ? 'People are shuffled within each brokerage and dealt across the wordings in turn, so the comparison is fair. A wording is permanent once dealt.' : 'Everyone on the ticked lists who is not already in a campaign, not in the Partners book, not emailed by hand and not opted out.') + '</div>' +
+        '<div class="sub" style="margin:6px 0">' + (m ? 'People are shuffled within each brokerage and dealt across the wordings in turn, so the comparison is fair. A wording is permanent once dealt.' : 'Everyone on the ticked lists who is not in the Partners book, not emailed by hand, not opted out, and not emailed in the last cooling-off days.') + '</div>' +
         (m && counts ? '<div class="row">' + counts + '</div>' : '') + '<div id="dealResult"></div></div>' +
         '<div class="hd" style="border-top:1px solid var(--line)"><input class="inline-input" id="audSearch" placeholder="🔍 Search name, brokerage…" style="max-width:320px"><div class="spacer"></div><span class="sub">' + a.members.length + ' people</span></div>' +
         '<div class="scroll-x"><table class="tight"><thead><tr>' + (m ? '<th>Wording</th>' : '') + '<th>Name</th><th>' + esc((O.profiles[c.type] || {}).companyLabel || 'Company') + '</th><th>Area</th><th>Stage</th><th>Rep</th><th></th></tr></thead><tbody id="audRows"></tbody></table></div></div>';
@@ -101,11 +102,22 @@
         var ch = e.target.closest('label.chip'); if (ch && ch.querySelector('input')) { setTimeout(function () { ch.classList.toggle('on', ch.querySelector('input').checked); markDirty(); }, 0); }
         var rm = e.target.closest('[data-remove]'); if (rm) { e.stopPropagation(); if (!confirm('Take this person out of the campaign?')) return; api('removeFromCampaign', id, rm.dataset.remove).then(function () { toast('Removed', 'success'); load(); }).catch(fail); return; }
         var tr = e.target.closest('tr[data-id]'); if (tr) go('partner', { id: tr.dataset.id, from: 'prospects' });
+        var link = e.target.closest('a.ex-why');
+        if (link) {
+          e.preventDefault();
+          var why = link.dataset.why, people = (a.excludedPeople || {})[why] || [];
+          $('exWho').innerHTML = '<div class="card" style="margin:0"><div class="hd"><h3 style="margin:0">' + people.length + ' ' + esc(why) + '</h3><div class="spacer"></div><button class="btn sm ghost" type="button" id="exClose">✕</button></div>' +
+            '<ul class="list" style="max-height:300px;overflow:auto">' + people.map(function (p) { return '<li class="link" data-id="' + esc(p.ID) + '"><div style="flex:1;min-width:0"><div class="name">' + esc(p.Name) + '</div><div class="sub">' + esc(p.Company || '') + (p.lastSent ? ' · last emailed ' + fmtDate(p.lastSent) : '') + '</div></div><span class="sub">›</span></li>'; }).join('') + '</ul>' +
+            (why.indexOf('emailed in the last') === 0 ? '<div class="bd sub">The cooling-off (Settings → Sending) keeps anyone from getting a second pitch too soon, even from a different campaign. Lower it to 0 if you really want them now.</div>' : '') + '</div>';
+          $('exWho').style.display = '';
+          on($('exClose'), 'click', function () { $('exWho').style.display = 'none'; });
+          $('exWho').querySelector('ul').addEventListener('click', function (ev) { var li = ev.target.closest('li[data-id]'); if (li) go('partner', { id: li.dataset.id, from: 'prospects' }); });
+        }
       });
       if ($('dealBtn')) on($('dealBtn'), 'click', function () {
         var letters = picked($('audLetters'));
         if (!letters.length) return toast('Pick at least one wording', 'error');
-        if (!confirm('Add everyone who matches and is not in a campaign yet? Once in, they stay in.')) return;
+        if (!confirm('Add everyone who matches? Once in, they stay in.')) return;
         busy($('dealBtn'), true, 'Adding…');
         saveFilters().then(function () { return api('dealLetters', id, { versions: letters }); }).then(function (r) {
           $('dealResult').innerHTML = '<div class="ok-box">Added <b>' + r.dealt + '</b>' + (multi() ? ': ' + Object.keys(r.counts).map(function (v) { return v + ' ' + r.counts[v]; }).join(' · ') : '') + '.</div>';

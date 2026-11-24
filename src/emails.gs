@@ -114,7 +114,7 @@ function sendTodayBatch(opts) {
       const to = _normEmail_(p['Email']);
       if (dnc[to]) { report.skipped.dnc++; return; }
       if (quota <= 0) { report.skipped.quota++; return; }
-      const cid = String(p['Campaign ID'] || '');
+      const cid = String(p.campaignId || _partnerCampaignIds_(p)[0] || '');
       const v = versions[cid + '|' + String(p['Version'])];
       if (!v) { report.errors.push(p['Name'] + ': version ' + p['Version'] + ' missing'); return; }
       const subject = _fill_(v['Subject'], p);

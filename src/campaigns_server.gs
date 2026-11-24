@@ -41,20 +41,23 @@ function _campaignMemberTest_(cid) {
   _readTab_(TAB.EMAILS).forEach(function (e) { if (String(e['Campaign ID']) === cid && e['Status'] !== 'cancelled' && e['Sent At']) emailedIn[e['Partner ID']] = true; });
   return function (p) {
     if (emailedIn[p['ID']]) return true;
-    const own = String(p['Campaign ID'] || '').trim();
-    if (own) return own === cid;
+    const own = _partnerCampaignIds_(p);
+    if (own.length) return own.indexOf(cid) !== -1;
     return isDefault && !!String(p['Version'] || '').trim();
   };
 }
+
+/** The campaigns a person is in (Partners.Campaign ID holds a comma list; a person can be in several, Brian 2026-11-24). */
+function _partnerCampaignIds_(p) { return _csvList_(p['Campaign ID']); }
 
 /**
  * Everything the audience rules need, read once per call: which campaigns are still open,
  * who was emailed / replied in which campaign, when each person was last emailed.
  */
 function _campaignCtx_() {
-  const ctx = { open: {}, emailedIn: {}, repliedIn: {}, lastSent: {}, reengageDays: parseInt(_setting_(SETTING.REENGAGE_DAYS), 10) };
+  const ctx = { open: {}, names: {}, emailedIn: {}, repliedIn: {}, lastSent: {}, reengageDays: parseInt(_setting_(SETTING.REENGAGE_DAYS), 10) };
   if (isNaN(ctx.reengageDays)) ctx.reengageDays = 90;
-  _readTab_(TAB.CAMPAIGNS).forEach(function (c) { ctx.open[String(c['ID'])] = String(c['Status']) !== 'done'; });
+  _readTab_(TAB.CAMPAIGNS).forEach(function (c) { ctx.open[String(c['ID'])] = String(c['Status']) !== 'done'; ctx.names[String(c['ID'])] = String(c['Name'] || c['ID']); });
   _readTab_(TAB.EMAILS).forEach(function (e) {
     if (e['Status'] === 'cancelled' || !e['Sent At']) return;
     const cid = String(e['Campaign ID'] || ''), pid = String(e['Partner ID']);
@@ -125,9 +128,8 @@ function _campaignMatches_(c, p, ctx) {
 /** Why a matching partner is left out of the email campaign, or '' if they can go in. */
 function _campaignExclusion_(c, p, dnc, ctx) {
   ctx = ctx || _campaignCtx_();
-  const own = String(p['Campaign ID'] || '').trim();
-  // tied to a campaign only while it is open; a finished campaign releases its people (Brian, 2026-11-23)
-  if (own && own !== String(c['ID']) && ctx.open[own] !== false) return 'in another campaign';
+  // being in another campaign is fine (Brian 2026-11-24: "people can belong to multiple campaigns");
+  // the cooling-off below is what keeps two campaigns from emailing the same person in the same month
   if (String(p['Stage']) === 'Partner' || p['Partner Since']) return 'in the book';
   if (_yes_(p['Skip Email Test'])) return 'emailed by hand';
   if (_yes_(p['Do Not Contact']) || dnc[_normEmail_(p['Email'])]) return 'do-not-contact';
@@ -258,7 +260,7 @@ function saveCampaign(id, payload) {
     const letters = (payload.versions || []).map(String).filter(function (l) { return EMAIL_VERSIONS.indexOf(l) !== -1; });
     if (!letters.length) throw new Error('Pick at least one letter.');
     // letters already dealt stay in play
-    _readTab_(TAB.PARTNERS).forEach(function (p) { if (String(p['Campaign ID']) === String(id) && String(p['Version'] || '').trim() && letters.indexOf(String(p['Version'])) === -1) letters.push(String(p['Version'])); });
+    _readTab_(TAB.PARTNERS).forEach(function (p) { if (_partnerCampaignIds_(p).indexOf(String(id)) !== -1 && String(p['Version'] || '').trim() && letters.indexOf(String(p['Version'])) === -1) letters.push(String(p['Version'])); });
     row['Versions'] = EMAIL_VERSIONS.filter(function (l) { return letters.indexOf(l) !== -1; }).join(',');
     // make sure each letter has a wording row
     const have = {};
@@ -348,7 +350,7 @@ function campaignAudience(id) {
   _doNotContactEmails_().forEach(function (e) { dnc[e] = true; });
   const partners = _readTab_(TAB.PARTNERS);
   const members = [];
-  const excluded = {};
+  const excluded = {}, excludedPeople = {};
   let matching = 0, undealt = 0;
   const isMember = _campaignMemberTest_(id);
   const ctx = _campaignCtx_();
@@ -356,15 +358,20 @@ function campaignAudience(id) {
     const inIt = isMember(p);
     if (!inIt && !_campaignMatches_(c, p, ctx)) return;
     const why = inIt ? '' : _campaignExclusion_(c, p, dnc, ctx);
-    if (why) { excluded[why] = (excluded[why] || 0) + 1; return; }
+    if (why) {
+      excluded[why] = (excluded[why] || 0) + 1;
+      (excludedPeople[why] = excludedPeople[why] || []).push({ ID: p['ID'], Name: p['Name'], Company: p['Company'], lastSent: ctx.lastSent[String(p['ID'])] ? new Date(ctx.lastSent[String(p['ID'])]) : '' });
+      return;
+    }
     matching++;
     if (inIt) members.push({ ID: p['ID'], Name: p['Name'], Company: p['Company'], Area: p['Area'], Email: p['Email'], Stage: p['Stage'], Rep: p['Rep'], Version: p['Version'], 'Source List': p['Source List'] });
     else undealt++;
   });
   const counts = {};
   members.forEach(function (m) { const v = String(m.Version || '') || 'none'; counts[v] = (counts[v] || 0) + 1; });
-  return { matching: matching, members: members, undealt: undealt, excluded: excluded, counts: counts };
+  return { matching: matching, members: members, undealt: undealt, excluded: excluded, excludedPeople: excludedPeople, counts: counts };
 }
+
 
 /**
  * Deal letters: everyone who matches the filters and is not yet in a campaign
@@ -397,7 +404,8 @@ function dealLetters(id, opts) {
       const keep = String(p['Version'] || '').trim();
       const v = keep && letters.indexOf(keep) !== -1 ? keep : letters[cursor++ % letters.length];
       counts[v] = (counts[v] || 0) + 1;
-      updates.push({ rowIndex: p._row, row: { 'Version': v, 'Campaign ID': String(id) } });
+      const ids = _partnerCampaignIds_(p); if (ids.indexOf(String(id)) === -1) ids.push(String(id));
+      updates.push({ rowIndex: p._row, row: { 'Version': v, 'Campaign ID': ids.join(',') } });
     });
   });
   _updateRows_(TAB.PARTNERS, updates);
@@ -420,7 +428,7 @@ function removeWording(id, letter) {
   if (used) throw new Error('Emails already went out with wording ' + L + '; it has to stay so the results read right.');
   const keep = letters.filter(function (l) { return l !== L; });
   _updateRow_(TAB.CAMPAIGNS, c._row, { 'Versions': keep.join(',') });
-  const holders = _readTab_(TAB.PARTNERS).filter(function (p) { return String(p['Campaign ID']) === String(id) && String(p['Version']) === L; });
+  const holders = _readTab_(TAB.PARTNERS).filter(function (p) { return _partnerCampaignIds_(p).indexOf(String(id)) !== -1 && String(p['Version']) === L; });
   _updateRows_(TAB.PARTNERS, holders.map(function (p) { return { rowIndex: p._row, row: { 'Version': '' } }; }));
   const vIdx = _findRowIndex_(TAB.VERSIONS, function (v) { return String(v['Campaign ID']) === String(id) && String(v['Letter']) === L; });
   if (vIdx !== -1) _updateRow_(TAB.VERSIONS, vIdx, { 'Locked': '' });
@@ -432,11 +440,13 @@ function removeWording(id, letter) {
 function removeFromCampaign(id, partnerId) {
   _requireRole_(ADMIN_ROLES);
   const p = _byId_(TAB.PARTNERS, partnerId);
-  if (!p || String(p['Campaign ID']) !== String(id)) throw new Error('Not in this campaign.');
-  const sent = _readTab_(TAB.EMAILS).some(function (e) { return String(e['Partner ID']) === String(partnerId) && e['Status'] !== 'cancelled' && e['Sent At']; });
+  const ids = p ? _partnerCampaignIds_(p) : [];
+  if (!p || ids.indexOf(String(id)) === -1) throw new Error('Not in this campaign.');
+  const sent = _readTab_(TAB.EMAILS).some(function (e) { return String(e['Partner ID']) === String(partnerId) && String(e['Campaign ID']) === String(id) && e['Status'] !== 'cancelled' && e['Sent At']; });
   if (sent) throw new Error('Already emailed in this campaign; cannot be removed.');
-  _cancelQueuedEmails_(partnerId);
-  _updateRow_(TAB.PARTNERS, p._row, { 'Campaign ID': '', 'Version': '' });
+  _cancelQueuedEmails_(partnerId, id);
+  const rest = ids.filter(function (x) { return x !== String(id); });
+  _updateRow_(TAB.PARTNERS, p._row, { 'Campaign ID': rest.join(','), 'Version': rest.length ? p['Version'] : '' });
   return { ok: true };
 }
 

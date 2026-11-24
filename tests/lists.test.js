@@ -81,8 +81,7 @@ test('a campaign pointed at a list deals letters to its members; lists and impor
   // import file + list together: union
   const c2 = app.createCampaign({ name: 'Wide', type: 'realtor', lists: [l1, 'tyler'], versions: ['A'] });
   const aud = app.campaignAudience(c2.id);
-  assert.equal(aud.undealt, 7, 'the other 7 on the tyler file; the 5 on Met are in Dec already');
-  assert.equal(aud.excluded['in another campaign'], 5);
+  assert.equal(aud.undealt, 12, 'all 12 on the tyler file, the 5 on Met included: a person can be in more than one campaign');
   // the page shell renders the Lists page for every role
   assert.ok(app.doGet({ parameter: { page: 'lists' } }).getContent().indexOf('Your lists') !== -1);
 });
