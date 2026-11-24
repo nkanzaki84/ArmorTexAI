@@ -69,6 +69,8 @@ function validateVersion(v) {
   if (/https?:\/\/|www\./i.test(body)) problems.push('Body contains a link (first email must have none).');
   if (/<[a-z][\s\S]*>/i.test(body)) problems.push('Body contains HTML.');
   if (!/\?/.test(body.slice(-200))) problems.push('Body should end by asking for a reply.');
+  const unknown = _unknownPlaceholders_(subject + '\n' + body + '\n' + String(v['Follow Up Body'] || ''));
+  if (unknown.length) problems.push('Unknown fill-in word' + (unknown.length === 1 ? '' : 's') + ': ' + unknown.map(function (u) { return '{{' + u + '}}'; }).join(', ') + '. The app knows {{first}}, {{name}}, {{company}} and {{area}} (also {{first name}}, {{brokerage}}, {{city}}).');
   return problems;
 }
 

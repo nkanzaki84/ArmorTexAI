@@ -39,14 +39,16 @@ function checkSampleReport(link) {
 
 function _sampleMerge_(tpl, p, rep) {
   const name = String(p['Name'] || '').trim();
-  return String(tpl || '').replace(/\{\{(\w+)\}\}/g, function (_, k) {
+  return String(tpl || '').replace(/\{\{\s*([^{}]+?)\s*\}\}/g, function (m, raw) {
+    const r = raw.trim().toLowerCase();
+    if (r === 'rep') return rep;
+    if (r === 'address') return String(_setting_(SETTING.BUSINESS_ADDRESS) || '');
+    const k = _placeholderKey_(raw);
     if (k === 'first') return name.split(/\s+/)[0] || 'there';
     if (k === 'name') return name;
     if (k === 'company') return String(p['Company'] || '');
     if (k === 'area') return String(p['Area'] || '');
-    if (k === 'rep') return rep;
-    if (k === 'address') return String(_setting_(SETTING.BUSINESS_ADDRESS) || '');
-    return '';
+    return m;
   });
 }
 

@@ -15,15 +15,29 @@
 // Templating
 // ============================================================
 
-/** Replace {{first}}, {{name}}, {{company}}, {{area}} in a version's text. */
+/**
+ * Replace {{first}}, {{name}}, {{company}}, {{area}} in a version's text.
+ * Aliases people naturally type are accepted too ({{first name}}, {{brokerage}}, {{city}}…);
+ * anything else is left alone and validateVersion refuses it before a send.
+ */
+const PLACEHOLDER_ALIASES = {
+  first: 'first', 'first name': 'first', firstname: 'first', 'first_name': 'first',
+  name: 'name', 'full name': 'name', fullname: 'name',
+  company: 'company', brokerage: 'company', office: 'company', firm: 'company', agency: 'company',
+  area: 'area', city: 'area', town: 'area', market: 'area',
+};
+function _placeholderKey_(raw) { return PLACEHOLDER_ALIASES[String(raw || '').trim().toLowerCase().replace(/\s+/g, ' ')] || ''; }
 function _fill_(text, partner) {
   const name = String(partner['Name'] || '').trim();
   const first = name.split(/\s+/)[0] || 'there';
-  return String(text || '')
-    .replace(/\{\{\s*first\s*\}\}/gi, first)
-    .replace(/\{\{\s*name\s*\}\}/gi, name)
-    .replace(/\{\{\s*company\s*\}\}/gi, String(partner['Company'] || ''))
-    .replace(/\{\{\s*area\s*\}\}/gi, String(partner['Area'] || ''));
+  const values = { first: first, name: name, company: String(partner['Company'] || ''), area: String(partner['Area'] || '') };
+  return String(text || '').replace(/\{\{\s*([^{}]+?)\s*\}\}/g, function (m, raw) { const k = _placeholderKey_(raw); return k ? values[k] : m; });
+}
+/** The {{…}} words in a text the app does not know. */
+function _unknownPlaceholders_(text) {
+  const out = [];
+  String(text || '').replace(/\{\{\s*([^{}]+?)\s*\}\}/g, function (m, raw) { if (!_placeholderKey_(raw) && out.indexOf(raw.trim()) === -1) out.push(raw.trim()); return m; });
+  return out;
 }
 
 function _senderEmail_() {

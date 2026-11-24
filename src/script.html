@@ -67,7 +67,13 @@
   function go(page, params) {
     var url = window.APP_URL + '?page=' + encodeURIComponent(page) + '&side=' + encodeURIComponent(O.side);
     Object.keys(params || {}).forEach(function (k) { url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); });
-    window.top.location.href = url;
+    try { window.top.location.href = url; }
+    catch (e) { goLink(url); }   // Google's frame only lets us navigate right after a click; after a server round-trip we offer the link
+  }
+  function goLink(url) {
+    var bar = document.getElementById('goBar');
+    if (!bar) { bar = document.createElement('div'); bar.id = 'goBar'; bar.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:300;background:#1b365d;color:#fff;padding:10px 16px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);font-size:14px;display:flex;gap:12px;align-items:center'; document.body.appendChild(bar); }
+    bar.innerHTML = 'Ready. <a href="' + esc(url) + '" target="_top" style="color:#fff;font-weight:700;text-decoration:underline">Open it →</a> <button type="button" class="btn sm ghost" style="color:#fff;border-color:rgba(255,255,255,.4)" onclick="document.getElementById(\'goBar\').remove()">✕</button>';
   }
 
   // Errors say what to do next (21): server timeouts get a plain-English hint.

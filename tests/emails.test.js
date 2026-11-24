@@ -162,3 +162,16 @@ test('triggers: install is idempotent and status reports it', () => {
   app.$as('nobody@armortexroofs.com');
   assert.throws(() => app.installTriggers(), /not on the Users list/);
 });
+
+test('placeholders: aliases fill in; unknown ones are refused before a send', () => {
+  const app = loadApp({ user: OWNER });
+  app.setup();
+  app.saveSettings({ business_address: ADDRESS, opt_out_line: OPT });
+  const p = { Name: 'Loretta Nelson', Company: 'Keller Williams', Area: 'Tyler' };
+  assert.equal(app._fill_('Hi {{first name}} of {{brokerage}} in {{ city }}, {{Name}}', p), 'Hi Loretta of Keller Williams in Tyler, Loretta Nelson');
+  assert.equal(app._fill_('{{typo}} stays', p), '{{typo}} stays');
+  const ok = app.validateVersion({ Channel: 'email', Subject: 'Hi {{first name}}', Body: BODY.replace('{{first}}', '{{brokerage}}') });
+  deq(ok, []);
+  const bad = app.validateVersion({ Channel: 'email', Subject: 'x', Body: BODY.replace('{{first}}', '{{first nme}}'), 'Follow Up Body': 'Hi {{frist}}' });
+  assert.ok(bad.some(m => /Unknown fill-in words: \{\{first nme\}\}, \{\{frist\}\}/.test(m)), bad.join(' | '));
+});
