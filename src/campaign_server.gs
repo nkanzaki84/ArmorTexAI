@@ -68,7 +68,16 @@ function validateVersion(v) {
   else if (lower.indexOf(optOut.toLowerCase()) === -1) problems.push('Body does not contain the opt-out line.');
   if (/https?:\/\/|www\./i.test(body)) problems.push('Body contains a link (first email must have none).');
   if (/<[a-z][\s\S]*>/i.test(body)) problems.push('Body contains HTML.');
-  if (!/\?/.test(body.slice(-200))) problems.push('Body should end by asking for a reply.');
+  // ends with a question: judged on the message itself, with the footer (address, opt-out, signature, P.S.) set aside
+  const lines = body.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+  const isFooter = function (l) {
+    const low = l.toLowerCase();
+    return (addr && low.indexOf(addr.toLowerCase()) !== -1) || (optOut && low.indexOf(optOut.toLowerCase()) !== -1) || /^p\.?s\.?\b/i.test(l) || /^\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/.test(l) || /^(regards|thanks|best|cheers|sincerely)[,!.]?$/i.test(l) || (l.length <= 40 && !/[.?!]$/.test(l));   // short bare lines are signature lines
+  };
+  let i = lines.length;
+  while (i > 0 && isFooter(lines[i - 1])) i--;
+  const closing = lines.slice(0, i).join('\n').slice(-300);
+  if (!/\?/.test(closing) && !/\?/.test(body.slice(-300))) problems.push('Body should end by asking for a reply (a question right before the signature).');
   const unknown = _unknownPlaceholders_(subject + '\n' + body + '\n' + String(v['Follow Up Body'] || ''));
   if (unknown.length) problems.push('Unknown fill-in word' + (unknown.length === 1 ? '' : 's') + ': ' + unknown.map(function (u) { return '{{' + u + '}}'; }).join(', ') + '. The app knows {{first}}, {{name}}, {{company}} and {{area}} (also {{first name}}, {{brokerage}}, {{city}}).');
   return problems;

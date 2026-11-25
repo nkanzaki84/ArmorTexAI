@@ -175,3 +175,13 @@ test('placeholders: aliases fill in; unknown ones are refused before a send', ()
   const bad = app.validateVersion({ Channel: 'email', Subject: 'x', Body: BODY.replace('{{first}}', '{{first nme}}'), 'Follow Up Body': 'Hi {{frist}}' });
   assert.ok(bad.some(m => /Unknown fill-in words: \{\{first nme\}\}, \{\{frist\}\}/.test(m)), bad.join(' | '));
 });
+
+test('the ends-with-a-question rule looks past the signature, phone, address, opt-out line and a P.S.', () => {
+  const app = loadApp({ user: OWNER });
+  app.setup();
+  app.saveSettings({ business_address: ADDRESS, opt_out_line: OPT });
+  const long = 'Hi {{first}},\n\nI\'m Brian, one of the owners of ArmorTex Roofs. We do roof reports on listings at no cost.\n\nMy partner Tanner inspects the roof and we send you a short photo report in under 48 hours, so you know its condition before the buyer\'s inspector does.\n\nWould you like to see a sample?\n\nBrian Kanzaki\nArmorTex Roofs\n(903) 920-0369\n' + ADDRESS + '\n\n' + OPT + '\n\nP.S. The report is yours to keep whether or not you ever call us.';
+  assert.deepEqual(JSON.parse(JSON.stringify(app.validateVersion({ Channel: 'email', Subject: 'x', Body: long }))), []);
+  const noQ = long.replace('Would you like to see a sample?', 'Let me know if you want a sample.');
+  assert.ok(app.validateVersion({ Channel: 'email', Subject: 'x', Body: noQ }).some(m => /asking for a reply/.test(m)));
+});

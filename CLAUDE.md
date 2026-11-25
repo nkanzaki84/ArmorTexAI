@@ -40,7 +40,7 @@ Read this first. It holds what the next session needs without re-asking.
 
 - A person presses Send. No batch goes out on a timer in v1.
 - Do-not-contact is checked at the moment of every send, mailing file and knock list. An opt-out takes effect the same day. A "no" at the door is permanent.
-- Every email carries the business street address and the opt-out line (`validateVersion`); first emails are plain text with no link, image or tracking pixel and end with a question. `buildTodayBatch` refuses a version that fails.
+- Every email carries the business street address and the opt-out line (`validateVersion`); first emails are plain text with no link, image or tracking pixel and end with a question. `buildTodayBatch` refuses a version that fails. The question check (v0.17.1) sets the footer aside first (address, opt-out line, phone, P.S., short signature lines) and looks for a `?` in the closing of what remains, so a long signature no longer trips it.
 - Versions lock once sending starts (`Locked = Yes`). Assign A/B/C/E once per partner, never change it.
 - One follow-up after 4 business days, in the same thread. Never a third.
 - No fee, gift card or payment to a realtor. Referrals has `Thanked` only; there is no money field and there must not be one.
