@@ -360,7 +360,7 @@ function campaignAudience(id) {
     const why = inIt ? '' : _campaignExclusion_(c, p, dnc, ctx);
     if (why) {
       excluded[why] = (excluded[why] || 0) + 1;
-      (excludedPeople[why] = excludedPeople[why] || []).push({ ID: p['ID'], Name: p['Name'], Company: p['Company'], lastSent: ctx.lastSent[String(p['ID'])] ? new Date(ctx.lastSent[String(p['ID'])]) : '' });
+      (excludedPeople[why] = excludedPeople[why] || []).push({ ID: p['ID'], Name: p['Name'], Company: p['Company'], lastSent: ctx.lastSent[String(p['ID'])] ? new Date(ctx.lastSent[String(p['ID'])]).toISOString() : '' });
       return;
     }
     matching++;

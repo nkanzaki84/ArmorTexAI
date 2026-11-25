@@ -9,8 +9,8 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.16.2';
-const APP_BUILD_DATE = '2026-11-24';
+const APP_VERSION    = '0.16.4';
+const APP_BUILD_DATE = '2026-11-25';
 
 // ===== Script Property keys =====
 const PROP_SHEET_ID = 'OUTREACH_SHEET_ID';

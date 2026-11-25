@@ -187,6 +187,7 @@ function _visitsDue_(partners, now) {
   return Object.keys(due).map(function (oid) {
     const o = offices[oid] || {};
     const agents = Object.keys(partners).filter(function (id) { return String(partners[id]['Office ID']) === oid; }).length;
+    due[oid].since = new Date(due[oid].since).toISOString();   // never hand a Date to the browser: google.script.run drops the whole reply
     return Object.assign(due[oid], { name: String(o['Name'] || oid), address: String(o['Address'] || ''), phone: String(o['Phone'] || ''), manager: String(o['Manager'] || ''), agents: agents, lastVisit: (visits[oid] || [])[0] ? visits[oid][0]['At'] : '' });
   }).sort(function (a, b) { return (b.members - a.members) || (b.agents - a.agents); });
 }
