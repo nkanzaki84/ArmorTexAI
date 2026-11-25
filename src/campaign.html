@@ -149,7 +149,9 @@
             '<div class="f"><label>First email</label><textarea name="body" style="min-height:220px"' + ro + '>' + esc(v.Body) + '</textarea></div>' +
             '<div class="f"><label>Follow-up (same thread, ' + c.followUpDays + ' business days later, only one)</label><textarea name="followUpBody" style="min-height:80px"' + ro + '>' + esc(v['Follow Up Body']) + '</textarea></div>' +
             '<div class="problems"></div>' +
-            (isAdmin && !locked ? '<div class="row"><button class="btn primary" type="submit">' + (m ? 'Save wording ' + esc(v.Letter) : 'Save email') + '</button><span class="sub">Saving checks the footer rules.</span></div>' : '') + '</form>' + (m ? '</details>' : '</div>');
+            (isAdmin && !locked ? '<div class="row"><button class="btn primary" type="submit">' + (m ? 'Save wording ' + esc(v.Letter) : 'Save email') + '</button><span class="sub">Saving checks the footer rules.</span></div>' : '') + '</form>' +
+            (isAdmin ? '<div class="bd" style="border-top:1px dashed var(--line);background:#fffaf0"><div class="row" style="flex-wrap:wrap;gap:8px"><span class="pill" style="background:#fff3e0;color:#b25e00">🛠 owner tool</span><label class="sub" style="margin:0">See it as</label><select class="inline-input testAs" data-letter="' + esc(v.Letter) + '" style="max-width:260px"><option value="sample">Loretta Nelson (made up)</option></select><button type="button" class="btn sm" data-preview="' + esc(v.Letter) + '">👁 Preview</button><button type="button" class="btn sm navy" data-testsend="' + esc(v.Letter) + '" title="Sends the saved wording to your own inbox: first email, then the follow-up in the same thread. Not logged.">✉️ Send a test to me</button></div><div class="testPreview" data-letter="' + esc(v.Letter) + '" style="display:none;margin-top:10px"></div></div>' : '') +
+            (m ? '</details>' : '</div>');
         }).join('') : '<div class="empty">No wording yet.</div>') +
         (isAdmin && !m && !anyLocked ? '<div class="ft"><a href="#" id="compareLink" class="sub">Want to test a second wording on the same people? Add wording B</a></div>' : '') + '</div>';
       $('tab-copy').innerHTML = html;
@@ -158,6 +160,32 @@
         if (!confirm('Add a second wording (B)? People added from now on are split evenly between A and B so you can compare reply rates.')) return;
         api('saveCampaign', id, { versions: data.campaign.versions.concat(['B']) }).then(function () { toast('Wording B added', 'success'); load(); }).catch(fail);
       });
+      if (isAdmin) {
+        api('previewPeople', id).then(function (people) {
+          $('tab-copy').querySelectorAll('select.testAs').forEach(function (sel) { sel.innerHTML = people.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + (p.company ? ' · ' + esc(p.company) : '') + '</option>'; }).join(''); });
+        }).catch(function () {});
+        var asFor = function (L) { var s = $('tab-copy').querySelector('select.testAs[data-letter="' + L + '"]'); return s ? s.value : 'sample'; };
+        $('tab-copy').querySelectorAll('[data-preview]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var L = b.dataset.preview, box = $('tab-copy').querySelector('.testPreview[data-letter="' + L + '"]');
+            busy(b, true, '…');
+            api('previewCampaignEmail', id, L, asFor(L)).then(function (pv) {
+              box.style.display = '';
+              box.innerHTML = '<div class="sub" style="margin-bottom:6px">As <b>' + esc(pv.as.name) + '</b>' + (pv.as.company ? ' · ' + esc(pv.as.company) : '') + '. This is the saved wording; save first if you just edited it.</div>' +
+                (pv.problems.length ? '<div class="problem">' + pv.problems.map(esc).join('<br>') + '</div>' : '') +
+                '<div class="card" style="margin:0;max-width:720px"><div class="bd" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45"><div style="font-weight:700;margin-bottom:10px">' + esc(pv.subject) + '</div><div style="white-space:pre-wrap">' + esc(pv.body) + '</div>' + (pv.followUp ? '<hr style="border:0;border-top:1px dashed var(--line);margin:14px 0"><div class="sub" style="margin-bottom:6px">Follow-up, same thread:</div><div style="white-space:pre-wrap">' + esc(pv.followUp) + '</div>' : '') + '</div></div>';
+            }).catch(fail).finally(function () { busy(b, false, '👁 Preview'); });
+          });
+        });
+        $('tab-copy').querySelectorAll('[data-testsend]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var L = b.dataset.testsend;
+            if (!confirm('Send this wording to your own inbox as a test? First email, then the follow-up as a reply. Nothing is logged.')) return;
+            busy(b, true, 'Sending…');
+            api('sendTestEmail', id, L, asFor(L)).then(function (r) { toast('Sent to ' + r.to + (r.followUpSent ? ' with the follow-up threaded under it' : ''), 'success'); }).catch(fail).finally(function () { busy(b, false, '✉️ Send a test to me'); });
+          });
+        });
+      }
       $('tab-copy').querySelectorAll('[data-remove-wording]').forEach(function (b) {
         b.addEventListener('click', function (e) {
           e.preventDefault(); e.stopPropagation();

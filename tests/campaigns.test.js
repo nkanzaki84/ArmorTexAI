@@ -340,3 +340,36 @@ test('release and series: a finished campaign frees its people after the cooling
   assert.equal(b.firsts.length, 26);
   assert.ok(b.firsts.every(p => p.campaignId === p2.id));
 });
+
+test('owner test send: preview fills in a real person or the sample; the test goes to my own inbox, follow-up threaded, nothing logged or locked', () => {
+  const app = appWithLists();
+  const { id } = app.createCampaign({ name: 'Dec', type: 'realtor', lists: ['tyler'], versions: ['A'] });
+  app.saveVersion('A', { subject: 'Roof report for {{brokerage}} listings', body: BODY, followUpBody: 'Hi {{first name}}, still happy to send a sample?' }, id);
+  app.dealLetters(id, { rng: seeded(1) });
+  const people = app.previewPeople(id);
+  assert.equal(people[0].id, 'sample');
+  assert.ok(people.length > 1 && people.length <= 26);
+  let pv = app.previewCampaignEmail(id, 'A', 'sample');
+  assert.equal(pv.subject, 'Roof report for Keller Williams Tyler listings');
+  assert.match(pv.body, /^Hi Loretta,/);
+  assert.equal(pv.followUp, 'Hi Loretta, still happy to send a sample?');
+  assert.deepEqual(JSON.parse(JSON.stringify(pv.problems)), []);
+  pv = app.previewCampaignEmail(id, 'A', people[1].id);
+  assert.equal(pv.as.name, people[1].name);
+  const before = app.GmailApp.$sent.length;
+  const r = app.sendTestEmail(id, 'A', 'sample');
+  assert.equal(r.to, OWNER);
+  assert.equal(r.subject, '[TEST] Roof report for Keller Williams Tyler listings');
+  assert.equal(r.followUpSent, true);
+  const sent = app.GmailApp.$sent.slice(before);
+  assert.equal(sent.length, 2);
+  assert.equal(sent[0].to, OWNER);
+  assert.equal(sent[1].threadId, sent[0].threadId, 'follow-up rides the test thread');
+  assert.match(sent[1].subject, /^Re: \[TEST\]/);
+  assert.equal(app.$rows('Emails').length, 0, 'nothing logged');
+  assert.ok(app.listVersions(id).every(v => v.Locked !== 'Yes'), 'nothing locked');
+  assert.equal(app.getCampaign(id).campaign.sent, 0);
+  // sales cannot use it
+  const asTanner = loadApp({ user: TANNER }); asTanner.setup();
+  assert.throws(() => asTanner.sendTestEmail('CP-1', 'A', 'sample'), /cannot do that|Users list|signed in/);
+});

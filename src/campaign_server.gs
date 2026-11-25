@@ -339,3 +339,59 @@ function saveSettings(map) {
   });
   return { ok: true };
 }
+
+// ============================================================
+// Owner tool: see an email exactly as a person would get it, and send it
+// to yourself (first email, then the follow-up threaded under it).
+// Nothing is logged, nothing locks, no stats move. (Brian 2026-11-25)
+// ============================================================
+
+const TEST_SAMPLE_PARTNER = { 'ID': 'sample', 'Name': 'Loretta Nelson', 'Company': 'Keller Williams Tyler', 'Area': 'Tyler', 'Email': '' };
+
+/** The filled-in text for one wording, as a given person (or the sample) would receive it. Any role. */
+function previewCampaignEmail(campaignId, letter, partnerId) {
+  _requireRole_(ROLES.map(function (r) { return r.key; }));
+  const v = _versionFor_(campaignId, letter || 'A');
+  if (!v) throw new Error('No wording ' + (letter || 'A') + ' on this campaign.');
+  const p = partnerId && partnerId !== 'sample' ? _byId_(TAB.PARTNERS, partnerId) : null;
+  const who = p || TEST_SAMPLE_PARTNER;
+  return {
+    as: { id: String(who['ID']), name: String(who['Name'] || ''), company: String(who['Company'] || ''), area: String(who['Area'] || '') },
+    subject: _fill_(v['Subject'], who),
+    body: _fill_(v['Body'], who),
+    followUp: _fill_(v['Follow Up Body'], who),
+    problems: validateVersion(v),
+    unknown: _unknownPlaceholders_(String(v['Subject']) + '\n' + String(v['Body']) + '\n' + String(v['Follow Up Body'] || '')),
+  };
+}
+
+/** A few real members of the campaign to preview as, plus the sample. Any role. */
+function previewPeople(campaignId) {
+  _requireRole_(ROLES.map(function (r) { return r.key; }));
+  const isMember = _campaignMemberTest_(campaignId);
+  const out = [{ id: 'sample', name: TEST_SAMPLE_PARTNER['Name'] + ' (made up)', company: TEST_SAMPLE_PARTNER['Company'] }];
+  _readTab_(TAB.PARTNERS).filter(isMember).slice(0, 25).forEach(function (p) { out.push({ id: String(p['ID']), name: String(p['Name'] || ''), company: String(p['Company'] || '') }); });
+  return out;
+}
+
+/**
+ * Send the wording to the signed-in owner's own mailbox: the first email with a [TEST] subject,
+ * then the follow-up as a reply in that thread, so threading and line breaks can be checked in Gmail.
+ */
+function sendTestEmail(campaignId, letter, partnerId) {
+  const me = _requireRole_(ADMIN_ROLES);
+  const pv = previewCampaignEmail(campaignId, letter, partnerId);
+  const to = _senderEmail_() || me.email;
+  if (!to) throw new Error('No mailbox to send the test to.');
+  const settings = _settings_();
+  const senderName = String(settings[SETTING.SENDER_NAME] || '').trim();
+  const subject = '[TEST] ' + pv.subject;
+  const msg = GmailApp.createDraft(to, subject, pv.body, senderName ? { name: senderName } : {}).send();
+  let followUpSent = false;
+  if (String(pv.followUp || '').trim()) {
+    const threadId = msg.getThread().getId();
+    _sendInThread_(threadId, msg.getId(), to, 'Re: ' + subject, pv.followUp);
+    followUpSent = true;
+  }
+  return { ok: true, to: to, subject: subject, followUpSent: followUpSent, as: pv.as };
+}
