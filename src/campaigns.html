@@ -24,12 +24,14 @@
   <div class="modal">
     <h2 style="margin-top:0">New campaign</h2>
     <form id="newForm">
+      <div class="f"><label>Kind</label><div class="row" id="newKind"><label class="chip on"><input type="radio" name="kind" value="outreach" checked hidden> ✉️ Outreach · cold prospects, one email + one follow-up</label><label class="chip"><input type="radio" name="kind" value="series" hidden> 📰 Series · warm and partners, several emails on dates</label></div></div>
       <div class="f"><label>Name <span class="req">*</span></label><input name="name" required placeholder="e.g. Tyler realtors · December"></div>
       <div class="grid2">
         <div class="f"><label>Partner type</label><select name="type" id="newType"></select></div>
         <div class="f"><label>Start date</label><input name="startDate" type="date"></div>
       </div>
       <div class="f"><label>Tags</label><div id="newTags"></div><span class="sub">Words to find it by later. Type one and press Enter.</span></div>
+      <div class="f" id="newTiersWrap" style="display:none"><label>Who gets it</label><div class="row" id="newTiers"></div><span class="sub">A series never goes to cold prospects.</span></div>
       <div class="f"><label>Lists</label><div class="row" id="newLists"></div><span class="sub">Ticked lists add up. None ticked = everyone of this type. The Partners book, hand-emailed and opted-out people are never emailed; a person can be in more than one campaign.</span></div>
       <div class="f" id="newEarlierWrap" style="display:none"><label>Or: people from an earlier campaign who never replied</label><div class="row" id="newEarlier"></div><span class="sub">Part 2 of a series. Same people, new angle, after the cooling-off.</span></div>
       <div id="newStages" style="display:none"></div>
@@ -68,7 +70,7 @@
       all = list; renderTags(); list = view();
       $('rows').innerHTML = list.length ? list.map(function (c) {
         var runs = c.firstSentAt ? fmtDate(c.firstSentAt) + (c.lastSentAt && fmtDate(c.lastSentAt) !== fmtDate(c.firstSentAt) ? ' → ' + fmtDate(c.lastSentAt) : '') : (c.startDate ? 'starts ' + fmtDate(c.startDate) : 'not started');
-        return '<tr class="link" data-id="' + esc(c.id) + '"><td><b>' + esc(c.name) + '</b><div class="sub">' + esc(c.typeLabel) + (c.versions.length > 1 ? ' · comparing ' + esc(c.versions.join('/')) : '') + (c.listNames && c.listNames.length ? ' · ' + esc(c.listNames.join(', ')) : '') + '</div>' + (c.tags.length ? '<div style="margin-top:3px">' + c.tags.map(function (t) { return '<span class="pill" style="font-size:11px;margin-right:4px">' + esc(t) + '</span>'; }).join('') + '</div>' : '') + '</td>' +
+        return '<tr class="link" data-id="' + esc(c.id) + '"><td><b>' + esc(c.name) + '</b>' + (c.kind === 'series' ? ' <span class="pill navy" style="font-size:11px">📰 series</span>' : '') + '<div class="sub">' + esc(c.typeLabel) + (c.versions.length > 1 ? ' · comparing ' + esc(c.versions.join('/')) : '') + (c.listNames && c.listNames.length ? ' · ' + esc(c.listNames.join(', ')) : '') + '</div>' + (c.tags.length ? '<div style="margin-top:3px">' + c.tags.map(function (t) { return '<span class="pill" style="font-size:11px;margin-right:4px">' + esc(t) + '</span>'; }).join('') + '</div>' : '') + '</td>' +
           '<td>' + statusPill(c.status) + '</td>' +
           '<td class="num">' + c.audience + (c.dealt < c.audience ? ' <span class="sub">' + (c.audience - c.dealt) + ' undealt</span>' : '') + '</td>' +
           '<td class="num">' + c.sent + (c.audience ? ' <span class="sub">of ' + c.audience + '</span>' : '') + '</td>' +
@@ -95,6 +97,10 @@
         newTags = tagEditor($('newTags'), [String($('newType').value || 'realtor')].filter(Boolean));
         $('newType').innerHTML = Object.keys(profiles).map(function (k) { return '<option value="' + esc(k) + '">' + esc(profiles[k].plural || profiles[k].label) + '</option>'; }).join('');
         chips($('newStages'), ['Prospect', 'Contacted', 'Replied'].map(function (s) { return { value: s, label: s }; }), []);
+        chips($('newTiers'), [{ value: 'marketing', label: '🌤️ Marketing (warm)' }, { value: 'partners', label: '🤝 Partners' }], ['marketing', 'partners']);
+        var kindUi = function () { var k = $('newForm').kind.value; $('newTiersWrap').style.display = k === 'series' ? '' : 'none'; $('newEarlierWrap').style.display = (k === 'series') ? 'none' : ($('newEarlier').children.length ? '' : 'none'); $('newForm').startDate.parentNode.style.display = k === 'series' ? 'none' : ''; $('newKind').querySelectorAll('label.chip').forEach(function (l) { l.classList.toggle('on', l.querySelector('input').checked); }); };
+        $('newKind').querySelectorAll('input').forEach(function (r) { r.onchange = kindUi; });
+        kindUi();
         chips($('newLetters'), ['A', 'B', 'C', 'E'].map(function (l) { return { value: l, label: l }; }), ['A']);
         var fillEarlier = function () {
           var type = $('newType').value;
@@ -108,12 +114,13 @@
         $('newModal').classList.add('show');
       });
       on($('newCancel'), 'click', function () { $('newModal').classList.remove('show'); });
-      on($('newModal'), 'click', function (e) { var c = e.target.closest('label.chip'); if (c && c.querySelector('input')) { setTimeout(function () { c.classList.toggle('on', c.querySelector('input').checked); }, 0); } });
+      on($('newModal'), 'click', function (e) { var c = e.target.closest('label.chip'); if (c && c.querySelector('input') && c.querySelector('input').type !== 'radio') { setTimeout(function () { c.classList.toggle('on', c.querySelector('input').checked); }, 0); } });
       on($('newForm'), 'submit', function (e) {
         e.preventDefault();
         var f = e.target;
         var picked = function (box) { return Array.prototype.map.call(box.querySelectorAll('input:checked'), function (i) { return i.value; }); };
-        var payload = { name: f.name.value, type: f.type.value, startDate: f.startDate.value, tags: newTags ? newTags.get() : [], lists: picked($('newLists')).concat(picked($('newEarlier'))), stages: picked($('newStages')), versions: picked($('newLetters')) };
+        var series = f.kind.value === 'series';
+        var payload = { name: f.name.value, kind: f.kind.value, type: f.type.value, startDate: series ? '' : f.startDate.value, tags: newTags ? newTags.get() : [], lists: series ? picked($('newLists')) : picked($('newLists')).concat(picked($('newEarlier'))), stages: picked($('newStages')), versions: picked($('newLetters')), tiers: picked($('newTiers')) };
         var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Creating…');
         api('createCampaign', payload).then(function (r) { toast('Campaign created', 'success'); go('campaign', { id: r.id }); }).catch(fail).finally(function () { busy(btn, false, 'Create'); });
       });

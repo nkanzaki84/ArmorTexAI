@@ -32,6 +32,7 @@
       call:     { icon: '📞', cls: '',     text: function (i) { return i.n + ' call' + (i.n === 1 ? '' : 's') + ' logged'; } },
       text:     { icon: '💬', cls: '',     text: function (i) { return i.n + ' text' + (i.n === 1 ? '' : 's'); } },
       visit:    { icon: '🏢', cls: 'ok',   text: function (i) { return i.n + ' office visit' + (i.n === 1 ? '' : 's'); } },
+      series:   { icon: '📰', cls: 'navy', text: function (i) { return i.label + ' · ' + i.n + ' to go' + (i.status === 'draft' ? ' (draft)' : ''); } },
       social:   { icon: '📱', cls: '',     text: function (i) { return (i.status === 'posted' ? 'posted: ' : 'post: ') + i.label; } },
     };
     function monthKey(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }

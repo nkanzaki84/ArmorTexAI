@@ -122,13 +122,28 @@ function buildTodayBatch(opts) {
   const versionRows = _readTab_(TAB.VERSIONS);
 
   const campaigns = _readTab_(TAB.CAMPAIGNS).filter(function (c) { return String(c['Status']) === 'running' && (!opts.campaignId || String(c['ID']) === String(opts.campaignId)); });
-  const out = { date: todayKey, weekday: _weekday_(now), sendingDay: false, paused: paused, cap: 0, sentToday: 0, room: 0, followUps: [], firsts: [], problems: [], campaigns: [] };
+  const out = { date: todayKey, weekday: _weekday_(now), sendingDay: false, paused: paused, cap: 0, sentToday: 0, room: 0, followUps: [], firsts: [], steps: [], problems: [], campaigns: [] };
   if (paused) out.problems.push('Sending is paused (Settings).');
   if (!campaigns.length) out.problems.push(opts.campaignId ? 'This campaign is not running. Press Start sending or Resume first.' : 'No campaign is running. Start one under Campaigns.');
 
   campaigns.forEach(function (c) {
     const cid = String(c['ID']);
     const sending = _campaignSending_(c);
+    if (_isSeries_(c)) {   // dated steps: due when their date has come, whatever the sending days are
+      const sentTodayS = emails.filter(function (e) { return String(e['Campaign ID']) === cid && e['Status'] !== 'cancelled' && e['Sent At'] && _dateKey_(new Date(e['Sent At'])) === todayKey; }).length;
+      const roomS = Math.max(0, sending.cap - sentTodayS);
+      const due = _seriesDue_(c, partners, emails, now, dnc);
+      const taken = due.slice(0, roomS);
+      const problemsS = [];
+      const stepsNeeded = {};
+      taken.forEach(function (it) { stepsNeeded[it.step] = it.stepRow; });
+      Object.keys(stepsNeeded).forEach(function (n) { validateStep(stepsNeeded[n]).forEach(function (pr) { problemsS.push(c['Name'] + ', step ' + n + ': ' + pr); }); });
+      out.campaigns.push({ id: cid, name: String(c['Name'] || ''), kind: 'series', sendingDay: taken.length > 0, started: true, cap: sending.cap, sentToday: sentTodayS, room: roomS, followUps: 0, firsts: 0, steps: taken.length, waiting: due.length - taken.length, problems: problemsS });
+      out.cap += sending.cap; out.sentToday += sentTodayS; out.room += roomS;
+      if (taken.length) { out.sendingDay = true; problemsS.forEach(function (pr) { out.problems.push(pr); }); }
+      taken.forEach(function (it) { out.steps.push(it); });
+      return;
+    }
     const sendingDay = sending.days.indexOf(_weekday_(now).toLowerCase()) !== -1;
     const started = !c['Start Date'] || _dateKey_(new Date(c['Start Date'])) <= todayKey;
     const isMember = _campaignMemberTest_(cid);

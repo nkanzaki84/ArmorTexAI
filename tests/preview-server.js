@@ -117,6 +117,18 @@ function seed(app) {
   app.assignRepToList('realtors-gregg-nov-2026', 'tanner@armortexroofs.com');
   app.setCallQueue(ps[4].ID, true);
   app.recountPartnerStages();
+  // a series to the warm and partner tiers
+  (function () {
+    const addr = app.getSettings().business_address, opt = app.getSettings().opt_out_line;
+    const body = 'Hi {{first}},\n\nTwo roofs we finished this month and one thing to check before the next storm: https://armortexroofs.com/news\n\nBrian\nArmorTex Roofs\n' + addr + '\n' + opt;
+    const s = app.createCampaign({ name: 'Partner news · monthly', kind: 'series', type: 'realtor', tiers: ['marketing', 'partners'], tags: ['newsletter', 'partners'] });
+    const d = new Date(); const iso = (n) => { const x = new Date(d.getTime() + n * 86400000); return x.toISOString().slice(0, 10); };
+    app.saveStep(s.id, '1', { sendOn: iso(2), subject: 'December roofs and a hail tip', body: body });
+    app.addStep(s.id, { sendOn: iso(16), subject: 'Holiday hours and the January schedule', body: body });
+    app.addStep(s.id, { sendOn: iso(30), subject: 'What a roof report caught last week', body: body });
+    app.dealLetters(s.id);
+    app.saveCampaign(s.id, { status: 'running' });
+  })();
 }
 
 const SHIM = `<script>

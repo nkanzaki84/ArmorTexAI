@@ -106,6 +106,7 @@ function _campaignSending_(c) {
 /** Does this partner match the campaign's audience filters? (Exclusions are judged separately.) */
 function _campaignMatches_(c, p, ctx) {
   if (String(p['Type']).toLowerCase() !== String(c['Partner Type']).toLowerCase()) return false;
+  if (_isSeries_(c) && _seriesTiers_(c).indexOf(_tierOf_(p)) === -1) return false;   // warm and partners only
   // Lists: curated list ids (L-3), import-file names, or an earlier campaign (CP-1 = its people who never replied);
   // a person needs to be on any one of them
   const lists = _csvList_(c['Lists']);
@@ -120,6 +121,7 @@ function _campaignMatches_(c, p, ctx) {
     });
     if (!hit) return false;
   }
+  if (_isSeries_(c)) return true;   // its Stages column holds tiers, checked above
   const stages = _csvList_(c['Stages']);
   if (stages.length && stages.indexOf(String(p['Stage'] || 'Prospect')) === -1) return false;
   return true;
@@ -128,6 +130,11 @@ function _campaignMatches_(c, p, ctx) {
 /** Why a matching partner is left out of the email campaign, or '' if they can go in. */
 function _campaignExclusion_(c, p, dnc, ctx) {
   ctx = ctx || _campaignCtx_();
+  if (_isSeries_(c)) {   // warm people: the book, hand-emailed and the cooling-off do not apply
+    if (_yes_(p['Do Not Contact']) || dnc[_normEmail_(p['Email'])]) return 'do-not-contact';
+    if (!_normEmail_(p['Email'])) return 'no email';
+    return '';
+  }
   // being in another campaign is fine (Brian 2026-11-24: "people can belong to multiple campaigns");
   // the cooling-off below is what keeps two campaigns from emailing the same person in the same month
   if (String(p['Stage']) === 'Partner' || p['Partner Since']) return 'in the book';
@@ -174,7 +181,7 @@ function _campaignSummary_(c, partners, emails, events) {
   return {
     id: id, name: String(c['Name'] || ''), status: String(c['Status'] || 'draft'), type: String(c['Partner Type'] || ''),
     typeLabel: (PARTNER_TYPE_PROFILES[String(c['Partner Type'])] || {}).plural || String(c['Partner Type'] || ''),
-    typeKey: String(c['Partner Type'] || ''),
+    typeKey: String(c['Partner Type'] || ''), kind: _isSeries_(c) ? 'series' : 'outreach', tiers: _isSeries_(c) ? _seriesTiers_(c) : [],
     versions: _csvList_(c['Versions']), lists: _csvList_(c['Lists']), stages: _csvList_(c['Stages']),
     listNames: _csvList_(c['Lists']).map(function (l) { const row = /^L-\d+$/.test(l) ? _byId_(TAB.LISTS, l) : null; if (row) return String(row['Name']); const prev = /^CP-\d+$/.test(l) ? _byId_(TAB.CAMPAIGNS, l) : null; return prev ? 'no reply to “' + String(prev['Name']) + '”' : l; }),
     audience: members.length, dealt: members.filter(function (p) { return String(p['Version'] || '').trim(); }).length,
@@ -199,9 +206,10 @@ function getCampaign(id) {
     raw: { 'Start Date': c['Start Date'] || '', 'Sending Days': c['Sending Days'] || '', 'Daily Cap': c['Daily Cap'] === undefined ? '' : c['Daily Cap'], 'Follow Up Days': c['Follow Up Days'] === undefined ? '' : c['Follow Up Days'], 'Call After Days': c['Call After Days'] === undefined ? '' : c['Call After Days'], 'Visit After Days': c['Visit After Days'] === undefined ? '' : c['Visit After Days'] },
     sending: _campaignSending_(c),
     versions: listVersions(id),
+    steps: _isSeries_(c) ? listSteps(id) : [],
     stats: getCampaignStats(id),
     audience: campaignAudience(id),
-    plan: _campaignPlan_(c, partners, emails, new Date()),
+    plan: _isSeries_(c) ? { days: [], people: {}, firstsLeft: 0, followUpsQueued: 0, cap: 0, sendingDays: '', finish: '' } : _campaignPlan_(c, partners, emails, new Date()),
     lists: listSourceLists(),
     reengageDays: _campaignCtx_().reengageDays,
     curated: listLists(),
@@ -219,13 +227,18 @@ function createCampaign(payload) {
   if (!name) throw new Error('Give the campaign a name.');
   const type = String(payload.type || 'realtor').toLowerCase();
   if (!PARTNER_TYPE_PROFILES[type]) throw new Error('Unknown partner type: ' + type);
-  // one letter by default; B/C/E are for comparing wordings, which is optional
-  const letters = (payload.versions || ['A']).map(String).filter(function (l) { return EMAIL_VERSIONS.indexOf(l) !== -1; });
-  if (!letters.length) throw new Error('Pick at least one letter.');
+  const kind = String(payload.kind || 'outreach');
+  if (CAMPAIGN_KINDS.indexOf(kind) === -1) throw new Error('Kind must be outreach or series.');
+  const series = kind === 'series';
+  // one letter by default; B/C/E are for comparing wordings, which is optional. A series has steps instead.
+  const letters = series ? [] : (payload.versions || ['A']).map(String).filter(function (l) { return EMAIL_VERSIONS.indexOf(l) !== -1; });
+  if (!series && !letters.length) throw new Error('Pick at least one letter.');
+  const tiers = series ? (payload.tiers || SERIES_TIERS).map(String).filter(function (t) { return SERIES_TIERS.indexOf(t) !== -1; }) : [];
+  if (series && !tiers.length) throw new Error('Pick Marketing, Partners, or both.');
   const id = _nextId_(TAB.CAMPAIGNS);
   const row = {
     'ID': id, 'Name': name, 'Status': 'draft', 'Partner Type': type,
-    'Lists': (payload.lists || []).map(String).join(','), 'Stages': (payload.stages || []).map(String).join(','), 'Versions': letters.join(','),
+    'Lists': (payload.lists || []).map(String).join(','), 'Stages': series ? tiers.join(',') : (payload.stages || []).map(String).join(','), 'Versions': letters.join(','), 'Kind': kind,
     'Start Date': payload.startDate ? _parseLocalDate_(payload.startDate) : '', 'Sending Days': String(payload.sendingDays || ''), 'Daily Cap': payload.dailyCap === undefined || payload.dailyCap === '' ? '' : parseInt(payload.dailyCap, 10),
     'Follow Up Days': payload.followUpDays === undefined || payload.followUpDays === '' ? '' : parseInt(payload.followUpDays, 10),
     'Created At': new Date(), 'Created By': me.email, 'Notes': String(payload.notes || ''),
@@ -234,6 +247,10 @@ function createCampaign(payload) {
     'Tags': _normTags_(payload.tags !== undefined ? payload.tags : [type]).join(','),
   };
   _appendRows_(TAB.CAMPAIGNS, [row]);
+  if (series) {   // one empty step to start with
+    _appendRows_(TAB.VERSIONS, [{ 'Letter': '1', 'Channel': 'email', 'Partner Type': type, 'Angle': 'Step 1', 'Subject': '', 'Body': '', 'Follow Up Body': '', 'QR Code URL': '', 'Locked': '', 'Updated At': new Date(), 'Campaign ID': id, 'Send On': '' }]);
+    return { id: id };
+  }
   // letters: copy wording from the newest campaign of this type that has any, else blank
   const all = _readTab_(TAB.VERSIONS);
   const donor = _readTab_(TAB.CAMPAIGNS).filter(function (x) { return String(x['ID']) !== id && String(x['Partner Type']).toLowerCase() === type; }).reverse()
@@ -256,6 +273,7 @@ function saveCampaign(id, payload) {
   if (payload.name !== undefined) { const n = String(payload.name).trim(); if (!n) throw new Error('Name is required.'); row['Name'] = n; }
   if (payload.lists !== undefined) row['Lists'] = (payload.lists || []).map(String).join(',');
   if (payload.stages !== undefined) row['Stages'] = (payload.stages || []).map(String).join(',');
+  if (payload.tiers !== undefined && _isSeries_(c)) { const t = (payload.tiers || []).map(String).filter(function (x) { return SERIES_TIERS.indexOf(x) !== -1; }); if (!t.length) throw new Error('Pick Marketing, Partners, or both.'); row['Stages'] = t.join(','); }
   if (payload.versions !== undefined) {
     const letters = (payload.versions || []).map(String).filter(function (l) { return EMAIL_VERSIONS.indexOf(l) !== -1; });
     if (!letters.length) throw new Error('Pick at least one letter.');
@@ -302,7 +320,11 @@ function saveCampaign(id, payload) {
     if (CAMPAIGN_STATUSES.indexOf(st) === -1) throw new Error('Unknown status: ' + st);
     if (st === 'running') {
       const problems = [];
-      _readTab_(TAB.VERSIONS).filter(function (v) { return String(v['Campaign ID']) === String(id) && _csvList_(row['Versions'] !== undefined ? row['Versions'] : c['Versions']).indexOf(String(v['Letter'])) !== -1; })
+      if (_isSeries_(c)) {
+        const steps = _stepRows_(id);
+        if (!steps.length) problems.push('Add at least one step.');
+        steps.forEach(function (v) { validateStep(v).forEach(function (pr) { problems.push('Step ' + v['Letter'] + ': ' + pr); }); });
+      } else _readTab_(TAB.VERSIONS).filter(function (v) { return String(v['Campaign ID']) === String(id) && _csvList_(row['Versions'] !== undefined ? row['Versions'] : c['Versions']).indexOf(String(v['Letter'])) !== -1; })
         .forEach(function (v) { validateVersion(v).forEach(function (pr) { problems.push('Letter ' + v['Letter'] + ': ' + pr); }); });
       if (problems.length) throw new Error('Not ready to run. ' + problems.join(' '));
     }
@@ -318,6 +340,7 @@ function saveCampaign(id, payload) {
  * they are dealt fresh. Owner only. The original stays as the record.
  */
 function duplicateCampaign(id, payload) {
+  if (_isSeries_(_campaignById_(id))) return _duplicateSeries_(id, payload);
   _requireRole_(ADMIN_ROLES);
   payload = payload || {};
   const src = _campaignById_(id);
@@ -382,15 +405,16 @@ function dealLetters(id, opts) {
   _requireRole_(ADMIN_ROLES);
   opts = opts || {};
   const c = _campaignById_(id);
-  const letters = (opts.versions && opts.versions.length ? opts.versions.map(String) : _csvList_(c['Versions'])).filter(function (l) { return EMAIL_VERSIONS.indexOf(l) !== -1; });
-  if (!letters.length) throw new Error('Pick at least one letter.');
+  const series = _isSeries_(c);
+  const letters = series ? [] : (opts.versions && opts.versions.length ? opts.versions.map(String) : _csvList_(c['Versions'])).filter(function (l) { return EMAIL_VERSIONS.indexOf(l) !== -1; });
+  if (!series && !letters.length) throw new Error('Pick at least one letter.');
   const rng = opts.rng || Math.random;
   const dnc = {};
   _doNotContactEmails_().forEach(function (e) { dnc[e] = true; });
   const isMember = _campaignMemberTest_(id);
   const ctx = _campaignCtx_();
   const todo = _readTab_(TAB.PARTNERS).filter(function (p) {
-    if (isMember(p)) return !String(p['Version'] || '').trim();   // already in, just needs a letter
+    if (isMember(p)) return !series && !String(p['Version'] || '').trim();   // already in, just needs a letter
     return _campaignMatches_(c, p, ctx) && !_campaignExclusion_(c, p, dnc, ctx);
   });
   const groups = {};
@@ -401,10 +425,11 @@ function dealLetters(id, opts) {
   const updates = [];
   _shuffle_(Object.keys(groups), rng).forEach(function (key) {
     _shuffle_(groups[key], rng).forEach(function (p) {
+      const ids = _partnerCampaignIds_(p); if (ids.indexOf(String(id)) === -1) ids.push(String(id));
+      if (series) { updates.push({ rowIndex: p._row, row: { 'Campaign ID': ids.join(',') } }); return; }
       const keep = String(p['Version'] || '').trim();
       const v = keep && letters.indexOf(keep) !== -1 ? keep : letters[cursor++ % letters.length];
       counts[v] = (counts[v] || 0) + 1;
-      const ids = _partnerCampaignIds_(p); if (ids.indexOf(String(id)) === -1) ids.push(String(id));
       updates.push({ rowIndex: p._row, row: { 'Version': v, 'Campaign ID': ids.join(',') } });
     });
   });
@@ -600,4 +625,16 @@ function _campaignNoReplyCount_(cid) {
     if (e['Status'] === 'replied') replied[e['Partner ID']] = true;
   });
   return Object.keys(emailed).filter(function (pid) { return !replied[pid]; }).length;
+}
+
+function _duplicateSeries_(id, payload) {
+  _requireRole_(ADMIN_ROLES);
+  const src = _campaignById_(id);
+  payload = payload || {};
+  const made = createCampaign({ name: String(payload.name || (src['Name'] + ' (copy)')), type: src['Partner Type'], kind: 'series', tiers: _seriesTiers_(src), lists: payload.lists !== undefined ? payload.lists : _csvList_(src['Lists']), tags: _csvList_(src['Tags']), notes: src['Notes'] });
+  // replace the starter step with copies of the source steps, undated
+  const first = _findRowIndex_(TAB.VERSIONS, function (v) { return String(v['Campaign ID']) === String(made.id); });
+  if (first !== -1) _getTab_(TAB.VERSIONS).deleteRow(first);
+  _appendRows_(TAB.VERSIONS, _stepRows_(id).map(function (v) { return { 'Letter': String(v['Letter']), 'Channel': 'email', 'Partner Type': src['Partner Type'], 'Angle': 'Step ' + v['Letter'], 'Subject': v['Subject'], 'Body': v['Body'], 'Follow Up Body': '', 'QR Code URL': '', 'Locked': '', 'Updated At': new Date(), 'Campaign ID': made.id, 'Send On': '' }; }));
+  return made;
 }

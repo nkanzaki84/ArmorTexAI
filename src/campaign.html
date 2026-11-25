@@ -33,6 +33,8 @@
     var DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     function multi() { return data && data.campaign.versions.length > 1; }   // comparing wordings? letters only show then
+    function isSeries() { return data && data.campaign.kind === 'series'; }
+    var TIER_LABEL = { marketing: '🌤️ Marketing (warm)', partners: '🤝 Partners' };
     function statusPill(s) { return '<span class="pill ' + ({ running: 'ok', paused: 'warn', done: 'navy', draft: '' }[s] || '') + '">' + esc(s) + '</span>'; }
     function nextStatus(s) { return s === 'running' ? { to: 'paused', label: '⏸ Pause' } : s === 'done' ? null : { to: 'running', label: '▶ ' + (s === 'paused' ? 'Resume' : 'Start sending') }; }
 
@@ -47,6 +49,7 @@
 
     // ---- overview ----
     function renderOverview() {
+      if (isSeries()) return renderSeriesOverview();
       var c = data.campaign, s = data.stats, plan = data.plan;
       var due = plan.days.length ? plan.days[0] : null;
       var html = '<div class="stats">' +
@@ -76,6 +79,7 @@
     function renderAudience() {
       var c = data.campaign, a = data.audience;
       var chip = function (v, label, on) { return '<label class="chip ' + (on ? 'on' : '') + '"><input type="checkbox" value="' + esc(v) + '" hidden' + (on ? ' checked' : '') + '> ' + esc(label) + '</label>'; };
+      if (isSeries()) return renderSeriesAudience(c, a, chip);
       var ex = Object.keys(a.excluded).map(function (k, i) { return '<a href="#" class="ex-why" data-why="' + esc(k) + '">' + a.excluded[k] + ' ' + esc(k) + '</a>'; }).join(' · ');
       var curated = data.curated || [];
       var html = '<div class="card"><div class="hd"><h2>Who is in it</h2><span class="sub">' + esc(c.typeLabel) + ' · pick lists, then Save</span><div class="spacer"></div><a class="btn sm ghost" href="#" onclick="go(\'lists\'); return false;">📋 Manage lists</a></div><div class="bd">' +
@@ -136,6 +140,7 @@
 
     // ---- copy ----
     function renderCopy() {
+      if (isSeries()) return renderSteps();
       var c = data.campaign, vs = data.versions.filter(function (v) { return c.versions.indexOf(String(v.Letter)) !== -1; });
       var anyLocked = vs.some(function (v) { return String(v.Locked).toLowerCase() === 'yes'; });
       var m = multi();
@@ -160,6 +165,9 @@
         if (!confirm('Add a second wording (B)? People added from now on are split evenly between A and B so you can compare reply rates.')) return;
         api('saveCampaign', id, { versions: data.campaign.versions.concat(['B']) }).then(function () { toast('Wording B added', 'success'); load(); }).catch(fail);
       });
+      wireOwnerTool(); wireWordingForms();
+    }
+    function wireOwnerTool() {
       if (isAdmin) {
         api('previewPeople', id).then(function (people) {
           $('tab-copy').querySelectorAll('select.testAs').forEach(function (sel) { sel.innerHTML = people.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + (p.company ? ' · ' + esc(p.company) : '') + '</option>'; }).join(''); });
@@ -186,6 +194,8 @@
           });
         });
       }
+    }
+    function wireWordingForms() {
       $('tab-copy').querySelectorAll('[data-remove-wording]').forEach(function (b) {
         b.addEventListener('click', function (e) {
           e.preventDefault(); e.stopPropagation();
@@ -208,6 +218,7 @@
 
     // ---- schedule ----
     function renderSchedule() {
+      if (isSeries()) return renderSeriesSchedule();
       var c = data.campaign, raw = data.raw, sd = data.sending, plan = data.plan;
       var dayChips = DAYS.map(function (d) { var onIt = sd.days.indexOf(d.toLowerCase()) !== -1; return '<label class="chip ' + (onIt ? 'on' : '') + '"><input type="checkbox" value="' + d + '" hidden' + (onIt ? ' checked' : '') + '> ' + d + '</label>'; }).join('');
       // (chips stay on one line: label.chip is inline-flex in styles.html)
@@ -247,6 +258,107 @@
       on($('planWhoList'), 'click', function (e) { var li = e.target.closest('li[data-id]'); if (li) go('partner', { id: li.dataset.id, from: 'prospects' }); });
     }
 
+    // ---- series: overview, audience, steps, schedule ----
+    function renderSeriesOverview() {
+      var c = data.campaign, s = data.stats, steps = data.steps || [];
+      var next = steps.filter(function (st) { return st.sendOn && st.sent < st.members; }).sort(function (a, b) { return a.sendOn < b.sendOn ? -1 : 1; })[0];
+      var html = '<div class="stats">' +
+        '<div class="stat"><b>' + c.audience + '</b><span>people in it</span></div>' +
+        '<div class="stat"><b>' + steps.length + '</b><span>steps</span></div>' +
+        '<div class="stat"><b>' + c.sent + '</b><span>emails sent</span></div>' +
+        '<div class="stat"><b>' + c.replied + '</b><span>replied' + (c.sent ? ' · ' + pct(c.replyRate) : '') + '</span></div>' +
+        '<div class="stat"><b>' + (next ? fmtDate(next.sendOn) : '—') + '</b><span>' + (next ? 'next: step ' + esc(next.n) : 'nothing scheduled') + '</span></div></div>';
+      var cell = function (n, rate) { return '<td class="num">' + n + (rate !== undefined ? ' <span class="sub">' + pct(rate) + '</span>' : '') + '</td>'; };
+      html += '<div class="card"><div class="hd"><h2>By step</h2><span class="sub">counts beside every rate</span></div>' +
+        (steps.length ? '<div class="scroll-x"><table><thead><tr><th>Step</th><th>Date</th><th>Subject</th><th class="num">Sent</th><th class="num">Replied</th><th class="num">Bounced</th><th class="num">Opted out</th></tr></thead><tbody>' +
+          steps.map(function (st) { var r = s.rows.filter(function (x) { return String(x.version) === String(st.n); })[0] || { sent: 0, replied: 0, replyRate: 0, bounced: 0, optedOut: 0 }; return '<tr><td><b>' + esc(st.n) + '</b></td><td>' + (st.sendOn ? fmtDate(st.sendOn) : '<span class="pill warn">no date</span>') + '</td><td>' + esc(st.subject || '(no subject)') + '</td>' + cell(r.sent) + cell(r.replied, r.replyRate) + cell(r.bounced) + cell(r.optedOut) + '</tr>'; }).join('') + '</tbody></table></div>' : '<div class="empty">No steps yet. Add them on the Steps tab.</div>') + '</div>';
+      html += '<div class="grid2"><div class="card"><div class="hd"><h2>How it runs</h2></div><div class="bd"><div class="sub">A series goes to ' + c.tiers.map(function (t) { return TIER_LABEL[t] || t; }).join(' and ') + ' only, never cold prospects. Each step is its own email on its own date. When a step\'s date comes it shows on Today, and a person presses Send. Anyone who joins later catches up from step 1. Replies land on the call list; opt-outs stop everything.</div>' +
+        '<div class="row" style="margin-top:10px"><a class="btn sm" href="#" onclick="go(\'calendar\'); return false;">📅 See it on the calendar</a><a class="btn sm" href="#" onclick="go(\'today\'); return false;">☀️ Open Today</a></div></div></div>' +
+        '<div class="card"><div class="hd"><h2>Notes</h2></div><div class="bd">' + (c.notes ? '<div class="sub" style="white-space:pre-wrap">' + esc(c.notes) + '</div>' : '<div class="empty">Nothing yet.</div>') + '</div></div></div>';
+      $('tab-overview').innerHTML = html;
+    }
+
+    function renderSeriesAudience(c, a, chip) {
+      var curated = data.curated || [];
+      var ex = Object.keys(a.excluded).map(function (k) { return '<a href="#" class="ex-why" data-why="' + esc(k) + '">' + a.excluded[k] + ' ' + esc(k) + '</a>'; }).join(' · ');
+      var html = '<div class="card"><div class="hd"><h2>Who is in it</h2><span class="sub">' + esc(c.typeLabel) + ' · warm and partners only</span></div><div class="bd">' +
+        '<div class="f"><label>Tiers</label><div class="row" id="audTiers">' + ['marketing', 'partners'].map(function (t) { return chip(t, TIER_LABEL[t], c.tiers.indexOf(t) !== -1); }).join('') + '</div><span class="sub">Cold prospects never get a series.</span></div>' +
+        '<div class="f"><label>Narrow to lists (optional)</label><div class="row" id="audLists">' + (curated.map(function (l) { return chip(l.id, l.name + ' · ' + l.count, c.lists.indexOf(l.id) !== -1); }).join('') || '<span class="sub">No lists yet.</span>') + '</div><span class="sub">None ticked = everyone in those tiers.</span></div>' +
+        '<div id="audSources" style="display:none"></div><div id="audStages" style="display:none"></div><span id="audLetters" style="display:none"></span>' +
+        '<div class="ok-box"><b>' + a.members.length + ' in this series</b>' + (a.undealt ? ' · <b>' + a.undealt + '</b> match and are not in yet' : '') + (ex ? '<div class="sub" style="margin-top:4px">Left out: ' + ex + '</div>' : '') + '</div><div id="exWho" style="display:none;margin-top:8px"></div></div></div>';
+      html += '<div class="card"><div class="hd"><h2>People in it</h2><span class="sub">each gets every step from the day they join</span><div class="spacer"></div><span class="pill ok">' + a.members.length + ' in</span></div><div class="bd">' +
+        '<div class="row">' + (isAdmin ? '<button class="btn navy" id="dealBtn"' + (a.undealt ? '' : ' disabled') + '>' + (a.undealt ? 'Add the ' + a.undealt + ' who match' : 'Everyone who matches is in') + '</button>' : '') + '</div><div id="dealResult"></div></div>' +
+        '<div class="row" style="padding:0 16px 8px"><div class="search">🔍 <input id="audSearch" placeholder="Search name, brokerage"></div><div class="spacer"></div><span class="sub">' + a.members.length + ' people</span></div>' +
+        '<div class="scroll-x"><table class="tight"><thead><tr><th>Name</th><th>Company</th><th>Area</th><th>Tier</th><th></th></tr></thead><tbody id="audRows"></tbody></table></div></div>';
+      $('tab-audience').innerHTML = html;
+      window.__seriesRows = function (q) {
+        q = String(q || '').toLowerCase();
+        var rows = a.members.filter(function (m) { return !q || (m.Name + ' ' + (m.Company || '')).toLowerCase().indexOf(q) !== -1; });
+        $('audRows').innerHTML = rows.length ? rows.map(function (m) { return '<tr class="link" data-id="' + esc(m.ID) + '"><td>' + esc(m.Name) + '</td><td>' + esc(m.Company || '') + '</td><td>' + esc(m.Area || '') + '</td><td>' + stagePill(m.Stage) + '</td><td>' + (isAdmin ? '<button class="btn sm ghost" data-remove="' + esc(m.ID) + '">✕</button>' : '') + '</td></tr>'; }).join('') : '<tr><td colspan="5" class="empty">Nobody in the series yet. Press the button above.</td></tr>';
+      };
+      window.__seriesRows('');
+      on($('audSearch'), 'input', function () { window.__seriesRows($('audSearch').value); });
+      on($('tab-audience'), 'click', function (e) {
+        var ch = e.target.closest('label.chip'); if (ch && ch.querySelector('input')) { setTimeout(function () { ch.classList.toggle('on', ch.querySelector('input').checked); markDirty(); }, 0); }
+        var rm = e.target.closest('[data-remove]'); if (rm) { e.stopPropagation(); if (!confirm('Take this person out of the series?')) return; api('removeFromCampaign', id, rm.dataset.remove).then(function () { toast('Removed', 'success'); load(); }).catch(fail); return; }
+        var tr = e.target.closest('tr[data-id]'); if (tr) go('partner', { id: tr.dataset.id, from: 'marketing' });
+        var link = e.target.closest('a.ex-why');
+        if (link) { e.preventDefault(); var why = link.dataset.why, people = (a.excludedPeople || {})[why] || []; $('exWho').innerHTML = '<div class="card" style="margin:0"><div class="hd"><h3 style="margin:0">' + people.length + ' ' + esc(why) + '</h3></div><ul class="list">' + people.map(function (p) { return '<li class="link" data-id="' + esc(p.ID) + '"><div class="name">' + esc(p.Name) + '</div></li>'; }).join('') + '</ul></div>'; $('exWho').style.display = ''; }
+      });
+      if ($('dealBtn')) on($('dealBtn'), 'click', function () {
+        if (!confirm('Add everyone who matches to the series? They get every step from today on.')) return;
+        busy($('dealBtn'), true, 'Adding…');
+        saveFilters().then(function () { return api('dealLetters', id, {}); }).then(function (r) { toast('Added ' + r.dealt, 'success'); load(); }).catch(fail).finally(function () { busy($('dealBtn'), false, 'Add the people who match'); });
+      });
+    }
+
+    function renderSteps() {
+      var steps = data.steps || [];
+      var html = '<div class="card"><div class="hd"><h2>Steps</h2><span class="sub">each step is its own email on its own date · street address + opt-out line · links allowed · {{first}} {{name}} {{company}} {{area}} are filled in</span><div class="spacer"></div>' + (isAdmin ? '<button class="btn primary sm" id="addStepBtn">+ Add a step</button>' : '') + '</div>' +
+        (steps.length ? steps.map(function (st) {
+          var ro = (!isAdmin || st.locked) ? ' readonly' : '', dis = (!isAdmin || st.locked) ? ' disabled' : '';
+          return '<div class="card" style="margin:10px 12px;box-shadow:none"><div class="hd"><h3 style="margin:0">Step ' + esc(st.n) + '</h3>' + (st.locked ? '<span class="pill">🔒 sent to ' + st.sent + '</span>' : st.problems.length ? '<span class="pill warn">' + st.problems.length + ' to fix</span>' : '<span class="pill ok">ready</span>') + '<div class="spacer"></div>' + (isAdmin && !st.locked ? '<button type="button" class="btn sm ghost" data-remove-step="' + esc(st.n) + '">Remove</button>' : '') + '</div>' +
+            '<form class="bd stepForm" data-n="' + esc(st.n) + '">' +
+            '<div class="grid2"><div class="f"><label>Goes out on <span class="req">*</span></label><input name="sendOn" type="date" value="' + esc(st.sendOn) + '"' + dis + '><span class="sub">Shows on Today that day; a person presses Send.</span></div><div class="f"><label>Subject <span class="req">*</span></label><input name="subject" value="' + esc(st.subject) + '"' + ro + '></div></div>' +
+            '<div class="f"><label>Email</label><textarea name="body" style="min-height:200px"' + ro + '>' + esc(st.body) + '</textarea></div>' +
+            '<div class="problems">' + (st.problems.length && !st.locked ? st.problems.map(function (p) { return '<div class="problem">' + esc(p) + '</div>'; }).join('') : '') + '</div>' +
+            (isAdmin && !st.locked ? '<div class="row"><button class="btn primary" type="submit">Save step ' + esc(st.n) + '</button><span class="sub">Saving checks the footer rules.</span></div>' : '') + '</form>' +
+            (isAdmin ? '<div class="bd" style="border-top:1px dashed var(--line);background:#fffaf0"><div class="row" style="flex-wrap:wrap;gap:8px"><span class="pill" style="background:#fff3e0;color:#b25e00">🛠 owner tool</span><label class="sub" style="margin:0">See it as</label><select class="inline-input testAs" data-letter="' + esc(st.n) + '" style="max-width:260px"><option value="sample">Loretta Nelson (made up)</option></select><button type="button" class="btn sm" data-preview="' + esc(st.n) + '">👁 Preview</button><button type="button" class="btn sm navy" data-testsend="' + esc(st.n) + '">✉️ Send a test to me</button></div><div class="testPreview" data-letter="' + esc(st.n) + '" style="display:none;margin-top:10px"></div></div>' : '') + '</div>';
+        }).join('') : '<div class="empty">No steps yet.</div>') + '</div>';
+      $('tab-copy').innerHTML = html;
+      on($('addStepBtn'), 'click', function () { api('addStep', id, {}).then(function (r) { toast('Step ' + r.n + ' added', 'success'); load(); }).catch(fail); });
+      $('tab-copy').querySelectorAll('[data-remove-step]').forEach(function (b) { b.addEventListener('click', function () { if (!confirm('Remove step ' + b.dataset.removeStep + '?')) return; api('removeStep', id, b.dataset.removeStep).then(function () { toast('Removed', 'success'); load(); }).catch(fail); }); });
+      $('tab-copy').querySelectorAll('.stepForm').forEach(function (f) {
+        f.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = f.querySelector('[type=submit]'); busy(btn, true, 'Saving…');
+          api('saveStep', id, f.dataset.n, { sendOn: f.sendOn.value, subject: f.subject.value, body: f.body.value }).then(function (r) {
+            f.querySelector('.problems').innerHTML = r.problems.length ? r.problems.map(function (p) { return '<div class="problem">' + esc(p) + '</div>'; }).join('') : '<div class="ok-box">✓ Ready.</div>';
+            toast('Saved', 'success');
+          }).catch(fail).finally(function () { busy(btn, false, 'Save step ' + f.dataset.n); });
+        });
+      });
+      wireOwnerTool();
+    }
+
+    function renderSeriesSchedule() {
+      var c = data.campaign, raw = data.raw, sd = data.sending, steps = data.steps || [];
+      var dis = isAdmin ? '' : ' disabled';
+      var html = '<div class="grid2"><div class="card"><div class="hd"><h2>Settings</h2></div><form class="bd" id="schedForm">' +
+        '<div class="f"><label>Daily cap</label><input name="dailyCap" type="number" min="0" max="1500" value="' + esc(raw['Daily Cap'] === '' ? '' : raw['Daily Cap']) + '" placeholder="' + sd.cap + ' (Settings)"' + dis + '><span class="sub">If a step has more people than this, the rest go out on the next days.</span></div>' +
+        '<div class="f"><label>Tags</label><div id="schedTags"></div></div>' +
+        '<div class="f"><label>Notes</label><textarea name="notes" style="min-height:60px"' + dis + '>' + esc(c.notes) + '</textarea></div>' +
+        '<input type="hidden" name="startDate" value=""><input type="hidden" name="followUpDays" value=""><input type="hidden" name="callAfterDays" value=""><input type="hidden" name="visitAfterDays" value=""><span id="schedDays" style="display:none"></span>' +
+        '<div class="sub">Dates live on each step (Steps tab). The Calendar draws them.</div></form></div>' +
+        '<div class="card"><div class="hd"><h2>On the calendar</h2></div>' +
+        (steps.length ? '<div class="scroll-x"><table><thead><tr><th>Step</th><th>Date</th><th>Subject</th><th class="num">Sent</th><th class="num">Still to go</th></tr></thead><tbody>' + steps.slice().sort(function (a, b) { return (a.sendOn || '9') < (b.sendOn || '9') ? -1 : 1; }).map(function (st) { return '<tr><td><b>' + esc(st.n) + '</b></td><td>' + (st.sendOn ? fmtDate(st.sendOn) : '<span class="pill warn">no date</span>') + '</td><td>' + esc(st.subject || '(no subject)') + '</td><td class="num">' + st.sent + '</td><td class="num">' + Math.max(0, st.members - st.sent) + '</td></tr>'; }).join('') + '</tbody></table></div><div class="bd"><a class="btn sm" href="#" onclick="go(\'calendar\'); return false;">📅 Open the calendar</a></div>' : '<div class="empty">No steps yet.</div>') + '</div></div>';
+      $('tab-schedule').innerHTML = html;
+      schedTags = tagEditor($('schedTags'), c.tags, function () { markDirty(); });
+      if (!isAdmin) $('schedTags').querySelector('.tag-input').style.display = 'none';
+      on($('schedForm'), 'input', markDirty);
+      on($('schedForm'), 'submit', function (e) { e.preventDefault(); saveAll(); });
+    }
+
     // ---- results ----
     function renderResults() {
       var rows = results.rows;
@@ -282,13 +394,14 @@
     function markDirty() { dirty = true; $('saveAll').style.display = isAdmin ? '' : 'none'; }
     function saveFilters() {
       if (!$('audLists')) return Promise.resolve();
+      if (isSeries()) return api('saveCampaign', id, { lists: picked($('audLists')), tiers: picked($('audTiers')) });
       return api('saveCampaign', id, { lists: picked($('audLists')).concat(picked($('audSources'))).concat($('audEarlier') ? picked($('audEarlier')) : []), stages: picked($('audStages')), versions: picked($('audLetters')) });
     }
     function saveAll() {
       var payload = {};
       var sf = $('schedForm');
       if (sf) { payload.startDate = sf.startDate.value; payload.dailyCap = sf.dailyCap.value; payload.followUpDays = sf.followUpDays.value; payload.callAfterDays = sf.callAfterDays.value; payload.visitAfterDays = sf.visitAfterDays.value; payload.notes = sf.notes.value; payload.tags = schedTags ? schedTags.get() : undefined; payload.sendingDays = picked($('schedDays')).join(','); }
-      if ($('audLists')) { payload.lists = picked($('audLists')).concat(picked($('audSources'))).concat($('audEarlier') ? picked($('audEarlier')) : []); payload.stages = picked($('audStages')); payload.versions = picked($('audLetters')); }
+      if ($('audLists')) { if (isSeries()) { payload.lists = picked($('audLists')); payload.tiers = picked($('audTiers')); } else { payload.lists = picked($('audLists')).concat(picked($('audSources'))).concat($('audEarlier') ? picked($('audEarlier')) : []); payload.stages = picked($('audStages')); payload.versions = picked($('audLetters')); } }
       busy($('saveAll'), true, 'Saving…');
       api('saveCampaign', id, payload).then(function () { toast('Saved', 'success'); stampSaved($('savedStamp')); dirty = false; load(); }).catch(fail).finally(function () { busy($('saveAll'), false, '💾 Save'); });
     }
@@ -320,7 +433,7 @@
     });
     on($('statusBtn'), 'click', function () {
       var n = nextStatus(data.campaign.status); if (!n) return;
-      if (n.to === 'running' && !confirm('Start sending? From the next sending day this campaign shows on Today, and its letters lock at the first send.')) return;
+      if (n.to === 'running' && !confirm(isSeries() ? 'Start the series? Each step shows on Today on its date, and locks once it goes out.' : 'Start sending? From the next sending day this campaign shows on Today, and its letters lock at the first send.')) return;
       busy($('statusBtn'), true, '…');
       api('saveCampaign', id, { status: n.to }).then(function () { toast(n.to === 'running' ? 'Running' : 'Paused', 'success'); load(); }).catch(fail).finally(function () { busy($('statusBtn'), false, n.label); });
     });
@@ -330,7 +443,8 @@
         data = d; results = null;
         var c = d.campaign;
         $('titleName').textContent = c.name;
-        $('titlePills').innerHTML = statusPill(c.status) + ' <span class="sub">' + esc(c.typeLabel) + (c.firstSentAt ? ' · started ' + fmtDate(c.firstSentAt) : c.startDate ? ' · starts ' + fmtDate(c.startDate) : '') + '</span>' + c.tags.map(function (t) { return ' <span class="pill" style="font-size:11px">' + esc(t) + '</span>'; }).join('');
+        $('tabs').querySelector('button[data-tab="copy"]').childNodes[0].textContent = c.kind === 'series' ? 'Steps ' : 'Email ';
+        $('titlePills').innerHTML = statusPill(c.status) + (c.kind === 'series' ? ' <span class="pill navy">📰 series</span>' : '') + ' <span class="sub">' + esc(c.typeLabel) + (c.firstSentAt ? ' · started ' + fmtDate(c.firstSentAt) : c.startDate ? ' · starts ' + fmtDate(c.startDate) : '') + '</span>' + c.tags.map(function (t) { return ' <span class="pill" style="font-size:11px">' + esc(t) + '</span>'; }).join('');
         var n = nextStatus(c.status);
         $('statusBtn').style.display = isAdmin && n ? '' : 'none'; if (n) $('statusBtn').textContent = n.label;
         $('sendNowBtn').style.display = isAdmin && c.status === 'running' ? '' : 'none';

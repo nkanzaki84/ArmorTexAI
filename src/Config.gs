@@ -9,7 +9,7 @@
  */
 
 // ===== App version (bump on every /exec deploy; shows in the footer) =====
-const APP_VERSION    = '0.17.1';
+const APP_VERSION    = '0.18.0';
 const APP_BUILD_DATE = '2026-11-25';
 
 // ===== Script Property keys =====
@@ -272,6 +272,7 @@ const HEADERS = {
     'Notes',
     'Call After Days',   // the call plan: business days after the first email with no reply → Today's call list (blank = no call step); appended 2026-11-23
     'Tags',              // free words, comma-separated, lowercase: the library's filing system (appended 2026-11-23)
+    'Kind',              // outreach (default: cold, one email + one follow-up, letters) | series (warm/partners: dated steps); appended 2026-11-25
     'Visit After Days',  // the visit step: business days after the first email → the office lands on Today's Visits list (blank = no visit step); appended 2026-11-23
   ],
   'Versions': [
@@ -286,6 +287,7 @@ const HEADERS = {
     'Locked',            // Yes once sending has started
     'Updated At',
     'Campaign ID',       // which campaign this wording belongs to (appended 2026-11-23)
+    'Send On',           // series steps only: the calendar date this step goes out (appended 2026-11-25)
   ],
   'Settings': [
     'Name',
@@ -407,6 +409,8 @@ const PARTNER_TYPE_PROFILES = {
   },
 };
 const EMAIL_VERSIONS = ['A', 'B', 'C', 'E'];
+const CAMPAIGN_KINDS = ['outreach', 'series'];
+const SERIES_TIERS = ['marketing', 'partners'];   // a series never goes to cold prospects
 const CAMPAIGN_STATUSES = ['draft', 'running', 'paused', 'done'];
 const DEFAULT_CALL_AFTER_DAYS = 7;   // a new campaign's call plan: call anyone who hasn't replied 7 business days after the first email
 const DEFAULT_CAMPAIGN = { Name: 'Realtor email test', 'Partner Type': 'realtor', Versions: 'A', Status: 'running' };   // seeded once; the one campaign the app ran before campaigns existed

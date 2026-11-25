@@ -59,6 +59,21 @@ function getCalendar(opts) {
     });
   });
 
+  // series steps on their calendar dates (running and draft, so planning shows), with how many still owe it
+  campaigns.filter(function (c) { return _isSeries_(c) && String(c['Status']) !== 'done'; }).forEach(function (c) {
+    const cid = String(c['ID']);
+    const isMember = _campaignMemberTest_(cid);
+    const members = partners.filter(isMember);
+    const had = {};
+    emails.forEach(function (e) { if (String(e['Campaign ID']) === cid && e['Sent At'] && e['Status'] !== 'cancelled') had[String(e['Partner ID']) + '|' + String(e['Version'])] = true; });
+    _stepRows_(cid).forEach(function (v) {
+      const k = inMonth(v['Send On']); if (!k) return;
+      const owed = members.filter(function (p) { return !had[String(p['ID']) + '|' + String(v['Letter'])]; }).length;
+      if (k < todayKey && !owed) return;   // fully sent: the 'sent' chip already tells it
+      add(k, { kind: 'series', label: 'Step ' + v['Letter'] + ' · ' + cname[cid], n: owed, campaignId: cid, campaign: cname[cid], step: String(v['Letter']), status: String(c['Status']), subject: String(v['Subject'] || '') });
+    });
+  });
+
   // what happened: replies in, calls and texts
   _readTab_(TAB.EVENTS).forEach(function (ev) {
     const k = inMonth(ev['At']); if (!k) return;

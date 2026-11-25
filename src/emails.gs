@@ -108,7 +108,7 @@ function sendTodayBatch(opts) {
     });
 
     // 2. First emails.
-    const ids = _nextId_(TAB.EMAILS, batch.firsts.length * 2);
+    const ids = _nextId_(TAB.EMAILS, batch.firsts.length * 2 + (batch.steps || []).length);
     let idIdx = 0;
     batch.firsts.forEach(function (p) {
       const to = _normEmail_(p['Email']);
@@ -141,6 +141,30 @@ function sendTodayBatch(opts) {
         report.sent++; quota--;
         _pause_();
       } catch (err) { report.errors.push(p['Name'] + ': ' + err.message); }
+    });
+
+    // 2b. Series steps: a fresh email each, no follow-up, the step locks at its first send.
+    (batch.steps || []).forEach(function (p) {
+      const to = _normEmail_(p['Email']);
+      if (dnc[to]) { report.skipped.dnc++; return; }
+      if (quota <= 0) { report.skipped.quota++; return; }
+      const v = p.stepRow || versions[String(p.campaignId) + '|' + String(p.step)];
+      if (!v) { report.errors.push(p['Name'] + ': step ' + p.step + ' missing'); return; }
+      const subject = _fill_(v['Subject'], p);
+      const body = _fill_(v['Body'], p);
+      try {
+        const msg = GmailApp.createDraft(to, subject, body, senderName ? { name: senderName } : {}).send();
+        const sentAt = new Date(now.getTime());
+        newEmails.push({
+          'ID': ids[idIdx++], 'Partner ID': p['ID'], 'Version': String(p.step), 'Step': 'step ' + p.step,
+          'Scheduled For': sentAt, 'Sent At': sentAt, 'Gmail Thread ID': msg.getThread().getId(), 'Gmail Message ID': msg.getId(),
+          'Status': 'sent', 'Subject': subject, 'Sent By': me.email, 'Campaign ID': String(p.campaignId),
+        });
+        partnerUpdates.push({ rowIndex: p._row, row: { 'Last Contact': sentAt } });
+        touchedVersions[String(p.campaignId) + '|' + String(p.step)] = true;
+        report.steps = (report.steps || 0) + 1; quota--;
+        _pause_();
+      } catch (err) { report.errors.push(p['Name'] + ' (step ' + p.step + '): ' + err.message); }
     });
 
     // 3. Write everything in as few calls as possible.
